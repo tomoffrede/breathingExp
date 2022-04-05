@@ -1,0 +1,136 @@
+---
+title: "Breathing Rate in Free Speech"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(cowplot)
+library(lme4)
+library(lmerTest)
+
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+order <- c("Baseline", "Sitting", "Light", "Heavy")
+orderconf <- order[-1]
+```
+
+## The regressions below are simple and preliminary; they still have to be refined
+
+### Looking at conditions, there doesn't seem to be any difference
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat[dat$Task=="Free",]
+
+ggplot()+
+  geom_boxplot(df %>% filter(Role=="Participant"), mapping=aes(Condition, breathRateSpeech), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D")(12))
+  # geom_point(df %>% filter(Role=="Confederate"), mapping=aes(x=Condition, y=breathRateSpeech), color="#7AD151FF", size=5)+
+  scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
+  ggtitle("breath rate (free speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))#+
+  # ylim(c(8, 15))
+
+```
+
+
+
+**Indeed, no difference in regression** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat %>% filter(Task=="Free") %>% filter(Condition!="Baseline")
+summary(lmer(breathRateSpeech ~ Condition + (1 | Speaker), data = df))
+```
+
+
+### If we look at confederate's speech rate instead of categorical conditions, still no difference
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+
+conf <- dat[dat$Speaker=="Confederate", c(3, 4, 5, 7:13, 26, 28:31, 33)]
+colnames(conf) <- sub("^","C", colnames(conf))
+dat2 <-dat
+dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
+rownames(dat3) <- 1:nrow(dat3)
+conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALSE))
+
+dat4 <- cbind(dat3, conf2)
+
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4 <- dat4[!duplicated(dat4$file),]
+
+df <- dat4 %>% filter(Task=="Free")
+
+ggplot() +
+  geom_point(df %>% filter(Role=="Participant"),
+    mapping=aes(x = CbreathRateSpeech, y = breathRateSpeech, color = Role), size=4) +
+  geom_point(df %>% filter(Role=="Confederate"),
+             mapping=aes(x = CbreathRateSpeech, y = breathRateSpeech, color = Role), size=4)+
+  scale_color_viridis_d("Speaker", direction=-1, end=.65)+
+  ggtitle("breath rate (free speech)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**Still no difference in regression** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "Free",]
+summary(lmer(breathRateSpeech ~ CbreathRateSpeech + (1 | Speaker), data = df))
+```
+
+
+## We can also look at the difference of participants' minus confederate's f0:
+
+### There's a difference between participant and confederate because participants stay the same and confederate changed
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
+
+ggplot(df, aes(Condition, breathRateSpeechDiff))+
+  geom_boxplot(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("breath rate difference (participant - confederate) (free speech)")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**Regression confirms these differences (but this doesn't mean much)** (Reference value: sitting)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "Free",]
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lmer(breathRateSpeechDiff ~ Condition + (1 | Speaker), data = df))
+```
+
+### Looking at difference according to confederate's breathing rate, it's the same as above
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+
+df <- dat %>% filter(Task=="Free")
+
+ggplot(df, aes(CbreathRateSpeech, breathRateSpeechDiff))+
+  geom_point(color="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("f0 difference (participant - confederate) (free speech)")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+### Same with the regression
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat %>% filter(Task=="Free")
+summary(lmer(breathRateSpeechDiff ~ CbreathRateSpeech + (1 | Speaker), data = df))
+
+```
+
+
+# Conclusion: our manipulation didn't work?

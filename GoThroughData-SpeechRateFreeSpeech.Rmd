@@ -1,0 +1,135 @@
+---
+title: "Speech Rate in Free Speech"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(cowplot)
+library(lme4)
+
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+
+order <- c("Baseline", "Sitting", "Light", "Heavy")
+orderconf <- order[-1]
+```
+
+## The regressions below are simple and preliminary; they still have to be refined
+
+### Looking at conditions, people seem to have spoken faster when talking to confederate
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat[dat$Task=="Free",]
+
+ggplot()+
+  geom_boxplot(df %>% filter(Role=="Participant"), mapping=aes(Condition, speechRate), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  geom_point(df %>% filter(Role=="Confederate"), mapping=aes(x=Condition, y=speechRate), color="#7AD151FF", size=5)+
+  scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
+  ggtitle("speech rate (free speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+
+```
+
+
+**The regression seems to support an increase in speech rate for sitting and heavy biking ** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+summary(lmer(speechRate ~ Condition + (1 | Speaker), data = df))
+```
+
+
+### If we look at confederate's speech rate instead of categorical conditions, there seems to be the same trend
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+
+conf <- dat[dat$Speaker=="Confederate", c(3, 4, 5, 7:13, 26, 28:31, 33)]
+colnames(conf) <- sub("^","C", colnames(conf))
+dat2 <-dat
+dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
+rownames(dat3) <- 1:nrow(dat3)
+conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALSE))
+
+dat4 <- cbind(dat3, conf2)
+
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4 <- dat4[!duplicated(dat4$file),]
+
+df <- dat4 %>%
+  filter(Task=="Free")
+
+ggplot() +
+  geom_point(df %>% filter(Role=="Participant"),
+    mapping=aes(x = CbreathRateSpeech, y = speechRate, color = Role), size=4) +
+  geom_point(df %>% filter(Role=="Confederate"),
+             mapping=aes(x = CbreathRateSpeech, y = speechRate, color = Role), size=4)+
+  scale_color_viridis_d("Speaker", direction=-1, end=.65)+
+  ggtitle("speech rate (free speech)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**The regression doesn't capture this trend, probably because it isn't linear** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "Free",]
+summary(lmer(speechRate ~ CbreathRateSpeech + (1 | Speaker), data = df))
+```
+
+
+## We can also look at the difference of participants' minus confederate's f0:
+
+### Looking at categorical conditions: smallest difference at heavy biking, then sitting, then light biking. This follows the non-lienear trend from above.
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
+
+ggplot(df, aes(Condition, speechRateDiff))+
+  geom_boxplot(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("speech rate difference (participant - confederate) (free speech)")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**The regression confirms the difference between conditions.** (Reference value: sitting)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "Free",]
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lmer(speechRateDiff ~ Condition + (1 | Speaker), data = df))
+```
+
+## Looking at difference according to confederate's breathing rate, it looks the same
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+
+df <- dat %>%
+  filter(Task=="Free")
+
+ggplot(df, aes(CbreathRateSpeech, speechRateDiff))+
+  geom_point(color="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("speech rate difference (participant - confederate) (free speech)")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+### Again, regression doesn't capture the non-linear trend.
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat %>% filter(Task=="Free")
+summary(lmer(speechRateDiff ~ CbreathRateSpeech + (1 | Speaker), data = df))
+
+```
+
+
+# Conclusion: we need more data?

@@ -1,0 +1,140 @@
+---
+title: "f0 in Reading Alone"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(cowplot)
+library(lme4)
+
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+order <- c("Baseline", "Sitting", "Light", "Heavy")
+orderconf <- order[-1]
+```
+
+## The regressions below are simple and preliminary; they still have to be refined
+
+### Looking at conditions: f0 seems to have been more variable at baseline and light biking. Also, maybe a slight increase in f0 from the baseline to the other conditions.
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat[dat$Task=="ReadAlone",]
+
+df <- df[df$f0mean>125,]
+
+ggplot()+
+  geom_boxplot(df %>% filter(Role=="Participant"), mapping=aes(Condition, f0mean), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  geom_point(df %>% filter(Role=="Confederate"), mapping=aes(x=Condition, y=f0mean), color="#7AD151FF", size=5)+
+  scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
+  ggtitle("f0 mean (ReadAlone) - no outliers")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+
+```
+
+
+
+**The regression suggests f0 increased linear with the conditions (no difference between baseline and sitting, and slight difference between baseline and light biking. Bigger difference between baseline and heavy biking)** (reference value: baseline)
+```{r, echo=FALSE}
+# load(paste0(folder, "DataWithDiff.RData"))
+summary(lmer(f0mean ~ Condition + (1 | Speaker), data = df))
+```
+
+
+### Seeing f0 along confederate's breathing rate doesn't seem to make much sense.
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+
+conf <- dat[dat$Speaker=="Confederate", c(3, 4, 5, 7:13, 26, 28:31, 33)]
+colnames(conf) <- sub("^","C", colnames(conf))
+dat2 <-dat
+dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
+rownames(dat3) <- 1:nrow(dat3)
+conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALSE))
+
+dat4 <- cbind(dat3, conf2)
+
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4[dat4$Condition == "Baseline", colnames(conf)] <- NA
+dat4 <- dat4[!duplicated(dat4$file),]
+
+df <- dat4 %>%
+  filter(Task=="ReadAlone") %>%
+  filter(f0mean > 125)
+
+ggplot() +
+  geom_point(df %>% filter(Role=="Participant"),
+    mapping=aes(x = CbreathRateSpeech, y = f0mean, color = Role), size=4) +
+  geom_point(df %>% filter(Role=="Confederate"),
+             mapping=aes(x = CbreathRateSpeech, y = f0mean, color = Role), size=4)+
+  scale_color_viridis_d("Speaker", direction=-1, end=.65)+
+  ggtitle("f0 mean (ReadAlone) - no outliers ")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**The regression also doesn't show anything** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadAlone",]
+summary(lmer(f0mean ~ CbreathRateSpeech + (1 | Speaker), data = df))
+```
+
+
+## We can also look at the difference of participants' minus confederate's f0:
+
+### Looking at categorical conditions: no difference at light biking; at sitting, participants have lower f0, and at heavy biking, have higher f0? (Doesn't make sense with the previous data)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task=="ReadAlone" & dat$Condition!="Baseline",]
+
+ggplot(df, aes(Condition, f0meanDiff))+
+  geom_boxplot(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("f0 difference (participant - confederate) (ReadAlone)")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**But there seems to be a difference between the conditions.** (Reference value: sitting)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadAlone",]
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lmer(f0meanDiff ~ Condition + (1 | Speaker), data = df))
+```
+
+### Looking at difference according to confederate's breathing rate, it doesn't make sense either.
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+
+df <- dat %>%
+  filter(Task=="ReadAlone") %>%
+  filter(f0mean > 125)
+
+ggplot(df, aes(CbreathRateSpeech, f0meanDiff))+
+  geom_point(color="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("f0 difference (participant - confederate) (ReadAlone)")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**Regression doesn't show anything either.**
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat %>% filter(Task=="ReadAlone")
+summary(lmer(f0meanDiff ~ CbreathRateSpeech + (1 | Speaker), data = df))
+
+```
+
+
+# Conclusion: we need more data?

@@ -1,0 +1,136 @@
+---
+title: "Speech Rate in Read Alone Speech"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(cowplot)
+library(lme4)
+
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+
+order <- c("Baseline", "Sitting", "Light", "Heavy")
+orderconf <- order[-1]
+```
+
+## The regressions below are simple and preliminary; they still have to be refined
+
+### Looking at conditions, people seem to have spoken slightly faster at sitting and light biking, and slower (and more variable) at heavy biking?
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat[dat$Task=="ReadAlone",]
+
+ggplot()+
+  geom_boxplot(df %>% filter(Role=="Participant"), mapping=aes(Condition, speechRate), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  geom_point(df %>% filter(Role=="Confederate"), mapping=aes(x=Condition, y=speechRate), color="#7AD151FF", size=5)+
+  scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
+  ggtitle("speech rate (ReadAlone speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+
+```
+
+
+**The regression doesn't seem to support any difference** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+summary(lmer(speechRate ~ Condition + (1 | Speaker), data = df))
+```
+
+
+### If we look at confederate's speech rate instead of categorical conditions, I don't think this means much
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+
+conf <- dat[dat$Speaker=="Confederate", c(3, 4, 5, 7:13, 26, 28:31, 33)]
+colnames(conf) <- sub("^","C", colnames(conf))
+dat2 <-dat
+dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
+rownames(dat3) <- 1:nrow(dat3)
+conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALSE))
+
+dat4 <- cbind(dat3, conf2)
+
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4[dat4$Condition=="Baseline", colnames(conf)] <- NA
+dat4 <- dat4[!duplicated(dat4$file),]
+
+df <- dat4 %>%
+  filter(Task=="ReadAlone")
+
+ggplot() +
+  geom_point(df %>% filter(Role=="Participant"),
+    mapping=aes(x = CbreathRateSpeech, y = speechRate, color = Role), size=4) +
+  geom_point(df %>% filter(Role=="Confederate"),
+             mapping=aes(x = CbreathRateSpeech, y = speechRate, color = Role), size=4)+
+  scale_color_viridis_d("Speaker", direction=-1, end=.65)+
+  ggtitle("speech rate (ReadAlone speech)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**The regression also doesn't show anything** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadAlone",]
+summary(lmer(speechRate ~ CbreathRateSpeech + (1 | Speaker), data = df))
+```
+
+
+## We can also look at the difference of participants' minus confederate's f0:
+
+### Looking at categorical conditions: smallest difference at sitting, then confederate spoke faster than participants while biking. (Funny, because the confederate's trend was to speak slower with physical effort.)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task=="ReadAlone" & dat$Condition!="Baseline",]
+
+ggplot(df, aes(Condition, speechRateDiff))+
+  geom_boxplot(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("speech rate difference (participant - confederate) (ReadAlone speech)")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**The regression confirms this difference between conditions.** (Reference value: sitting)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadAlone",]
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lmer(speechRateDiff ~ Condition + (1 | Speaker), data = df))
+```
+
+## Looking at difference according to confederate's breathing rate, it's also hard to draw many conclusions
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+
+df <- dat %>%
+  filter(Task=="ReadAlone")
+
+ggplot(df, aes(CbreathRateSpeech, speechRateDiff))+
+  geom_point(color="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("speech rate difference (participant - confederate) (ReadAlone speech)")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat %>% filter(Task=="ReadAlone")
+summary(lmer(speechRateDiff ~ CbreathRateSpeech + (1 | Speaker), data = df))
+
+```
+
+
+# Conclusion: we need more data?

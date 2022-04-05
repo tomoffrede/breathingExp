@@ -1,0 +1,134 @@
+---
+title: "Breathing Rate in Joint Reading"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(cowplot)
+library(lme4)
+
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+order <- c("Baseline", "Sitting", "Light", "Heavy")
+orderconf <- order[-1]
+```
+
+## The regressions below are simple and preliminary; they still have to be refined
+
+### Looking at conditions: maybe slight trend upwards with condition
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat[dat$Task=="ReadJoint",]
+
+ggplot()+
+  geom_boxplot(df %>% filter(Role=="Participant"), mapping=aes(Condition, breathRateSpeech), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  geom_point(df %>% filter(Role=="Confederate"), mapping=aes(x=Condition, y=breathRateSpeech), color="#7AD151FF", size=5)+
+  scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
+  ggtitle("breathing rate (ReadJoint)")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+
+```
+
+
+
+**In the regression: small trend upwards (no difference between sitting and light or between light and heavy, but difference between sitting and heavy.** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Light")
+summary(lmer(breathRateSpeech ~ Condition + (1 | Speaker), data = df))
+```
+
+
+### Seeing breathing rate along confederate's breathing rate, I don't see much difference
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+
+conf <- dat[dat$Speaker=="Confederate", c(3, 4, 5, 7:13, 26, 28:31, 33)]
+colnames(conf) <- sub("^","C", colnames(conf))
+dat2 <-dat
+dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
+rownames(dat3) <- 1:nrow(dat3)
+conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALSE))
+
+dat4 <- cbind(dat3, conf2)
+
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4[dat4$Condition == "Baseline", colnames(conf)] <- NA
+dat4 <- dat4[!duplicated(dat4$file),]
+
+df <- dat4 %>% filter(Task=="ReadJoint")
+
+ggplot() +
+  geom_point(df %>% filter(Role=="Participant"),
+    mapping=aes(x = CbreathRateSpeech, y = breathRateSpeech, color = Role), size=4) +
+  geom_point(df %>% filter(Role=="Confederate"),
+             mapping=aes(x = CbreathRateSpeech, y = breathRateSpeech, color = Role), size=4)+
+  scale_color_viridis_d("Speaker", direction=-1, end=.65)+
+  ggtitle("breathing rate (ReadJoint)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**The regression also doesn't support a difference following the confederate's breathing rate** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadJoint",]
+summary(lmer(breathRateSpeech ~ CbreathRateSpeech + (1 | Speaker), data = df))
+```
+
+
+## We can also look at the difference of participants' minus confederate's f0:
+
+### Looking at categorical conditions: not sure how to interpret these differences. Biggest difference in heavy condition? (makes sense: confederate changed a lot, but participants don't follow as much)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task=="ReadJoint" & dat$Condition!="Baseline",]
+
+ggplot(df, aes(Condition, breathRateSpeechDiff))+
+  geom_boxplot(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("breath rate difference (participant - confederate) (ReadJoint)")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**This difference between conditions seems clear in the regression, but because confederate changed a lot.** (Reference value: sitting)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadJoint",]
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lmer(breathRateSpeechDiff ~ Condition + (1 | Speaker), data = df))
+```
+
+### Looking at difference according to confederate's breathing rate, it's the same pattern as above
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+
+df <- dat %>% filter(Task=="ReadJoint")
+
+ggplot(df, aes(CbreathRateSpeech, breathRateSpeechDiff))+
+  geom_point(color="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("breath rate difference (participant - confederate) (ReadJoint)")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**Regression shows slight decrease in difference with breathing rate.**
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat %>% filter(Task=="ReadJoint")
+summary(lmer(breathRateSpeechDiff ~ CbreathRateSpeech + (1 | Speaker), data = df))
+
+```
+
+
+# Conclusion: we need more data?

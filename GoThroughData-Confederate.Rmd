@@ -1,0 +1,283 @@
+---
+title: "Confederate's Data"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(cowplot)
+library(lme4)
+
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+order <- c("Sitting", "Light", "Heavy")
+```
+
+## The regressions below are simple and preliminary; they still have to be refined
+
+# Free Speech
+
+## Breathing rate
+
+### Clear pattern for breathing rate during free speech
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="Free")
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=breathRateSpeech), color="#2D708EFF", size=4)+
+  ggtitle("Breathing rate (free speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+**And this seems to be supported by a regression** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lm(breathRateSpeech ~ Condition, data = df))
+```
+
+## f0
+
+### f0 also changes clearly with condition
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="Free")
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=f0mean), color="#2D708EFF", size=4)+
+  ggtitle("f0 mean (free speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+
+
+*Also supported by the regression** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lm(f0mean ~ Condition, data = df))
+```
+
+
+### Same pattern if we divide by breathing rate instead of conditions
+
+```{r, echo=FALSE}
+ggplot() +
+  geom_point(df, mapping=aes(x = breathRateSpeech, y = f0mean), color="#2D708EFF", size=4)+
+  ggtitle("f0 (free speech)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**Also supported by regression**
+
+```{r, echo=FALSE}
+summary(lm(f0mean ~ breathRateSpeech, data = df))
+```
+
+## Speech rate
+
+### Speech rate has this non-linear pattern
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="Free")
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=speechRate), color="#2D708EFF", size=4)+
+  ggtitle("Speech rate (free speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+```{r, echo=FALSE}
+##Artic Rate
+
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="Free")
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=articRate), color="#2D708EFF", size=4)+
+  ggtitle("Articulation rate (free speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+```{r, echo=FALSE}
+##pause duration
+
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="Free")
+
+df$pausePerc <-  (df$pauseDur*100)/df$durationSpeech
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=pausePerc), color="#2D708EFF", size=4)+
+  ggtitle("PAuse duration perc (free speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+
+**Regression suggests there's a clear difference between conditions** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lm(f0mean ~ Condition, data = df))
+```
+
+
+### Same pattern if we divide by breathing rate instead of conditions
+
+```{r, echo=FALSE}
+ggplot() +
+  geom_point(df, mapping=aes(x = breathRateSpeech, y = speechRate), color="#2D708EFF", size=4)+
+  ggtitle("Speech rate (free speech)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**Also supported by regression**
+
+```{r, echo=FALSE}
+summary(lm(f0mean ~ breathRateSpeech, data = df))
+```
+
+# Read Speech
+
+## Breathing rate
+
+### During read speech breathing rate has this weird pattern.
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="ReadAlone")
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=breathRateSpeech), color="#2D708EFF", size=4)+
+  ggtitle("Breathing rate (read speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+### Divided by text
+
+```{r, echo=FALSE}
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=breathRateSpeech), color="#2D708EFF", size=4)+
+  ggtitle("Breathing rate (read speech)")+
+  scale_x_discrete(limits = order)+
+  facet_wrap(~Topic)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+
+**Regression shows nothing** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lm(breathRateSpeech ~ Condition, data = df))
+```
+
+## f0
+
+### But f0 changes clearly with condition, so the physical effort did influence f0
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="ReadAlone")
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=f0mean), color="#2D708EFF", size=4)+
+  ggtitle("f0 mean (read speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+
+
+*Also supported by the regression** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lm(f0mean ~ Condition, data = df))
+```
+
+
+### But since here breathing rate != condition, f0 doesn't follow breathing rate
+
+```{r, echo=FALSE}
+ggplot() +
+  geom_point(df, mapping=aes(x = breathRateSpeech, y = f0mean), color="#2D708EFF", size=4)+
+  ggtitle("f0 (read speech)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**Also in the regression**
+
+```{r, echo=FALSE}
+summary(lm(f0mean ~ breathRateSpeech, data = df))
+```
+
+## Speech rate
+
+### Speech rate goes down with heavier conditions
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% 
+  filter(Speaker=="Confederate") %>%
+  filter(Task=="ReadAlone")
+
+ggplot()+
+  geom_point(df, mapping=aes(x=Condition, y=speechRate), color="#2D708EFF", size=4)+
+  ggtitle("Speech rate (read speech)")+
+  scale_x_discrete(limits = order)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+```
+
+
+
+**Regression suggests it's significant** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lm(f0mean ~ Condition, data = df))
+```
+
+
+### Again, dividing by breathing rate doesn't show anything
+
+```{r, echo=FALSE}
+ggplot() +
+  geom_point(df, mapping=aes(x = breathRateSpeech, y = speechRate), color="#2D708EFF", size=4)+
+  ggtitle("Speech rate (read speech)")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**Also in the regression**
+
+```{r, echo=FALSE}
+summary(lm(f0mean ~ breathRateSpeech, data = df))
+```

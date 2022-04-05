@@ -1,0 +1,54 @@
+---
+title: "Participants"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(tidyverse)
+```
+
+```{r, echo=FALSE}
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+load(paste0(folder, "DataNoDiff.Rdata"))
+dat <- dat %>%
+  filter(Speaker != "Confederate") %>%
+  filter(!duplicated(Speaker))
+```
+
+## Age
+
+```{r, echo=FALSE}
+summary(dat$Age); print(paste("SD:", sd(dat$Age)))
+```
+
+## Gender identity
+
+```{r, echo=FALSE}
+table(dat$Gender)
+```
+**TMF scale (femininity subscale):**
+
+```{r, echo=FALSE}
+summary(dat$TMF.F); print(paste("SD:", sd(dat$TMF.F)))
+
+```
+
+**TMF scale (masculinity subscale):**
+
+```{r, echo=FALSE}
+summary(dat$TMF.M); print(paste("SD:", sd(dat$TMF.M)))
+```
+## BMI
+
+```{r, echo=FALSE}
+summary(dat$BMI); print(paste("SD:", sd(dat$BMI, na.rm = TRUE)))
+```
+## L1 in addition to German
+
+```{r, echo=FALSE}
+table(dat$OtherL1)
+```

@@ -1,0 +1,140 @@
+---
+title: "f0 in Joint Reading"
+output: html_document
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(cowplot)
+library(lme4)
+
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+order <- c("Baseline", "Sitting", "Light", "Heavy")
+orderconf <- order[-1]
+```
+
+## The regressions below are simple and preliminary; they still have to be refined
+
+### Looking at conditions: f0 seems to have increased with the conditions
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat[dat$Task=="ReadJoint",]
+
+df <- df[df$f0mean>125,]
+
+ggplot()+
+  geom_boxplot(df %>% filter(Role=="Participant"), mapping=aes(Condition, f0mean), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  geom_point(df %>% filter(Role=="Confederate"), mapping=aes(x=Condition, y=f0mean), color="#7AD151FF", size=5)+
+  scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
+  ggtitle("f0 mean (ReadJoint) - no outliers")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))
+
+```
+
+
+
+**The regression suggests f0 increased linear with the conditions -- following the plot above** (reference value: sitting)
+```{r, echo=FALSE}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lmer(f0mean ~ Condition + (1 | Speaker), data = df))
+```
+
+
+### Seeing f0 along confederate's breathing rate shows a different, non-linear, trend
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataNoDiff.RData"))
+
+conf <- dat[dat$Speaker=="Confederate", c(3, 4, 5, 7:13, 26, 28:31, 33)]
+colnames(conf) <- sub("^","C", colnames(conf))
+dat2 <-dat
+dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
+rownames(dat3) <- 1:nrow(dat3)
+conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALSE))
+
+dat4 <- cbind(dat3, conf2)
+
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4[dat4$Condition == "Baseline", colnames(conf)] <- NA
+dat4 <- dat4[!duplicated(dat4$file),]
+
+df <- dat4 %>%
+  filter(Task=="ReadJoint") %>%
+  filter(f0mean > 125)
+
+ggplot() +
+  geom_point(df %>% filter(Role=="Participant"),
+    mapping=aes(x = CbreathRateSpeech, y = f0mean, color = Role), size=4) +
+  geom_point(df %>% filter(Role=="Confederate"),
+             mapping=aes(x = CbreathRateSpeech, y = f0mean, color = Role), size=4)+
+  scale_color_viridis_d("Speaker", direction=-1, end=.65)+
+  ggtitle("f0 mean (ReadJoint) - no outliers ")+
+  theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
+        axis.title=element_text(size=21), axis.text=element_text(size=20),
+        plot.title=element_text(size=25))
+```
+
+**The regression suggests a slight increase in f0 with confederate's breathing rate** (reference value: baseline)
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadJoint",]
+summary(lmer(f0mean ~ CbreathRateSpeech + (1 | Speaker), data = df))
+```
+
+
+## We can also look at the difference of participants' minus confederate's f0:
+
+### Looking at categorical conditions: smallest difference at sitting; at biking, participants had higher f0?
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task=="ReadJoint" & dat$Condition!="Baseline",]
+
+ggplot(df, aes(Condition, f0meanDiff))+
+  geom_boxplot(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("f0 difference (participant - confederate) (ReadJoint)")+
+  scale_x_discrete(limits = orderconf)+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**This difference between conditions seems clear in the regression.** (Reference value: sitting)
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat[dat$Task == "ReadJoint",]
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(lmer(f0meanDiff ~ Condition + (1 | Speaker), data = df))
+```
+
+### Looking at difference according to confederate's breathing rate, it doesn't make sense either.
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+
+df <- dat %>%
+  filter(Task=="ReadJoint") %>%
+  filter(f0mean > 125)
+
+ggplot(df, aes(CbreathRateSpeech, f0meanDiff))+
+  geom_point(color="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  ggtitle("f0 difference (participant - confederate) (ReadJoint)")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23))
+```
+
+**Regression shows slight decrease in difference with breathing rate (but as we can see in the plot, it's non linear.**
+
+```{r, echo=FALSE}
+load(paste0(folder, "DataWithDiff.RData"))
+df <- dat %>% filter(Task=="ReadJoint")
+summary(lmer(f0meanDiff ~ CbreathRateSpeech + (1 | Speaker), data = df))
+
+```
+
+
+# Conclusion: we need more data?
