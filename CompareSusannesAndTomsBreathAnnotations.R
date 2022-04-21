@@ -50,3 +50,8 @@ mean(diff$timeDiff)
 sd(diff$timeDiff)
 
 hist(diff$timeDiff)
+
+par(mfrow=c(2,1))
+hist(diff$timeDiff[grepl("valley", diff$pointS)], main="valleys", xlim=c(-0.5, 0.3))
+hist(diff$timeDiff[grepl("peak", diff$pointS)], main="peaks", xlim=c(-0.5, 0.3))
+
