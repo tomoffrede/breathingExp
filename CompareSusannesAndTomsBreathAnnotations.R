@@ -1,6 +1,7 @@
 ### calculate difference in time points between Tom's and Susanne's annotations
 
 library(rPraat)
+library(ggplot2)
 
 foldert <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Confederate/BreathingWithEntireCycle-Free/"
 folders <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Confederate/BreathingWithEntireCycle-Free/Susanne/"
@@ -49,9 +50,8 @@ diff$timeDiff <- diff$timeS - diff$timeT
 mean(diff$timeDiff)
 sd(diff$timeDiff)
 
-hist(diff$timeDiff)
-
-par(mfrow=c(2,1))
+par(mfrow=c(2,2))
+hist(diff$timeDiff, main="peaks+valleys; M = 0.007; SD = 0.056")
 hist(diff$timeDiff[grepl("valley", diff$pointS)], main="valleys", xlim=c(-0.5, 0.3))
 hist(diff$timeDiff[grepl("peak", diff$pointS)], main="peaks", xlim=c(-0.5, 0.3))
 
