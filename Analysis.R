@@ -112,6 +112,9 @@ anova(m1, m2) # including GEPAQ.F increased AIC by 2
 #   - Leave out Topic (we already saw that it was zero in the model, so we can assume it's controlled for).
 
 
+load(paste0(folder, "BreathingData.RData"))
+
+plot(br$cycleDur)
 
 ## outliers
 ## variability is smaller after baseline > people do something
