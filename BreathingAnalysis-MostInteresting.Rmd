@@ -1,0 +1,200 @@
+---
+title: "Breathing analysis"
+output: html_document
+date: '2022-05-05'
+---
+
+```{r, include=FALSE}
+library(lme4)
+library(tidyverse)
+```
+
+
+```{r setup, include=FALSE}
+folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+load(paste0(folder, "BreathingData.RData"))
+
+br$Condition[substr(br$file, 1, 1) == "B"] <- "Baseline"
+br$Condition[substr(br$file, 1, 1) == "S"] <- "Sitting"
+br$Condition[substr(br$file, 1, 1) == "L"] <- "Light"
+br$Condition[substr(br$file, 1, 1) == "H"] <- "Heavy"
+br$Speaker <- substr(br$file, 4, 6)
+br$Speaker[grepl("Hobb", br$file) | grepl("Holi", br$file) | grepl("Home", br$file)] <- "Confederate"
+br$Role[br$Speaker == "Confederate"] <- "Confederate"
+br$Role[br$Speaker != "Confederate"] <- "Participant"
+
+br[, c("Condition", "Speaker", "Role", "act")] <- lapply(br[, c("Condition", "Speaker", "Role", "act")], as.factor)
+br$numberIPUs <- as.numeric(br$numberIPUs)
+
+br$cycleDurZ <- (br$cycleDur - mean(br$cycleDur)) / sd(br$cycleDur)
+br$breathCycleDurMeanZ <- (br$breathCycleDurMean - mean(br$breathCycleDurMean)) / sd(br$breathCycleDurMean)
+br$breathRateZ <- (br$breathRate - mean(br$breathRate)) / sd(br$breathRate)
+br$numberIPUsZ <- (br$numberIPUs - mean(br$numberIPUs, na.rm=TRUE)) / sd(br$numberIPUs, na.rm=TRUE)
+
+br <- br %>%
+  group_by(Role=="Participant") %>% # only delete the outliers of the participants; keep all of the confederate's data
+  filter(abs(cycleDurZ) < 2) %>%
+  filter(abs(breathCycleDurMeanZ) < 2) %>%
+  filter(abs(breathRateZ) < 2) %>%
+  filter(abs(numberIPUsZ) < 2 | is.na(numberIPUsZ))
+
+orderCond <- c("Sitting", "Light", "Heavy")
+orderCondBase <- c("Baseline", "Sitting", "Light", "Heavy")
+orderAct <- c("watching", "listening", "speaking")
+
+OGbr <- br
+```
+
+# Breathing rate (cycles per minute)
+
+```{r, include=FALSE}
+br <- br[!duplicated(br$file),]
+```
+
+### Breathing rate was lowest during **speaking**, and the durations of the breathing cycles were the longest also during speaking, which makes sense.
+**These effects followed a similar pattern in all conditions (but see more details below)**
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant"), aes(act, breathRate))+
+  geom_boxplot()+
+  ggtitle("breathing rate (across conditions)")+
+  scale_x_discrete(limits = orderAct)
+
+ggplot(OGbr %>% filter(Role=="Participant"), aes(act, cycleDur))+
+  geom_boxplot()+
+  ggtitle("breath cycle duration (across conditions)")+
+  scale_x_discrete(limits = orderAct)
+
+br$act <- relevel(br$act, ref="watching")
+summary(lmer(breathRate ~ act + (1|Speaker), br %>% filter(Role == "Participant")))
+
+br$act <- relevel(br$act, ref="watching")
+summary(lmer(cycleDur ~ act + (1|Speaker), OGbr %>% filter(Role == "Participant")))
+```
+
+### Comparing the conditions, the only effect seemed to have been *speaking alone* vs *speaking with the confederate*
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant"), aes(Condition, breathRate))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+br$Condition <- relevel(br$Condition, ref="Sitting")
+summary(lmer(breathRate ~ Condition + (1|Speaker), br %>% filter(Role == "Participant")))
+```
+
+### Following Paccalin & Jeannerod, we'd expect a difference between sitting, light biking and heavy biking when the participants are just watching the confederate and both people are in silence.
+### We did **not** replicate this effect.
+**This could potentially be because our recordings of this "watching" period were a bit short (< 1 min; P&J did 1-min recordings).**
+**The heavy biking condition seems to have had less variability in breathing rate. I don't know how significant that is.**
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant") %>% filter(act=="watching"), aes(Condition, breathRate))+
+  geom_boxplot()+
+  ggtitle("during WATCHING (all in silence)")+
+  scale_x_discrete(limits = orderCond)
+
+summary(lmer(breathRate ~ Condition + (1|Speaker), br %>% filter(Role == "Participant") %>% filter(act=="watching")))
+```
+
+### During **listening**, there seems to be a difference in breathing rates, but the regression doesn't support this.
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant") %>% filter(act=="listening"), aes(Condition, breathRate))+
+  geom_boxplot()+
+  ggtitle("during LISTENING")+
+  scale_x_discrete(limits = orderCond)
+
+summary(lmer(breathRate ~ Condition + (1|Speaker), br %>% filter(Role == "Participant") %>% filter(act=="listening")))
+```
+
+### During **speaking**, there is the same trend as during listening, but reduced in intensity (which makes sense: the effect of watching someone bike should be reduced if you're also engaging your respiratory system to speak).
+**The difference between *speaking alone* and *speaking with confederate* shows in the regression if we exclude the breath rates with SD >1.5.**
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant") %>% filter(act=="speaking") %>% filter(breathRateZ < 17.5), aes(Condition, breathRate))+
+  geom_boxplot()+
+  ggtitle("during SPEAKING -- SD > 1.5 excluded")+
+  scale_x_discrete(limits = orderCondBase)
+
+summary(lmer(breathRate ~ Condition + (1|Speaker), br %>% filter(Role == "Participant") %>% filter(act=="speaking") %>% filter(breathRate < 17.5)))
+```
+
+# Duration of breath cycles
+
+```{r, include=FALSE}
+br <- OGbr
+```
+
+## Confederate
+
+### In the confederate, we see the expected change in breath cycle duration per condition (but in the regression there was no light vs heavy difference, although the (tendency to the) expeceted pattern still holds).
+
+*Referece level of regression below: light biking*
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Confederate"), aes(Condition, cycleDur))+
+  geom_boxplot()+
+  ggtitle("breath cycle duration (confederate)")+
+  scale_x_discrete(limits = orderCond)
+
+br$Condition <- relevel(br$Condition, ref="Light")
+summary(lm(cycleDur ~ Condition, br %>% filter(Role == "Confederate")))
+```
+
+## Participants
+
+### As expected, during *speaking* there are the longest durations of breathing cycles. But also the most variable durations: it makes sense because people produce utterances of different types and lengths. During watching and listening, the only (? or at least primary) constraint on breathing is the necessity for oxygen, so the breath cycles can be more similar to each other.
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant"), aes(act, cycleDur))+
+  geom_boxplot()+
+  ggtitle("breath cycle duration (all conditions together)")+
+  scale_x_discrete(limits = orderAct)
+
+br$act <- relevel(br$act, ref="watching")
+summary(lmer(cycleDur ~ act + (1|Speaker), br %>% filter(Role == "Participant")))
+```
+
+### Listening has slightly **shorter** cycle durations than during just watching. This is different from previous studies that found that breathing during listening looked like something in-between silent breathing and speech breathing.
+**The listening < watching effect happened in all conditions, but slightly more so during biking than during sitting.**
+
+**I'm not sure what to make of this in terms of theory.**
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant") %>% filter(Condition=="Heavy"), aes(act, cycleDur))+
+  geom_boxplot()+
+  ggtitle("breath cycle duration (during HEAVY BIKING)")+
+  scale_x_discrete(limits = orderAct)
+
+br$act <- relevel(br$act, ref="watching")
+summary(lmer(cycleDur ~ act + (1|Speaker), br %>% filter(Role == "Participant") %>% filter(Condition=="Heavy")))
+```
+
+# Number of IPUs per breathing cycle
+
+## Confederate
+
+### When biking, the confederate seems to produce slightly fewer IPUs per breath cycle (which makes sense! We have less breath available when biking).
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Confederate"), aes(Condition, numberIPUs))+
+  geom_boxplot()+
+  ggtitle("number of IPUs per breath cycle (confederate)")+
+  scale_x_discrete(limits = orderCond)
+
+br$Condition <- relevel(br$Condition, ref="Sitting")
+summary(lm(numberIPUs ~ Condition, br %>% filter(Role == "Confederate")))
+```
+
+## Participants
+
+### Participants really don't seem to change their IPUs per cycle across conditions
+
+```{r, echo=FALSE}
+ggplot(br %>% filter(Role=="Participant"), aes(Condition, numberIPUs))+
+  geom_boxplot()+
+  ggtitle("number of IPUs per breath cycle (participants)")+
+  scale_x_discrete(limits = orderCondBase)
+
+summary(lmer(numberIPUs ~ Condition + (1|Speaker), br %>% filter(Role == "Participant")))
+```
