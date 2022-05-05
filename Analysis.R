@@ -1,5 +1,5 @@
 library(lme4)
-library(ggplot2)
+library(tidyverse)
 # library(influence.ME)
 
 folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
@@ -110,11 +110,6 @@ anova(m1, m2) # including GEPAQ.F increased AIC by 2
 # - Plot Carry's f0 in comparison with speakers in each condition
 # - Do each task (free speech, reading) separately!
 #   - Leave out Topic (we already saw that it was zero in the model, so we can assume it's controlled for).
-
-
-load(paste0(folder, "BreathingData.RData"))
-
-plot(br$cycleDur)
 
 ## outliers
 ## variability is smaller after baseline > people do something
