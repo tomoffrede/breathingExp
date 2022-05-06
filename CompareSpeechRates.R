@@ -75,13 +75,13 @@ ld <- data.frame(matrix(ncol=8, nrow=0))
 names(ld) <- c("IPUDur", "IPU", "file", "syll", "speechRateSyll", "durationSpeechManual", "pause", "pauseDurManual")
 
 # we can only get this info for free speech, so:
-
+# i="LF-JPW013_AUDIO.TextGrid"
 for(i in listTGf){
   tg <- tg.read(paste0(folder, i), encoding=detectEncoding(paste0(folder, i)))
   inter <- data.frame(matrix(ncol=2, nrow=0))
   names(inter) <- c("label", "duration")
   for(n in 1:tg.getNumberOfIntervals(tg, 1)){
-    if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, 2) & tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, 2)){
+    if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))) & tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))){
       inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n), as.numeric(tg.getIntervalDuration(tg, 1, n)))
     }
   }
@@ -94,7 +94,7 @@ for(i in listTGf){
     rename("IPUDur"="duration")
   ipu$syll <- (hyphen(ipu$label, hyph.pattern="de")@hyphen)$syll
   ipu$speechRateSyll <- ipu$syll / as.numeric(ipu$IPUDur)
-  ipu$durationSpeechManual = as.numeric(tg.getIntervalEndTime(tg, 1, tg.getNumberOfIntervals(tg, 1))) - as.numeric(tg.getIntervalStartTime(tg, 1, 1))
+  ipu$durationSpeechManual = as.numeric(tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))) - as.numeric(tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))))
   ipu$label <- NULL
   paus <- inter %>%
     filter(label == "") %>%
@@ -108,26 +108,18 @@ for(i in listTGf){
 
 syllables <- aggregate(ld$syll, list(ld$file), FUN=sum)
 names(syllables) <- c("file", "syll")
+ld$pauseDurManual <- as.numeric(ld$pauseDurManual)
+ld1 <- ld[!is.na(ld$pauseDurManual),]
+pauseDur <- aggregate(ld1$pauseDurManual, list(ld1$file), FUN=sum)
+names(pauseDur) <- c("file", "durPauses")
 c <- ld[!duplicated(ld$file), c(3,6)]
-SRS <- merge(syllables, c, by="file")
+c1 <- merge(c, pauseDur, by="file")
+SRS <- merge(syllables, c1, by="file")
 SRS$SRsyll <- SRS$syll/SRS$durationSpeechManual
+SRS$ARsyll <- SRS$syll/(SRS$durationSpeechManual - SRS$durPauses)
 
-com <- merge(sr, SRS, by="file")
-com <- com[, c(1, 4, 9)]
-com$diff <- com$speechRate - com$SRsyll
-hist(com$diff)
-
-com$condition <- NA
-com$condition[substr(com$file, 1, 1) == "B"] <- "baseline"
-com$condition[substr(com$file, 1, 1) == "S"] <- "sitting"
-com$condition[substr(com$file, 1, 1) == "L"] <- "light"
-com$condition[substr(com$file, 1, 1) == "H"] <- "heavy"
-
-ggplot(com, aes(x=condition, y=SRsyll))+
-  geom_boxplot()
-
-ggplot(com, aes(x=condition, y=speechRate))+
-  geom_boxplot()
+com0 <- merge(sr, SRS, by="file")
+com0 <- com0[, c(1, 4, 5, 10, 11)]
 
 # now we have the duration of each IPU and each pause in free speech (manually annotated)
 
@@ -146,23 +138,115 @@ table(list$worked)
 round_any = function(x, accuracy, f=round){f(x/ accuracy) * accuracy} # taken from the plyr package: https://github.com/hadley/plyr/blob/34188a04f0e33c4115304cbcf40e5b1c7b85fedf/R/round-any.r#L28-L30
 # see https://stackoverflow.com/questions/43627679/round-any-equivalent-for-dplyr/46489816#46489816
 
-i=1
+ampr <- data.frame(matrix(nrow=0, ncol=3))
+names(ampr) <- c("file", "AmpSR", "AmpAR")
+
 for(i in 1:nrow(list)){
   amp <- read.csv(paste0(folder, list$csv[i]))
   t <- tg.read(paste0(folder, list$listTGf[i]), encoding=detectEncoding(paste0(folder, list$listTGf[i])))
   
-  start <- round_any(as.numeric(tg.getIntervalStartTime(t, 2, 2)), 10, ceiling) * 1000 # in ms
-  end <- round_any(as.numeric(tg.getIntervalEndTime(t, 2, 2)), 10, floor) * 1000
-  dur <- end-start
+  start <- round_any(as.numeric(tg.getIntervalStartTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, ceiling) * 1000 # in ms
+  end <- round_any(as.numeric(tg.getIntervalEndTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, floor) * 1000
+  dur <- (end-start)/1000 #turn to seconds
+  durNoPauses <- dur - pauseDur$dur[substr(pauseDur$file, 1, 6) == substr(list$csv[i], 1, 6)]
   
   amp <- amp[amp$time_ms >= start & amp$time_ms <= end,]
   
-  p <- findpeaks(amp$env, minpeakdistance = 100)
-  plot(amp$env, type="l")
-  points(p[,2], p[,1], col="red")
+  amp$env <- (amp$env - min(amp$env)) / (max(amp$env) - min(amp$env))
+  p <- findpeaks(amp$env, minpeakdistance = 10, minpeakheight=0.04)
+  
+  ampr[nrow(ampr)+1,] <- c(substr(list$csv[i], 1, 6), # file name
+                           as.numeric(nrow(p)/(dur)), # speech rate (number of peaks divided by entire duration)
+                           as.numeric(nrow(p)/(durNoPauses))) # articulation rate: number of peaks divided by duration minus duration of pauses
+  
+  # plot(amp$env, type="l")
+  # points(p[,2], p[,1], col="red")
+  # readline(prompt="Press [enter] to continue")
 }
 
-com <- merge(sr, SRS, by="file")
-com <- com[, c(1, 4, 9)]
-com$diff <- com$speechRate - com$SRsyll
-hist(com$diff)
+com <- merge(com0, ampr, by="file", all=TRUE)
+names(com) <- c("file", "praatSR", "praatAR", "ipuSR", "ipuAR", "ampSR", "ampAR")
+com$praatSR <- as.numeric(com$praatSR)
+com$praatAR <- as.numeric(com$praatAR)
+com$ipuSR <- as.numeric(com$ipuSR)
+com$ipuAR <- as.numeric(com$ipuAR)
+com$ampSR <- as.numeric(com$ampSR)
+com$ampAR <- as.numeric(com$ampAR)
+# com$diffPI <- com$praat - com$ipu
+# com$diffPA <- com$praat - com$amp
+# com$diffAI <- com$amp - com$ipu
+# hist(com$diffPI)
+# hist(com$diffPA)
+# hist(com$diffAI)
+
+com$condition <- NA
+com$condition[substr(com$file, 1, 1) == "B"] <- "baseline"
+com$condition[substr(com$file, 1, 1) == "S"] <- "sitting"
+com$condition[substr(com$file, 1, 1) == "L"] <- "light"
+com$condition[substr(com$file, 1, 1) == "H"] <- "heavy"
+com$condition <- as.factor(com$condition)
+
+order <- c("baseline", "sitting", "light", "heavy")
+
+ggplot(com, aes(x=condition, y=praatSR))+
+  geom_boxplot() + ggtitle("no pauses - Praat script")+
+  scale_x_discrete(limits = order)
+ggplot(com, aes(x=condition, y=praatAR))+
+  geom_boxplot() + ggtitle("pauses - Praat script")+
+  scale_x_discrete(limits = order)
+ggplot(com, aes(x=condition, y=ipuSR))+
+  geom_boxplot() + ggtitle("no pauses - IPUs from textgrid")+
+  scale_x_discrete(limits = order)
+ggplot(com, aes(x=condition, y=ipuAR))+
+  geom_boxplot() + ggtitle("pauses - IPUs from textgrid")+
+  scale_x_discrete(limits = order)
+ggplot(com, aes(x=condition, y=ampSR))+
+  geom_boxplot() + ggtitle("no pauses - amplitude env")+
+  scale_x_discrete(limits = order)
+ggplot(com, aes(x=condition, y=ampAR))+
+  geom_boxplot() + ggtitle("pauses - amplitude env")+
+  scale_x_discrete(limits = order)
+
+com$condition <- relevel(com$condition, ref = "sitting")
+
+summary(lm(praatSR ~ condition, com))
+summary(lm(praatAR ~ condition, com))
+summary(lm(ipuSR ~ condition, com))
+summary(lm(ipuAR ~ condition, com))
+summary(lm(ampSR ~ condition, com))
+summary(lm(ampAR ~ condition, com))
+
+
+######## compare with manually counted data from 2sec snippets
+
+# folder2 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/2secsnippets/"
+# 
+# fl <- list.files(folder2, "ENV")
+# 
+# m <- read.csv(paste0(folder2, "Table.csv"))
+# names(m) <- c("file", "syll", "time")
+# m$manSR <- m$syll/2
+# 
+# ampr <- data.frame(matrix(ncol=2, nrow=0))
+# names(ampr) <- c("file", "autSR")
+# 
+# for(i in fl){
+#   amp <- read.csv(paste0(folder2, i))
+#   
+#   amp$env <- (amp$env - min(amp$env)) / (max(amp$env) - min(amp$env))
+#   p <- findpeaks(amp$env, minpeakdistance = 10, minpeakheight=0.04)
+#   
+#   ampr[nrow(ampr)+1,] <- c(substr(i, 1, 17),
+#                            as.numeric(nrow(p)/2))
+#   
+#   # plot(amp$env, type="l")
+#   # points(p[,2], p[,1], col="red")
+#   # readline(prompt="Press [enter] to continue")
+# }
+# 
+# c <- merge(m, ampr, by= "file")
+# c[,c("manSR", "autSR")] <- lapply(c[,c("manSR", "autSR")], as.numeric)
+# c$diff <- c$manSR - c$autSR
+# 
+# hist(c$diff)
+# plot(c$diff)
