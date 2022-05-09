@@ -20,212 +20,87 @@ library(rPraat) # to work with TextGrids
 library(tidyverse)
 library(sylly.de) # for counting syllables
 
-############# Speech Rate
-
-####################################### FROM PRAAT SCRIPT
-
 folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
 `%!in%` <- Negate(`%in%`)
 
-# I made a mistake when extracting the speech rate and articulation rate of the files, so there are three files to join now
+############# Speech Rate
 
-sr0 <- read.csv(paste0(folder, "additionalBandPass.csv"))
-
-sr0 <- sr0 %>%
-  select(c(1, 4:7)) %>%
-  set_names(c("name", "durationSpeech", "phonTime", "speechRate", "articRate")) %>%
-  mutate(name = gsub("_task", "", name)) %>%
-  mutate(file = substr(sr0$name, 1, 6)) %>%
-  filter(substr(file, 2, 2) != "-") # these are the confederate's files. we'll use the confederate's values that were calculated in the other file below (sr2)
-
-sr0$file[substr(sr0$name, 17, 21)=="PFERD"] <- paste0(substr(sr0$name[substr(sr0$name, 17, 21)=="PFERD"], 1, 2), "P", substr(sr0$name[substr(sr0$name, 17, 21)=="PFERD"], 4, 6))
-sr0$file[substr(sr0$name, 17, 22)=="HIRSCH"] <- paste0(substr(sr0$name[substr(sr0$name, 17, 22)=="HIRSCH"], 1, 2), "H", substr(sr0$name[substr(sr0$name, 17, 22)=="HIRSCH"], 4, 6))
-sr0$file[substr(sr0$name, 17, 24)=="SCHWALBE"] <- paste0(substr(sr0$name[substr(sr0$name, 17, 24)=="SCHWALBE"], 1, 2), "S", substr(sr0$name[substr(sr0$name, 17, 24)=="SCHWALBE"], 4, 6))
-
-corrected <- sr0$file
-
-sr0 <- sr0 %>% select(2:6)
-
-sr1 <- read.csv(paste0(folder, "tableBandPass.csv")) # using the speech rates calculated after band passing the files; there are two other options (see speech rate Praat script)
-
-sr1 <- sr1 %>%
-  select(c(1, 4:7)) %>%
-  set_names(c("name", "durationSpeech", "phonTime", "speechRate", "articRate")) %>%
-  mutate(file = substr(name, 1, 6)) %>%
-  filter(substr(name, 1, 2)!="BR") %>%
-  filter(file %!in% corrected) %>%
-  filter(substr(file, 2, 2) !="-") # exclude the confederate's files
-
-sr1$file[substr(sr1$name, 16, 21)=="_alone"] <- paste0(substr(sr1$name[substr(sr1$name, 16, 21)=="_alone"], 1, 2), "A", substr(sr1$name[substr(sr1$name, 16, 21)=="_alone"], 4, 6))
-sr1$file[substr(sr1$name, 16, 21)=="_joint"] <- paste0(substr(sr1$name[substr(sr1$name, 16, 21)=="_joint"], 1, 2), "J", substr(sr1$name[substr(sr1$name, 16, 21)=="_joint"], 4, 6))
-
-sr1 <- sr1 %>% select(2:6)
-
-sr2 <- read.csv(paste0(folder, "confederateBandPass.csv"))
-
-sr2 <- sr2 %>%
-  select(c(1, 4:7)) %>%
-  set_names(c("name", "durationSpeech", "phonTime", "speechRate", "articRate")) %>%
-  mutate(file = substr(name, 1, 6))
-
-confRA <- c("H-Hirsch_alone", "H-Pferd_alone", "H-Schwalbe_alone", "L-Hirsch_alone", "L-Pferd_alone", "L-Schwalbe_alone", "S-Hirsch_alone", "S-Pferd_alone", "S-Schwalbe_alone")
-confRJ <- c("H-Hirsch_joint", "H-Pferd_joint", "H-Schwalbe_joint", "L-Hirsch_joint", "L-Pferd_joint", "L-Schwalbe_joint", "S-Hirsch_joint", "S-Pferd_joint", "S-Schwalbe_joint")
-
-sr2$file[sr2$name %in% confRA] <- paste0(substr(sr2$name[sr2$name %in% confRA], 1, 1), "A", substr(sr2$name[sr2$name %in% confRA], 3, 6))
-sr2$file[sr2$name %in% confRJ] <- paste0(substr(sr2$name[sr2$name %in% confRJ], 1, 1), "J", substr(sr2$name[sr2$name %in% confRJ], 3, 6))
-
-sr2 <- sr2 %>% select(2:6)
-
-sr3 <- rbind(sr0, sr1)
-sr <- rbind(sr3, sr2)
-sr$pauseDur <- sr$duration - sr$phonTime
-
-####################################### FROM TRANSCRIPTION
+# FROM NUMBER OF SYLLABLES DIVIDED BY TIME OF MANUALLY ANNOTATED IPUs
 
 ### IPUs, PAUSES
 
+listTG <- list.files(folder, pattern=".TextGrid")
+listCTG <- listTG[grepl("Holidays", listTG) | grepl("Hobbies", listTG) | grepl("Home", listTG)]
+listPTG <- listTG[substr(listTG, 2, 2)=="F"]
+listTGf <- c(listPTG, listCTG)
+
 ld <- data.frame(matrix(ncol=8, nrow=0))
-names(ld) <- c("IPUDur", "IPU", "file", "syll", "speechRateSyll", "durationSpeechManual", "pause", "pauseDurManual")
-
-# we can only get this info for free speech, so:
+names(ld) <- c("IPUDur", "IPU", "file", "syll", "speechRateSyll", "durSpeech", "pause", "pauseDurManual")
 
 for(i in listTGf){
   tg <- tg.read(paste0(folder, i), encoding=detectEncoding(paste0(folder, i)))
   inter <- data.frame(matrix(ncol=2, nrow=0))
   names(inter) <- c("label", "duration")
   for(n in 1:tg.getNumberOfIntervals(tg, 1)){
-    if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, 2) & tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, 2)){
+    if(i %in% listPTG){
+    if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))) & tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))){
+      inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n), as.numeric(tg.getIntervalDuration(tg, 1, n)))
+      }
+    } else if(i %in% listCTG){ # the confederate files are already cut to the right time, so I don't have to select the IPU timings
       inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n), as.numeric(tg.getIntervalDuration(tg, 1, n)))
     }
   }
-  inter <- inter %>% filter(label != "<usb>")
-  inter$label[inter$label %in% c(" ", "  ", "   ", "    ")] <- ""
-  ipu <- inter %>%
-    filter(label != "") %>%
-    mutate(IPU = 1:nrow(inter %>% filter(label != "")),
-           file = substr(i, 1, 6)) %>%
+  inter$label[inter$label %in% c(" ", "  ", "   ", "    ", "\t")] <- ""
+  ipu <- inter %>% filter(label != "")
+  ipu <- ipu %>%
+    filter(label != "<usb>") %>%
     rename("IPUDur"="duration")
+  ipu$IPU <- 1:nrow(ipu)
+  ipu$file <- substr(i, 1, 6)
   ipu$syll <- (hyphen(ipu$label, hyph.pattern="de")@hyphen)$syll
-  ipu$speechRateSyll <- ipu$syll / as.numeric(ipu$IPUDur)
-  ipu$durationSpeechManual = as.numeric(tg.getIntervalEndTime(tg, 1, tg.getNumberOfIntervals(tg, 1))) - as.numeric(tg.getIntervalStartTime(tg, 1, 1))
+  ipu$speechRateIPU <- ipu$syll / as.numeric(ipu$IPUDur)
+  if(i %in% listPTG){
+    ipu$durSpeech = as.numeric(tg.getIntervalDuration(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))))
+  } else if(i %in% listCTG){
+    ipu$durSpeech = as.numeric(tg.getIntervalEndTime(tg, 1, as.numeric(tg.findLabels(tg, 1, ipu$label[nrow(ipu)]))[[length(tg.findLabels(tg, 1, ipu$label[nrow(ipu)]))]])) - as.numeric(tg.getIntervalStartTime(tg, 1, as.numeric(tg.findLabels(tg, 1, ipu$label[1]))[[1]]))
+  }
+  
   ipu$label <- NULL
   paus <- inter %>%
     filter(label == "") %>%
     rename("pause"="label",
            "pauseDurManual" = "duration") %>%
     mutate(pause = 1:nrow(inter %>% filter(label == "")))
-  paus[nrow(paus)+1,] <- NA # because there will always be one less pause than IPUs, and we need the same number of rows
+  if(i %in% listPTG){
+    paus[nrow(paus)+1,] <- NA # because for the participants' files there will always be one less pause than IPUs, and we need the same number of rows
+  } else if(i %in% listCTG){
+    paus <- paus[-1,] # in the participants' files, the first interval is speech, not a pause, so let's delete this "pause" from the confederate's file
+    paus[nrow(paus),] <- NA # turn this the same as the participants' files
+  }
+  
   ip <- cbind(ipu, paus)
   ld <- rbind(ld, ip)
 }
 
 syllables <- aggregate(ld$syll, list(ld$file), FUN=sum)
 names(syllables) <- c("file", "syll")
+ld$pauseDurManual <- as.numeric(ld$pauseDurManual)
+ld1 <- ld[!is.na(ld$pauseDurManual),]
+pauseDur <- aggregate(ld1$pauseDurManual, list(ld1$file), FUN=sum)
+names(pauseDur) <- c("file", "durPauses")
 c <- ld[!duplicated(ld$file), c(3,6)]
-SRS <- merge(syllables, c, by="file")
-SRS$SRsyll <- SRS$syll/SRS$durationSpeechManual
-
-com <- merge(sr, SRS, by="file")
-com <- com[, c(1, 4, 9)]
-com$diff <- com$speechRate - com$SRsyll
-hist(com$diff)
-
-# now we have the duration of each IPU and each pause in free speech (manually annotated)
-
-##################################################################
-
-
-####################################### FROM AMPLITUDE ENVELOPE
-
-folderp <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Confederate/AudioAlignedToBreathing/"
-
-csv <- list.files(folderp, "csv")
-t <- list.files(folderp, "TextGrid")
-lf <- as.data.frame(cbind(csv, t))
-
-i=1
-
-# make this loop work (something not working in the middle, haven't gone through all of it yet, i'm fucking tired.)
-
-for(i in 1:nrow(lf)){
-  c <- read.csv(paste0(folderp, lf$csv[i]))
-  t <- tg.read(paste0(folderp, lf$t[i]), encoding=detectEncoding(paste0(folderp, lf$t[i])))
-  inter <- data.frame(matrix(ncol=4, nrow=0))
-  names(inter) <- c("label", "onset", "offset", "duration")
-  for(n in 1:tg.getNumberOfIntervals(t, 1)){
-    inter[nrow(inter)+1,] <- c(tg.getLabel(t, 1, n),
-                               as.numeric(tg.getIntervalStartTime(t, 1, n)),
-                               as.numeric(tg.getIntervalEndTime(t, 1, n)),
-                               as.numeric(tg.getIntervalDuration(t, 1, n)))
-  }
-  # inter <- inter %>% filter(label != "<usb>")
-  inter$label[inter$label %in% c(" ", "  ", "   ", "    ")] <- ""
-  ipu <- inter %>%
-    filter(label != "") %>%
-    mutate(IPU = 1:nrow(inter %>% filter(label != "")),
-           file = substr(i, 1, 6)) %>%
-    rename("IPUDur"="duration")
-  ipu$syll <- (hyphen(ipu$label, hyph.pattern="de")@hyphen)$syll
-  ipu$speechRateSyll <- ipu$syll / as.numeric(ipu$IPUDur)
-  ipu$durationSpeechManual = as.numeric(tg.getIntervalEndTime(tg, 1, tg.getNumberOfIntervals(tg, 1))) - as.numeric(tg.getIntervalStartTime(tg, 1, 1))
-  ipu$label <- NULL
-  paus <- inter %>%
-    filter(label == "") %>%
-    rename("pause"="label",
-           "pauseDurManual" = "duration") %>%
-    mutate(pause = 1:nrow(inter %>% filter(label == "")))
-  paus[nrow(paus)+1,] <- NA # because there will always be one less pause than IPUs, and we need the same number of rows
-  ip <- cbind(ipu, paus)
-  ld <- rbind(ld, ip)
-}
-
-for(i in listTGf){
-  tg <- tg.read(paste0(folder, i), encoding=detectEncoding(paste0(folder, i)))
-  inter <- data.frame(matrix(ncol=2, nrow=0))
-  names(inter) <- c("label", "duration")
-  for(n in 1:tg.getNumberOfIntervals(tg, 1)){
-    if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, 2) & tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, 2)){
-      inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n), as.numeric(tg.getIntervalDuration(tg, 1, n)))
-    }
-  }
-  inter <- inter %>% filter(label != "<usb>")
-  inter$label[inter$label %in% c(" ", "  ", "   ", "    ")] <- ""
-  ipu <- inter %>%
-    filter(label != "") %>%
-    mutate(IPU = 1:nrow(inter %>% filter(label != "")),
-           file = substr(i, 1, 6)) %>%
-    rename("IPUDur"="duration")
-  ipu$syll <- (hyphen(ipu$label, hyph.pattern="de")@hyphen)$syll
-  ipu$speechRateSyll <- ipu$syll / as.numeric(ipu$IPUDur)
-  ipu$durationSpeechManual = as.numeric(tg.getIntervalEndTime(tg, 1, tg.getNumberOfIntervals(tg, 1))) - as.numeric(tg.getIntervalStartTime(tg, 1, 1))
-  ipu$label <- NULL
-  paus <- inter %>%
-    filter(label == "") %>%
-    rename("pause"="label",
-           "pauseDurManual" = "duration") %>%
-    mutate(pause = 1:nrow(inter %>% filter(label == "")))
-  paus[nrow(paus)+1,] <- NA # because there will always be one less pause than IPUs, and we need the same number of rows
-  ip <- cbind(ipu, paus)
-  ld <- rbind(ld, ip)
-}
-
-syllables <- aggregate(ld$syll, list(ld$file), FUN=sum)
-names(syllables) <- c("file", "syll")
-c <- ld[!duplicated(ld$file), c(3,6)]
-SRS <- merge(syllables, c, by="file")
-SRS$SRsyll <- SRS$syll/SRS$durationSpeechManual
-
-com <- merge(sr, SRS, by="file")
-com <- com[, c(1, 4, 9)]
-com$diff <- com$speechRate - com$SRsyll
-hist(com$diff)
+c1 <- merge(c, pauseDur, by="file")
+sr <- merge(syllables, c1, by="file")
+sr$speechRate <- sr$syll/sr$durSpeech
+sr$articRate <- sr$syll/(sr$durSpeech - sr$durPauses)
+sr$syll <- NULL
 
 ############# f0 mean, median
 
 # 2
 
 listTXT <- list.files(folder, pattern=".txt")
-confF <- c("H-Hobbies.txt", "H-Holidays.txt", "H-Home.txt", "L-Hobbies.txt", "L-Holidays.txt", "L-Home.txt", "S-Hobbies.txt", "S-Holidays.txt", "S-Home.txt")
+confF <- listTXT[grepl("Home", listTXT)|grepl("Hobbies", listTXT)|grepl("Holidays", listTXT)]
 listTXTf <- listTXT[substr(listTXT, 2, 2)=="F" | listTXT %in% confF]
 confRA <- c("H-Hirsch_alone.txt", "H-Pferd_alone.txt", "H-Schwalbe_alone.txt", "L-Hirsch_alone.txt", "L-Pferd_alone.txt", "L-Schwalbe_alone.txt", "S-Hirsch_alone.txt", "S-Pferd_alone.txt", "S-Schwalbe_alone.txt")
 confRJ <- c("H-Hirsch_joint.txt", "H-Pferd_joint.txt", "H-Schwalbe_joint.txt", "L-Hirsch_joint.txt", "L-Pferd_joint.txt", "L-Schwalbe_joint.txt", "S-Hirsch_joint.txt", "S-Pferd_joint.txt", "S-Schwalbe_joint.txt")
@@ -236,7 +111,7 @@ readA <- list.files(folder, pattern="alone.txt")
 readA <- readA[substr(readA, 2, 2) != "-"]
 
 listTG <- list.files(folder, pattern=".TextGrid")
-confFtg <- c("H-Hobbies.TextGrid", "H-Holidays.TextGrid", "H-Home.TextGrid", "L-Hobbies.TextGrid", "L-Holidays.TextGrid", "L-Home.TextGrid", "S-Hobbies.TextGrid", "S-Holidays.TextGrid", "S-Home.TextGrid")
+confFtg <- listTG[grepl("Home", listTG)|grepl("Hobbies", listTG)|grepl("Holidays", listTG)]
 listTGf <- listTG[substr(listTG, 2, 2)=="F" | listTG %in% confFtg]
 
 listTxg <- as.data.frame(cbind(listTXTf, listTGf))
@@ -325,8 +200,6 @@ ff$IPU <- as.factor(ff$IPU)
 ff$f0mean <- as.numeric(ff$f0mean)
 
 ##################################################################
-
-
 
 #### BREATHING DATA
 
