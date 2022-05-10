@@ -88,12 +88,14 @@ ld$pauseDurManual <- as.numeric(ld$pauseDurManual)
 ld1 <- ld[!is.na(ld$pauseDurManual),]
 pauseDur <- aggregate(ld1$pauseDurManual, list(ld1$file), FUN=sum)
 names(pauseDur) <- c("file", "durPauses")
-c <- ld[!duplicated(ld$file), c(3,6)]
+c <- ld[, c(2,3,5,6)]
 c1 <- merge(c, pauseDur, by="file")
 sr <- merge(syllables, c1, by="file")
 sr$speechRate <- sr$syll/sr$durSpeech
 sr$articRate <- sr$syll/(sr$durSpeech - sr$durPauses)
 sr$syll <- NULL
+
+sr[, c("file", "IPU")] <- lapply(sr[, c("file", "IPU")], as.factor)
 
 ############# f0 mean, median
 
@@ -131,25 +133,30 @@ for(i in 1:nrow(listTxg)){
   tg <- tg.read(paste0(folder, listTxg$tg[i]), encoding=detectEncoding(paste0(folder, listTxg$tg[i]))) # load textgrid with defined IPUs
   
   # create object ("intervals") with the index of each IPU and its onset and offset time
-  IPUtimes <- data.frame(matrix(ncol=3, nrow=0))
-  colnames(IPUtimes) <- c("IPU", "start", "end")
-  labels <- data.frame(matrix(ncol=2, nrow=0))
-  colnames(labels) <- c("IPU", "label")
+  IPUtimes <- data.frame(matrix(ncol=4, nrow=0))
+  colnames(IPUtimes) <- c("IPU", "label", "start", "end")
   for(n in 1:tg.getNumberOfIntervals(tg, 1)){
-    labels[nrow(labels)+1,] <- c(n, tg.getLabel(tg, 1, n))
-  }
-  labels <- labels %>% filter(label!="")
-  for(n in labels$IPU){
-    IPUtimes[nrow(IPUtimes)+1,] <- c(n, tg.getIntervalStartTime(tg, 1, as.numeric(n)), tg.getIntervalEndTime(tg, 1, as.numeric(n)))
+    if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))) && tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))){
+      IPUtimes[nrow(IPUtimes)+1,] <- c(n,
+                                       tg.getLabel(tg, 1, n),
+                                       as.numeric(tg.getIntervalStartTime(tg, 1, n)),
+                                       as.numeric(tg.getIntervalEndTime(tg, 1, n)))
+    }
   }
   
+  IPUtimes <- IPUtimes %>%
+    filter(label != "") %>%
+    filter(label != "<usb>")
+  IPUtimes$IPU <- 1:nrow(IPUtimes)
+  
   # get f0 for each IPU, i.e. the mean of all f0 values within the period of each IPU
+  IPUtimes[, c("start", "end")] <- lapply(IPUtimes[, c("start", "end")], as.numeric)
   f0 <- data.frame(matrix(ncol=2, nrow=0))
   colnames(f0) <- c("IPU", "f0mean")
   for(p in 1:nrow(IPUtimes)){
     for(n in 1:nrow(txt)){
-      if(txt$onset[n] >= IPUtimes$start[p] & txt$offset[n] <= IPUtimes$end[p]){
-        f0[nrow(f0)+1,] <- c(IPUtimes$IPU[p], txt$f0mean[n])
+      if(txt$onset[n] >= IPUtimes$start[p] && txt$offset[n] <= IPUtimes$end[p]){
+        f0[nrow(f0)+1,] <- c(IPUtimes$IPU[p], as.numeric(txt$f0mean[n]))
       }
     }
   }
@@ -451,9 +458,12 @@ br <- rbind(pbr1, pbr2)
 
 # 3
 
-bf <- merge(ff, br, by="file", all=TRUE)
+# bf <- merge(ff, br, by="file", all=TRUE)
 
-fs <- merge(bf, sr, by="file", all=TRUE)
+ff <- ff %>% filter(substr(file, 2, 2) %!in% c("A", "J", "R"))
+
+# fs <- merge(ff, sr, by="file", all=TRUE)
+fs <- full_join(ff, sr, by=c("file", "IPU"))
 
 conffiles <- c("irs", "obb", "oli", "ome", "fer", "chw")
 
