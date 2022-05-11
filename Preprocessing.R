@@ -113,6 +113,7 @@ readA <- list.files(folder, pattern="alone.txt")
 readA <- readA[substr(readA, 2, 2) != "-"]
 
 listTG <- list.files(folder, pattern=".TextGrid")
+listTG <- listTG[!grepl("_VUV", listTG)]
 confFtg <- listTG[grepl("Home", listTG)|grepl("Hobbies", listTG)|grepl("Holidays", listTG)]
 listTGf <- listTG[substr(listTG, 2, 2)=="F" | listTG %in% confFtg]
 
@@ -123,12 +124,10 @@ listTxg$worked[substr(listTxg$txt, 1, 6)!=substr(listTxg$tg, 1, 6)] <- "NO!!!!!!
 unique(listTxg$worked) # make sure all the TXT and Textgrid files are matching in each row
 
 ff <- data.frame(matrix(ncol=4, nrow=0))
-colnames(ff) <- c("IPU", "f0mean", "file")
-
-# for free speech: f0 mean per IPU
+colnames(ff) <- c("IPU", "f0mean", "file", "label")
 
 for(i in 1:nrow(listTxg)){
-  txt <- read.table(paste0(folder, listTxg$txt[i]), header=TRUE) # load file with f0 means
+  txt <- read.table(paste0(folder, listTxg$txt[i]), header=TRUE, na.strings = "--undefined--") # load file with f0 means
   txt$f0mean <- as.numeric(txt$f0mean)
   tg <- tg.read(paste0(folder, listTxg$tg[i]), encoding=detectEncoding(paste0(folder, listTxg$tg[i]))) # load textgrid with defined IPUs
   
@@ -136,12 +135,19 @@ for(i in 1:nrow(listTxg)){
   IPUtimes <- data.frame(matrix(ncol=4, nrow=0))
   colnames(IPUtimes) <- c("IPU", "label", "start", "end")
   for(n in 1:tg.getNumberOfIntervals(tg, 1)){
-    if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))) && tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))){
-      IPUtimes[nrow(IPUtimes)+1,] <- c(n,
-                                       tg.getLabel(tg, 1, n),
-                                       as.numeric(tg.getIntervalStartTime(tg, 1, n)),
-                                       as.numeric(tg.getIntervalEndTime(tg, 1, n)))
-    }
+    if(listTxg$txt[i] %!in% confF){
+      if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))) && tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))){
+        IPUtimes[nrow(IPUtimes)+1,] <- c(n,
+                                         tg.getLabel(tg, 1, n),
+                                         as.numeric(tg.getIntervalStartTime(tg, 1, n)),
+                                         as.numeric(tg.getIntervalEndTime(tg, 1, n)))
+      } 
+    } else if(listTxg$txt[i] %in% confF){
+        IPUtimes[nrow(IPUtimes)+1,] <- c(n,
+                                         tg.getLabel(tg, 1, n),
+                                         as.numeric(tg.getIntervalStartTime(tg, 1, n)),
+                                         as.numeric(tg.getIntervalEndTime(tg, 1, n)))
+      }
   }
   
   IPUtimes <- IPUtimes %>%
@@ -160,51 +166,61 @@ for(i in 1:nrow(listTxg)){
       }
     }
   }
-  f0$IPU <- as.numeric(f0$IPU)
-  f0$f0mean <- as.numeric(f0$f0mean)
+  f0 <- f0 %>%
+    filter(!is.na(f0mean)) %>%
+    mutate_at(c("IPU", "f0mean"), as.numeric)
   f0perIPU <- aggregate(f0$f0mean, list(f0$IPU), FUN=mean)
   colnames(f0perIPU) <- c("IPU", "f0mean")
-  f0perIPU$IPU <- 1:nrow(f0perIPU)
-  f0perIPU$file <- substr(listTxg$txt[i], 1, 6)
-  ff <- rbind(ff, f0perIPU)
+  f0perIPU <- f0perIPU %>%
+    mutate(IPU = 1:nrow(f0perIPU)) %>%
+    mutate(file = substr(listTxg$txt[i], 1, 6)) %>%
+    mutate(f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
+    mutate(f0mean = ifelse(abs(f0z) > 2, NA, f0mean)) %>% # I don't want to use the IPUs with outlier f0mean, but I don't want to completely delete those IPUs from the dataset because they'll still be joined with the speech rate information. So just turn them into NA here.
+    mutate(f0IPUmean = mean(f0mean, na.rm=TRUE))
+  f <- merge(f0perIPU, IPUtimes %>% select("IPU", "label"), by="IPU")
+  ff <- rbind(ff, f)
 }
 
-ff <- ff %>% select(file, IPU, f0mean)
+ff <- ff %>% select(file, IPU, f0mean, f0IPUmean, label)
 
-fmeans <- aggregate(ff$f0mean, list(ff$file), FUN=mean)
-names(fmeans) <- c("file", "f0IPUmean")
-ff <- merge(ff, fmeans, by="file")
+ff <- ff %>% mutate(f0z = (f0mean - mean(f0mean, na.rm=TRUE))/sd(f0mean, na.rm=TRUE))
+nrow(ff[abs(ff$f0z) > 2])/nrow(ff) # percentage of IPUs with f0 outside of 2 SD
+
+# for(i in unique(ff$file)){
+#   plot(ff$f0mean[ff$file==i])
+#   readline("Continue")
+# }
 
 listTXTr <- listTXT[listTXT %!in% listTXTf]
 
-# for reading files: no IPU separation:
-
-for (i in listTXTr){
-  txt <- read.table(paste0(folder, i), header=TRUE)
-  txt$f0mean <- as.numeric(txt$f0mean)
-  txt$zmean <- (txt$f0mean - mean(txt$f0mean))/sd(txt$f0mean) # get z scores
-  txt <- txt[txt$zmean < 3,] # keep values below 3 SDs (there don't seem to be any low outliers, only high ones)
-  if (i %in% confRA){ # confederate's reading files, alone section
-    i <- paste0(substr(i, 1, 1), "A", substr(i, 3, 6))
-  } else if (i %in% readA){ # participants' reading files, alone section
-    i <- paste0(substr(i, 1, 2), "A", substr(i, 4, 6))
-  } else if (i %in% confRJ){ # confederate's reading files, joint section
-    i <- paste0(substr(i, 1, 1), "J", substr(i, 3, 6))
-  } else if (i %in% readJ){ # participants' reading files, joint section
-    i <- paste0(substr(i, 1, 2), "J", substr(i, 4, 6))
-  } else if(substr(i, 17, 21)=="PFERD"){
-    i <- paste0(substr(i, 1, 2), "P", substr(i, 4, 6))
-  } else if(substr(i, 17, 22)=="HIRSCH"){
-    i <- paste0(substr(i, 1, 2), "H", substr(i, 4, 6))
-  } else if(substr(i, 17, 24)=="SCHWALBE"){
-    i <- paste0(substr(i, 1, 2), "S", substr(i, 4, 6))
-  }
-  ff[nrow(ff)+1,] <- c(i, NA, mean(txt$f0mean), mean(txt$f0mean))
-}
-
-ff$file <- as.factor(ff$file)
-ff$IPU <- as.factor(ff$IPU)
-ff$f0mean <- as.numeric(ff$f0mean)
+# # for reading files: no IPU separation:
+# 
+# for (i in listTXTr){
+#   txt <- read.table(paste0(folder, i), header=TRUE)
+#   txt$f0mean <- as.numeric(txt$f0mean)
+#   txt$zmean <- (txt$f0mean - mean(txt$f0mean))/sd(txt$f0mean) # get z scores
+#   txt <- txt[txt$zmean < 3,] # keep values below 3 SDs (there don't seem to be any low outliers, only high ones)
+#   if (i %in% confRA){ # confederate's reading files, alone section
+#     i <- paste0(substr(i, 1, 1), "A", substr(i, 3, 6))
+#   } else if (i %in% readA){ # participants' reading files, alone section
+#     i <- paste0(substr(i, 1, 2), "A", substr(i, 4, 6))
+#   } else if (i %in% confRJ){ # confederate's reading files, joint section
+#     i <- paste0(substr(i, 1, 1), "J", substr(i, 3, 6))
+#   } else if (i %in% readJ){ # participants' reading files, joint section
+#     i <- paste0(substr(i, 1, 2), "J", substr(i, 4, 6))
+#   } else if(substr(i, 17, 21)=="PFERD"){
+#     i <- paste0(substr(i, 1, 2), "P", substr(i, 4, 6))
+#   } else if(substr(i, 17, 22)=="HIRSCH"){
+#     i <- paste0(substr(i, 1, 2), "H", substr(i, 4, 6))
+#   } else if(substr(i, 17, 24)=="SCHWALBE"){
+#     i <- paste0(substr(i, 1, 2), "S", substr(i, 4, 6))
+#   }
+#   ff[nrow(ff)+1,] <- c(i, NA, mean(txt$f0mean), mean(txt$f0mean))
+# }
+# 
+# ff$file <- as.factor(ff$file)
+# ff$IPU <- as.factor(ff$IPU)
+# ff$f0mean <- as.numeric(ff$f0mean)
 
 ##################################################################
 
@@ -359,10 +375,7 @@ for(i in 1:nrow(listBGf)){
     }
   }
   
-  PVtimes$onset <- NULL
-  PVtimes$peak <- NULL
-  PVtimes$offset <- NULL
-  PVtimes$cycleOK <- NULL
+  PVtimes <- PVtimes %>% select(-c("onset", "peak", "offset", "cycleOK"))
   
   pbr1 <- rbind(pbr1, PVtimes)
 }
@@ -403,10 +416,7 @@ for(i in listBREATHlb){ # list with the listening part of the free spech files a
   PVtimes$breathCycleDurMean <- mean(PVtimes$cycleDur)
   PVtimes$breathRate <- (nrow(PVtimes) / ((PVtimes$offset[nrow(PVtimes)] - PVtimes$onset[1]) / 60)) # breathing rate = number of cycles / time from first to last valley divided by 60 (to turn into minutes)
   
-  PVtimes$onset <- NULL
-  PVtimes$peak <- NULL
-  PVtimes$offset <- NULL
-  PVtimes$cycleOK <- NULL
+  PVtimes <- PVtimes %>% select(-c("onset", "peak", "offset", "cycleOK"))
   
   pbr2 <- rbind(pbr2, PVtimes)
 }
@@ -459,8 +469,6 @@ br <- rbind(pbr1, pbr2)
 # 3
 
 # bf <- merge(ff, br, by="file", all=TRUE)
-
-ff <- ff %>% filter(substr(file, 2, 2) %!in% c("A", "J", "R"))
 
 # fs <- merge(ff, sr, by="file", all=TRUE)
 fs <- full_join(ff, sr, by=c("file", "IPU"))
