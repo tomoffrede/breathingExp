@@ -184,15 +184,17 @@ for(i in 1:nrow(listTxg)){
 ff <- ff %>% select(file, IPU, f0mean, f0IPUmean, label)
 
 ff <- ff %>% mutate(f0z = (f0mean - mean(f0mean, na.rm=TRUE))/sd(f0mean, na.rm=TRUE))
-nrow(ff[abs(ff$f0z) > 2])/nrow(ff) # percentage of IPUs with f0 outside of 2 SD
+nrow(ff %>% filter(abs(f0z) > 2))/nrow(ff) # percentage of IPUs with f0 outside of 2 SD
+
+ff <- ff %>% mutate(f0mean = ifelse(abs(f0z) > 2, NA, f0mean)) # keep f0 below 2 SD?
 
 # for(i in unique(ff$file)){
 #   plot(ff$f0mean[ff$file==i])
 #   readline("Continue")
 # }
 
-listTXTr <- listTXT[listTXT %!in% listTXTf]
-
+# listTXTr <- listTXT[listTXT %!in% listTXTf]
+# 
 # # for reading files: no IPU separation:
 # 
 # for (i in listTXTr){
@@ -465,198 +467,207 @@ br <- rbind(pbr1, pbr2)
 
 ##################################################################
 
-
 # 3
 
-# bf <- merge(ff, br, by="file", all=TRUE)
 
-# fs <- merge(ff, sr, by="file", all=TRUE)
-fs <- full_join(ff, sr, by=c("file", "IPU"))
+ff$IPU <- as.factor(ff$IPU)
+
+fs <- full_join(ff, sr, by=c("file", "IPU"), all=TRUE)
 
 conffiles <- c("irs", "obb", "oli", "ome", "fer", "chw")
 
-fs$Speaker <- substr(fs$file, 4, 6)
-fs$Speaker[fs$Speaker %in% conffiles] <- "Confederate"
+d <- list(fs, br)
 
-fs$Condition <- substr(fs$file, 1, 1)
-fs$Condition[fs$Condition=="B"] <- "Baseline"
-fs$Condition[fs$Condition=="H"] <- "Heavy"
-fs$Condition[fs$Condition=="L"] <- "Light"
-fs$Condition[fs$Condition=="S"] <- "Sitting"
+for(i in 1:length(d)){
+  d[[i]]$Speaker <- substr(d[[i]]$file, 4, 6)
+  d[[i]]$Speaker[d[[i]]$Speaker %in% conffiles] <- "Confederate"
+  
+  d[[i]]$Condition <- substr(d[[i]]$file, 1, 1)
+  d[[i]]$Condition[d[[i]]$Condition=="B"] <- "Baseline"
+  d[[i]]$Condition[d[[i]]$Condition=="H"] <- "Heavy"
+  d[[i]]$Condition[d[[i]]$Condition=="L"] <- "Light"
+  d[[i]]$Condition[d[[i]]$Condition=="S"] <- "Sitting"
+  d[[i]]$Condition <- as.factor(d[[i]]$Condition)
+  
+  d[[i]]$Task[substr(d[[i]]$file, 2, 2) == "F"] <- "Free"
+  d[[i]]$Task[substr(d[[i]]$file, 2, 3) == "RA"] <- "ReadAlone"
+  d[[i]]$Task[substr(d[[i]]$file, 2, 3) == "RJ"] <- "ReadJoint"
+  d[[i]]$Task[substr(d[[i]]$file, 1, 2) == "BR"] <- "ReadAlone" # baseline reading is also alone
+  d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "A"] <- "ReadAlone"
+  d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "J"] <- "ReadJoint"
+  d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "-"] <- "Free"
+  d[[i]]$Task <- as.factor(d[[i]]$Task)
+}
 
-fs$Condition <- as.factor(fs$Condition)
-
-fs$Task[substr(fs$file, 2, 2) == "F"] <- "Free"
-fs$Task[substr(fs$file, 2, 3) == "RA"] <- "ReadAlone"
-fs$Task[substr(fs$file, 2, 3) == "RJ"] <- "ReadJoint"
-fs$Task[substr(fs$file, 1, 2) == "BR"] <- "ReadAlone" # baseline reading is also alone
-fs$Task[fs$Speaker == "Confederate" & substr(fs$file, 2, 2) == "A"] <- "ReadAlone"
-fs$Task[fs$Speaker == "Confederate" & substr(fs$file, 2, 2) == "J"] <- "ReadJoint"
-fs$Task[fs$Speaker == "Confederate" & substr(fs$file, 2, 2) == "-"] <- "Free"
-
-fs$Task <- as.factor(fs$Task)
+fs <- d[[1]]
+br <- d[[2]]
 
 meta <- read.csv("C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/metadata.csv", fileEncoding="UTF-8-BOM")
 names(meta)[names(meta) == "Participant"] <- "Speaker"
 
-dat <- merge(fs, meta, by="Speaker", all=TRUE)
+fsm <- merge(fs, meta, by="Speaker", all=TRUE)
+brm <- merge(br, meta, by="Speaker", all=TRUE)
 
-dat$Order[dat$Condition=="Baseline"] <- 0
+dat <- list(fsm, brm)
 
-dat$Order[dat$List==1 & dat$Condition=="Sitting" & dat$Task=="ReadAlone"] <- 1
-dat$Order[dat$List==1 & dat$Condition=="Sitting" & dat$Task=="ReadJoint"] <- 2
-dat$Order[dat$List==1 & dat$Condition=="Sitting" & dat$Task=="Free"] <- 3
-dat$Order[dat$List==1 & dat$Condition=="Light" & dat$Task=="Free"] <- 4
-dat$Order[dat$List==1 & dat$Condition=="Light" & dat$Task=="ReadAlone"] <- 5
-dat$Order[dat$List==1 & dat$Condition=="Light" & dat$Task=="ReadJoint"] <- 6
-dat$Order[dat$List==1 & dat$Condition=="Heavy" & dat$Task=="Free"] <- 7
-dat$Order[dat$List==1 & dat$Condition=="Heavy" & dat$Task=="ReadAlone"] <- 8
-dat$Order[dat$List==1 & dat$Condition=="Heavy" & dat$Task=="ReadJoint"] <- 9
+for(i in 1:length(dat)){ # since we have one dataset with breathing info and one with speech info, do all the same naming of conditions etc for each
+  dat[[i]]$Order[dat[[i]]$Condition=="Baseline"] <- 0
+  
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadAlone"] <- 1
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadJoint"] <- 2
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="Free"] <- 3
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="Free"] <- 4
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadAlone"] <- 5
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadJoint"] <- 6
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="Free"] <- 7
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadAlone"] <- 8
+  dat[[i]]$Order[dat[[i]]$List==1 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadJoint"] <- 9
+  
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadAlone"] <- 1
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadJoint"] <- 2
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="Free"] <- 3
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="Free"] <- 4
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadAlone"] <- 5
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadJoint"] <- 6
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="Free"] <- 7
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadAlone"] <- 8
+  dat[[i]]$Order[dat[[i]]$List==2 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadJoint"] <- 9
+  
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadAlone"] <- 1
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadJoint"] <- 2
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="Free"] <- 3
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadAlone"] <- 4
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadJoint"] <- 5
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="Free"] <- 6
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadAlone"] <- 7
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadJoint"] <- 8
+  dat[[i]]$Order[dat[[i]]$List==3 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="Free"] <- 9
+  
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadAlone"] <- 1
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadJoint"] <- 2
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="Free"] <- 3
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="Free"] <- 4
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadAlone"] <- 5
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadJoint"] <- 6
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadAlone"] <- 7
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadJoint"] <- 8
+  dat[[i]]$Order[dat[[i]]$List==4 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="Free"] <- 9
+  
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadAlone"] <- 1
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadJoint"] <- 2
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="Free"] <- 3
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="Free"] <- 4
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadAlone"] <- 5
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadJoint"] <- 6
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadAlone"] <- 7
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadJoint"] <- 8
+  dat[[i]]$Order[dat[[i]]$List==5 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="Free"] <- 9
+  
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadAlone"] <- 1
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="ReadJoint"] <- 2
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Heavy" & dat[[i]]$Task=="Free"] <- 3
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadAlone"] <- 4
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="ReadJoint"] <- 5
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Light" & dat[[i]]$Task=="Free"] <- 6
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="Free"] <- 7
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadAlone"] <- 8
+  dat[[i]]$Order[dat[[i]]$List==6 & dat[[i]]$Condition=="Sitting" & dat[[i]]$Task=="ReadJoint"] <- 9
+  
+  read <- c("ReadAlone", "ReadJoint")
+  
+  dat[[i]]$Topic[dat[[i]]$Condition == "Baseline" & dat[[i]]$Task == "Free"] <- "Food"
+  
+  dat[[i]]$Topic[dat[[i]]$List == 1 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task %in% read] <- "Hirsch"
+  dat[[i]]$Topic[dat[[i]]$List == 1 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task == "Free"] <- "Holidays"
+  dat[[i]]$Topic[dat[[i]]$List == 1 & dat[[i]]$Condition == "Light" & dat[[i]]$Task %in% read] <- "Schwalbe"
+  dat[[i]]$Topic[dat[[i]]$List == 1 & dat[[i]]$Condition == "Light" & dat[[i]]$Task == "Free"] <- "Hobbies"
+  dat[[i]]$Topic[dat[[i]]$List == 1 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task %in% read] <- "Pferd"
+  dat[[i]]$Topic[dat[[i]]$List == 1 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task == "Free"] <- "Home"
+  
+  dat[[i]]$Topic[dat[[i]]$List == 2 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task %in% read] <- "Schwalbe"
+  dat[[i]]$Topic[dat[[i]]$List == 2 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task == "Free"] <- "Home"
+  dat[[i]]$Topic[dat[[i]]$List == 2 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task %in% read] <- "Pferd"
+  dat[[i]]$Topic[dat[[i]]$List == 2 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task == "Free"] <- "Holidays"
+  dat[[i]]$Topic[dat[[i]]$List == 2 & dat[[i]]$Condition == "Light" & dat[[i]]$Task %in% read] <- "Hirsch"
+  dat[[i]]$Topic[dat[[i]]$List == 2 & dat[[i]]$Condition == "Light" & dat[[i]]$Task == "Free"] <- "Hobbies"
+  
+  dat[[i]]$Topic[dat[[i]]$List == 3 & dat[[i]]$Condition == "Light" & dat[[i]]$Task %in% read] <- "Pferd"
+  dat[[i]]$Topic[dat[[i]]$List == 3 & dat[[i]]$Condition == "Light" & dat[[i]]$Task == "Free"] <- "Hobbies"
+  dat[[i]]$Topic[dat[[i]]$List == 3 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task %in% read] <- "Hirsch"
+  dat[[i]]$Topic[dat[[i]]$List == 3 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task == "Free"] <- "Home"
+  dat[[i]]$Topic[dat[[i]]$List == 3 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task %in% read] <- "Schwalbe"
+  dat[[i]]$Topic[dat[[i]]$List == 3 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task == "Free"] <- "Holidays"
+  
+  dat[[i]]$Topic[dat[[i]]$List == 4 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task %in% read] <- "Hirsch"
+  dat[[i]]$Topic[dat[[i]]$List == 4 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task == "Free"] <- "Home"
+  dat[[i]]$Topic[dat[[i]]$List == 4 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task %in% read] <- "Schwalbe"
+  dat[[i]]$Topic[dat[[i]]$List == 4 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task == "Free"] <- "Hobbies"
+  dat[[i]]$Topic[dat[[i]]$List == 4 & dat[[i]]$Condition == "Light" & dat[[i]]$Task %in% read] <- "Pferd"
+  dat[[i]]$Topic[dat[[i]]$List == 4 & dat[[i]]$Condition == "Light" & dat[[i]]$Task == "Free"] <- "Holidays"
+  
+  dat[[i]]$Topic[dat[[i]]$List == 5 & dat[[i]]$Condition == "Light" & dat[[i]]$Task %in% read] <- "Schwalbe"
+  dat[[i]]$Topic[dat[[i]]$List == 5 & dat[[i]]$Condition == "Light" & dat[[i]]$Task == "Free"] <- "Hobbies"
+  dat[[i]]$Topic[dat[[i]]$List == 5 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task %in% read] <- "Hirsch"
+  dat[[i]]$Topic[dat[[i]]$List == 5 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task == "Free"] <- "Home"
+  dat[[i]]$Topic[dat[[i]]$List == 5 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task %in% read] <- "Pferd"
+  dat[[i]]$Topic[dat[[i]]$List == 5 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task == "Free"] <- "Holidays"
+  
+  dat[[i]]$Topic[dat[[i]]$List == 6 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task %in% read] <- "Pferd"
+  dat[[i]]$Topic[dat[[i]]$List == 6 & dat[[i]]$Condition == "Heavy" & dat[[i]]$Task == "Free"] <- "Home"
+  dat[[i]]$Topic[dat[[i]]$List == 6 & dat[[i]]$Condition == "Light" & dat[[i]]$Task %in% read] <- "Hirsch"
+  dat[[i]]$Topic[dat[[i]]$List == 6 & dat[[i]]$Condition == "Light" & dat[[i]]$Task == "Free"] <- "Holidays"
+  dat[[i]]$Topic[dat[[i]]$List == 6 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task %in% read] <- "Schwalbe"
+  dat[[i]]$Topic[dat[[i]]$List == 6 & dat[[i]]$Condition == "Sitting" & dat[[i]]$Task == "Free"] <- "Hobbies"
+  
+  dat[[i]]$Topic[substr(dat[[i]]$file, 1, 3) == "BRP"] <- "Pferd"
+  dat[[i]]$Topic[substr(dat[[i]]$file, 1, 3) == "BRH"] <- "Hirsch"
+  dat[[i]]$Topic[substr(dat[[i]]$file, 1, 3) == "BRS"] <- "Schwalbe"
+  
+  dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Hobb"] <- "Hobbies"
+  dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Schw"] <- "Schwalbe"
+  dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Pfer"] <- "Pferd"
+  dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Home"] <- "Home"
+  dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Hirs"] <- "Hirsch"
+  dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Holi"] <- "Holidays"
+  
+  ### Calculate BMI
+  
+  dat[[i]]$BMI <- dat[[i]]$Weight/((dat[[i]]$Height/100)^2) # dividing height by 100 because it has to be in meters
+  
+  ### Calculate gender scores
+  
+  # inverted items in GEPAQ: F2, M4:
+  inv <- c("GEPAQ.F2", "GEPAQ.M4")
+  dat[[i]][, inv] <- (max(dat[[i]][,inv]) + 1) - dat[[i]][, inv]
+  
+  # participant CBE didn't answer GEPAQ.M5, so it's NA. I'll get the mean of the other GEPAQ.M answers of this participant and use that as GEPAQ.M5
+  dat[[i]]$GEPAQ.M5[dat[[i]]$Participant=="CBE"] <- (dat[[i]]$GEPAQ.M1[dat[[i]]$Participant=="CBE"] + dat[[i]]$GEPAQ.M2[dat[[i]]$Participant=="CBE"] + dat[[i]]$GEPAQ.M3[dat[[i]]$Participant=="CBE"] + dat[[i]]$GEPAQ.M4[dat[[i]]$Participant=="CBE"] + dat[[i]]$GEPAQ.M6[dat[[i]]$Participant=="CBE"] + dat[[i]]$GEPAQ.M7[dat[[i]]$Participant=="CBE"] + dat[[i]]$GEPAQ.M8[dat[[i]]$Participant=="CBE"]) / 7
+  
+  # mean of all answers to each subscale
+  dat[[i]]$GEPAQ.F <- (dat[[i]]$GEPAQ.F1 + dat[[i]]$GEPAQ.F2 + dat[[i]]$GEPAQ.F3 + dat[[i]]$GEPAQ.F4 + dat[[i]]$GEPAQ.F5 + dat[[i]]$GEPAQ.F6 + dat[[i]]$GEPAQ.F7 + dat[[i]]$GEPAQ.F8) / 8
+  dat[[i]]$GEPAQ.M <- (dat[[i]]$GEPAQ.M1 + dat[[i]]$GEPAQ.M2 + dat[[i]]$GEPAQ.M3 + dat[[i]]$GEPAQ.M4 + dat[[i]]$GEPAQ.M5 + dat[[i]]$GEPAQ.M6 + dat[[i]]$GEPAQ.M7 + dat[[i]]$GEPAQ.M8) / 8
+  dat[[i]]$TMF.F <- (dat[[i]]$TMF.F1 + dat[[i]]$TMF.F2 + dat[[i]]$TMF.F3 + dat[[i]]$TMF.F4 + dat[[i]]$TMF.F5 + dat[[i]]$TMF.F6) / 6
+  dat[[i]]$TMF.M <- (dat[[i]]$TMF.M1 + dat[[i]]$TMF.M2 + dat[[i]]$TMF.M3 + dat[[i]]$TMF.M4 + dat[[i]]$TMF.M5 + dat[[i]]$TMF.M6) / 6
+  
+  dat[[i]] <- dat[[i]] %>% select(-c(GEPAQ.M1:TMF.F6)) # get rid of the individual items
+  
+  # ##### Save dataset without calculating differences:
+  dat[[i]]$Order <- as.integer(dat[[i]]$Order)
+  dat[[i]]$List <- as.factor(dat[[i]]$List)
+  dat[[i]]$Age <- as.numeric(dat[[i]]$Age)
+  dat[[i]]$Height <- as.numeric(dat[[i]]$Height)
+  dat[[i]]$Gender <- as.factor(dat[[i]]$Gender)
+  dat[[i]]$Topic <- as.factor(dat[[i]]$Topic)
+  dat[[i]]$Role[dat[[i]]$Speaker != "Confederate"] <- "Participant"
+  dat[[i]]$Role[dat[[i]]$Speaker == "Confederate"] <- "Confederate"
+  dat[[i]]$Role <- as.factor(dat[[i]]$Role)
+}
 
-dat$Order[dat$List==2 & dat$Condition=="Heavy" & dat$Task=="ReadAlone"] <- 1
-dat$Order[dat$List==2 & dat$Condition=="Heavy" & dat$Task=="ReadJoint"] <- 2
-dat$Order[dat$List==2 & dat$Condition=="Heavy" & dat$Task=="Free"] <- 3
-dat$Order[dat$List==2 & dat$Condition=="Sitting" & dat$Task=="Free"] <- 4
-dat$Order[dat$List==2 & dat$Condition=="Sitting" & dat$Task=="ReadAlone"] <- 5
-dat$Order[dat$List==2 & dat$Condition=="Sitting" & dat$Task=="ReadJoint"] <- 6
-dat$Order[dat$List==2 & dat$Condition=="Light" & dat$Task=="Free"] <- 7
-dat$Order[dat$List==2 & dat$Condition=="Light" & dat$Task=="ReadAlone"] <- 8
-dat$Order[dat$List==2 & dat$Condition=="Light" & dat$Task=="ReadJoint"] <- 9
+fsm <- dat[[1]]
+brm <- dat[[2]]
 
-dat$Order[dat$List==3 & dat$Condition=="Light" & dat$Task=="ReadAlone"] <- 1
-dat$Order[dat$List==3 & dat$Condition=="Light" & dat$Task=="ReadJoint"] <- 2
-dat$Order[dat$List==3 & dat$Condition=="Light" & dat$Task=="Free"] <- 3
-dat$Order[dat$List==3 & dat$Condition=="Heavy" & dat$Task=="ReadAlone"] <- 4
-dat$Order[dat$List==3 & dat$Condition=="Heavy" & dat$Task=="ReadJoint"] <- 5
-dat$Order[dat$List==3 & dat$Condition=="Heavy" & dat$Task=="Free"] <- 6
-dat$Order[dat$List==3 & dat$Condition=="Sitting" & dat$Task=="ReadAlone"] <- 7
-dat$Order[dat$List==3 & dat$Condition=="Sitting" & dat$Task=="ReadJoint"] <- 8
-dat$Order[dat$List==3 & dat$Condition=="Sitting" & dat$Task=="Free"] <- 9
-
-dat$Order[dat$List==4 & dat$Condition=="Sitting" & dat$Task=="ReadAlone"] <- 1
-dat$Order[dat$List==4 & dat$Condition=="Sitting" & dat$Task=="ReadJoint"] <- 2
-dat$Order[dat$List==4 & dat$Condition=="Sitting" & dat$Task=="Free"] <- 3
-dat$Order[dat$List==4 & dat$Condition=="Heavy" & dat$Task=="Free"] <- 4
-dat$Order[dat$List==4 & dat$Condition=="Heavy" & dat$Task=="ReadAlone"] <- 5
-dat$Order[dat$List==4 & dat$Condition=="Heavy" & dat$Task=="ReadJoint"] <- 6
-dat$Order[dat$List==4 & dat$Condition=="Light" & dat$Task=="ReadAlone"] <- 7
-dat$Order[dat$List==4 & dat$Condition=="Light" & dat$Task=="ReadJoint"] <- 8
-dat$Order[dat$List==4 & dat$Condition=="Light" & dat$Task=="Free"] <- 9
-
-dat$Order[dat$List==5 & dat$Condition=="Light" & dat$Task=="ReadAlone"] <- 1
-dat$Order[dat$List==5 & dat$Condition=="Light" & dat$Task=="ReadJoint"] <- 2
-dat$Order[dat$List==5 & dat$Condition=="Light" & dat$Task=="Free"] <- 3
-dat$Order[dat$List==5 & dat$Condition=="Sitting" & dat$Task=="Free"] <- 4
-dat$Order[dat$List==5 & dat$Condition=="Sitting" & dat$Task=="ReadAlone"] <- 5
-dat$Order[dat$List==5 & dat$Condition=="Sitting" & dat$Task=="ReadJoint"] <- 6
-dat$Order[dat$List==5 & dat$Condition=="Heavy" & dat$Task=="ReadAlone"] <- 7
-dat$Order[dat$List==5 & dat$Condition=="Heavy" & dat$Task=="ReadJoint"] <- 8
-dat$Order[dat$List==5 & dat$Condition=="Heavy" & dat$Task=="Free"] <- 9
-
-dat$Order[dat$List==6 & dat$Condition=="Heavy" & dat$Task=="ReadAlone"] <- 1
-dat$Order[dat$List==6 & dat$Condition=="Heavy" & dat$Task=="ReadJoint"] <- 2
-dat$Order[dat$List==6 & dat$Condition=="Heavy" & dat$Task=="Free"] <- 3
-dat$Order[dat$List==6 & dat$Condition=="Light" & dat$Task=="ReadAlone"] <- 4
-dat$Order[dat$List==6 & dat$Condition=="Light" & dat$Task=="ReadJoint"] <- 5
-dat$Order[dat$List==6 & dat$Condition=="Light" & dat$Task=="Free"] <- 6
-dat$Order[dat$List==6 & dat$Condition=="Sitting" & dat$Task=="Free"] <- 7
-dat$Order[dat$List==6 & dat$Condition=="Sitting" & dat$Task=="ReadAlone"] <- 8
-dat$Order[dat$List==6 & dat$Condition=="Sitting" & dat$Task=="ReadJoint"] <- 9
-
-read <- c("ReadAlone", "ReadJoint")
-
-dat$Topic[dat$Condition == "Baseline" & dat$Task == "Free"] <- "Food"
-
-dat$Topic[dat$List == 1 & dat$Condition == "Sitting" & dat$Task %in% read] <- "Hirsch"
-dat$Topic[dat$List == 1 & dat$Condition == "Sitting" & dat$Task == "Free"] <- "Holidays"
-dat$Topic[dat$List == 1 & dat$Condition == "Light" & dat$Task %in% read] <- "Schwalbe"
-dat$Topic[dat$List == 1 & dat$Condition == "Light" & dat$Task == "Free"] <- "Hobbies"
-dat$Topic[dat$List == 1 & dat$Condition == "Heavy" & dat$Task %in% read] <- "Pferd"
-dat$Topic[dat$List == 1 & dat$Condition == "Heavy" & dat$Task == "Free"] <- "Home"
-
-dat$Topic[dat$List == 2 & dat$Condition == "Heavy" & dat$Task %in% read] <- "Schwalbe"
-dat$Topic[dat$List == 2 & dat$Condition == "Heavy" & dat$Task == "Free"] <- "Home"
-dat$Topic[dat$List == 2 & dat$Condition == "Sitting" & dat$Task %in% read] <- "Pferd"
-dat$Topic[dat$List == 2 & dat$Condition == "Sitting" & dat$Task == "Free"] <- "Holidays"
-dat$Topic[dat$List == 2 & dat$Condition == "Light" & dat$Task %in% read] <- "Hirsch"
-dat$Topic[dat$List == 2 & dat$Condition == "Light" & dat$Task == "Free"] <- "Hobbies"
-
-dat$Topic[dat$List == 3 & dat$Condition == "Light" & dat$Task %in% read] <- "Pferd"
-dat$Topic[dat$List == 3 & dat$Condition == "Light" & dat$Task == "Free"] <- "Hobbies"
-dat$Topic[dat$List == 3 & dat$Condition == "Heavy" & dat$Task %in% read] <- "Hirsch"
-dat$Topic[dat$List == 3 & dat$Condition == "Heavy" & dat$Task == "Free"] <- "Home"
-dat$Topic[dat$List == 3 & dat$Condition == "Sitting" & dat$Task %in% read] <- "Schwalbe"
-dat$Topic[dat$List == 3 & dat$Condition == "Sitting" & dat$Task == "Free"] <- "Holidays"
-
-dat$Topic[dat$List == 4 & dat$Condition == "Sitting" & dat$Task %in% read] <- "Hirsch"
-dat$Topic[dat$List == 4 & dat$Condition == "Sitting" & dat$Task == "Free"] <- "Home"
-dat$Topic[dat$List == 4 & dat$Condition == "Heavy" & dat$Task %in% read] <- "Schwalbe"
-dat$Topic[dat$List == 4 & dat$Condition == "Heavy" & dat$Task == "Free"] <- "Hobbies"
-dat$Topic[dat$List == 4 & dat$Condition == "Light" & dat$Task %in% read] <- "Pferd"
-dat$Topic[dat$List == 4 & dat$Condition == "Light" & dat$Task == "Free"] <- "Holidays"
-
-dat$Topic[dat$List == 5 & dat$Condition == "Light" & dat$Task %in% read] <- "Schwalbe"
-dat$Topic[dat$List == 5 & dat$Condition == "Light" & dat$Task == "Free"] <- "Hobbies"
-dat$Topic[dat$List == 5 & dat$Condition == "Sitting" & dat$Task %in% read] <- "Hirsch"
-dat$Topic[dat$List == 5 & dat$Condition == "Sitting" & dat$Task == "Free"] <- "Home"
-dat$Topic[dat$List == 5 & dat$Condition == "Heavy" & dat$Task %in% read] <- "Pferd"
-dat$Topic[dat$List == 5 & dat$Condition == "Heavy" & dat$Task == "Free"] <- "Holidays"
-
-dat$Topic[dat$List == 6 & dat$Condition == "Heavy" & dat$Task %in% read] <- "Pferd"
-dat$Topic[dat$List == 6 & dat$Condition == "Heavy" & dat$Task == "Free"] <- "Home"
-dat$Topic[dat$List == 6 & dat$Condition == "Light" & dat$Task %in% read] <- "Hirsch"
-dat$Topic[dat$List == 6 & dat$Condition == "Light" & dat$Task == "Free"] <- "Holidays"
-dat$Topic[dat$List == 6 & dat$Condition == "Sitting" & dat$Task %in% read] <- "Schwalbe"
-dat$Topic[dat$List == 6 & dat$Condition == "Sitting" & dat$Task == "Free"] <- "Hobbies"
-
-dat$Topic[substr(dat$file, 1, 3) == "BRP"] <- "Pferd"
-dat$Topic[substr(dat$file, 1, 3) == "BRH"] <- "Hirsch"
-dat$Topic[substr(dat$file, 1, 3) == "BRS"] <- "Schwalbe"
-
-dat$Topic[dat$Speaker == "Confederate" & substr(dat$file, 3, 6) == "Hobb"] <- "Hobbies"
-dat$Topic[dat$Speaker == "Confederate" & substr(dat$file, 3, 6) == "Schw"] <- "Schwalbe"
-dat$Topic[dat$Speaker == "Confederate" & substr(dat$file, 3, 6) == "Pfer"] <- "Pferd"
-dat$Topic[dat$Speaker == "Confederate" & substr(dat$file, 3, 6) == "Home"] <- "Home"
-dat$Topic[dat$Speaker == "Confederate" & substr(dat$file, 3, 6) == "Hirs"] <- "Hirsch"
-dat$Topic[dat$Speaker == "Confederate" & substr(dat$file, 3, 6) == "Holi"] <- "Holidays"
-
-
-### Calculate BMI
-
-dat$BMI <- dat$Weight/((dat$Height/100)^2) # dividing height by 100 because it has to be in meters
-
-### Calculate gender scores
-
-# inverted items in GEPAQ: F2, M4:
-inv <- c("GEPAQ.F2", "GEPAQ.M4")
-dat[, inv] <- (max(dat[,inv]) + 1) - dat[, inv]
-
-# participant CBE didn't answer GEPAQ.M5, so it's NA. I'll get the mean of the other GEPAQ.M answers of this participant and use that as GEPAQ.M5
-dat$GEPAQ.M5[dat$Participant=="CBE"] <- (dat$GEPAQ.M1[dat$Participant=="CBE"] + dat$GEPAQ.M2[dat$Participant=="CBE"] + dat$GEPAQ.M3[dat$Participant=="CBE"] + dat$GEPAQ.M4[dat$Participant=="CBE"] + dat$GEPAQ.M6[dat$Participant=="CBE"] + dat$GEPAQ.M7[dat$Participant=="CBE"] + dat$GEPAQ.M8[dat$Participant=="CBE"]) / 7
-
-# mean of all answers to each subscale
-dat$GEPAQ.F <- (dat$GEPAQ.F1 + dat$GEPAQ.F2 + dat$GEPAQ.F3 + dat$GEPAQ.F4 + dat$GEPAQ.F5 + dat$GEPAQ.F6 + dat$GEPAQ.F7 + dat$GEPAQ.F8) / 8
-dat$GEPAQ.M <- (dat$GEPAQ.M1 + dat$GEPAQ.M2 + dat$GEPAQ.M3 + dat$GEPAQ.M4 + dat$GEPAQ.M5 + dat$GEPAQ.M6 + dat$GEPAQ.M7 + dat$GEPAQ.M8) / 8
-dat$TMF.F <- (dat$TMF.F1 + dat$TMF.F2 + dat$TMF.F3 + dat$TMF.F4 + dat$TMF.F5 + dat$TMF.F6) / 6
-dat$TMF.M <- (dat$TMF.M1 + dat$TMF.M2 + dat$TMF.M3 + dat$TMF.M4 + dat$TMF.M5 + dat$TMF.M6) / 6
-
-dat <- dat[, -c(22:49)] # get rid of the individual items
-
-# ##### Save dataset without calculating differences:
-dat$Order <- as.integer(dat$Order)
-dat$List <- as.factor(dat$List)
-dat$Age <- as.numeric(dat$Age)
-dat$Height <- as.numeric(dat$Height)
-dat$Gender <- as.factor(dat$Gender)
-dat$Topic <- as.factor(dat$Topic)
-dat[, c(4:12)] <- lapply(dat[, c(4:12)], as.numeric)
-dat$Role[dat$Speaker != "Confederate"] <- "Participant"
-dat$Role[dat$Speaker == "Confederate"] <- "Confederate"
-dat$Role <- as.factor(dat$Role)
-
-dat$breathRateSpeech <- dat$peaksSpeech/(dat$durationSpeech/60) # peaks per minute (not per second)
-
-save(dat, file=paste0(folder, "DataNoDiff.RData"))
+save(fsm, file=paste0(folder, "DataSpeech.RData"))
+save(brm, file=paste0(folder, "DataBreathing.RData"))
 
 # #####
 
@@ -665,6 +676,8 @@ save(dat, file=paste0(folder, "DataNoDiff.RData"))
 # transform the dataset so it contains the confederate information for each row of interest of each participant
 
 # here, it doesn't make sense anymore to have information per IPU (we don't want to subtract the value of each IPU, just of the entire stretch of speech)
+
+dat <- fsm
 
 dat <- dat[!duplicated(dat$file),]
 dat$IPU <- NULL
