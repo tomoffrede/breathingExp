@@ -666,6 +666,8 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
 fsm <- dat[[1]]
 brm <- dat[[2]]
 
+fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
+
 save(fsm, file=paste0(folder, "DataSpeech.RData"))
 save(brm, file=paste0(folder, "DataBreathing.RData"))
 
