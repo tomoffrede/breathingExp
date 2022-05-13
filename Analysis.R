@@ -46,12 +46,13 @@ df <- fsm %>%
   filter(Task == "Free") %>%
   filter(Role == "Participant")
 
+
+df$Condition <- relevel(df$Condition, ref="Sitting")
+
 ggplot(df, aes(Condition, f0mean))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)
-  
 
-df$Condition <- relevel(df$Condition, ref="Sitting")
 
 summary(m1 <- lmer(f0mean ~ Condition + (1 | Speaker), df))
 summary(m2 <- lmer(f0mean ~ Condition + Order + (1 | Speaker), df))
@@ -115,13 +116,29 @@ anova(m3, m4, refit=FALSE) # now comparing random effects, so refit=FALSE
 
 # I fit a model only with ConfGenderF, without Condition, but the model was way worse!
 
-# is m4 the final model?
+summary(m5 <- lmer(f0mean ~ Condition + ConfGenderF + breathRate + (1 + Condition | Speaker), df))
 
-plot(fitted(m4), residuals(m4)) # seems alright!
+anova(m4, m5) # the mean duration of breath cycles improves the model! the longer the mean duration, the lower the f0
+
+# there was no interaction with condition though!
+
+summary(m6 <- lmer(f0mean ~ Condition + ConfGenderF + breathCycleDurMean + (1 + Condition | Speaker), df))
+
+anova(m4, m6)
+
+# breathRate is also good. breathRate and breathCycleDurMean are very strongly correlated though, so we can't have both in the model
+# breathCycleDurMean has a stronger effect than breathRate, and it reduces the AIC by a tiny little bit more than breathRate
+# (keep in mind that the effect of breathRate and breathCycleDurMean are in opposite directions; they're negatively correlated)
+# so let's keep m6
+
+# so the faster they breathe (which is related to shorter)
+
+# is m6 the final model?
+
+plot(fitted(m6), residuals(m6)) # seems alright!
 
 qqnorm(resid(m4));qqline(resid(m4)) # it seems relatively normal I think?
-
-
+hist(resid(m6))
 
 # speech rate?
 
@@ -134,6 +151,10 @@ ggplot(df, aes(Condition, articRate))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)+
   ggtitle("Participants' articulation rate")
+
+plot(df$InterEnjoy, df$articRate)
+
+plot(df$Order, df$articRate)
 
 ggplot(fsm %>% filter(Role == "Confederate"), aes(Condition, speechRate))+
   geom_boxplot()+
@@ -183,22 +204,27 @@ anova(s4, s5)
 # the longer into the experiment, the higher articulation rate for the heavy condition, but not for the light condition
 # the more the participants enjoyed the interaction, the higher the articulation rate got throughout the experiment
 
+summary(s6 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + breathRate + (1 | Speaker),  df))
+anova(s5, s6) # breathRate doesn't improve the model
+
+summary(s6 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + breathCycleDurMean + (1 | Speaker),  df))
+anova(s5, s6) # breathCycleDurMean improves the model! and t value = -3.27
+# the longer the mean breath cycle duration, the slower people speak
+# (makes sense! if in general they have longer exhalations, the more time they give themselves to say the things they wanna say)
+# so this would mean that if someone has more time (i.e. more breath) to speak, they won't try to fit in more information in that time, they'll just speak slower
+
+summary(s7 <- lmer(articRate ~ (Condition + InterEnjoy + Order + breathCycleDurMean)^4 + (1 | Speaker),  df))
+anova(s6, s7) # AIC actually got reduced, but it's really hard to interpret this. so let's stick with s6
+
 df$articRateC <- scale(df$articRate, center=TRUE, scale=TRUE)
 
-summary(s6 <- lmer(articRateC ~ (Condition + InterEnjoy + Order)^3 + (1 + Condition | Speaker),  df))
+summary(s7 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + breathCycleDurMean + (1 + Condition | Speaker),  df))
 # this model shows an output but it gives convergence warnings and says the model is nearly unidentifiable;
 # I've tried rescaling articRate, and I've also done ` (0 + Condition | Speaker) + (1 | Speaker` instead of `(1 + Condition | Speaker)` (as per a suggestion here: https://stats.stackexchange.com/questions/242109/model-failed-to-converge-warning-in-lmer)
 # depending on what I try, the warnings sometimes change, but they still appear
 
-
-s
-
 ### NOTES
 # explanation of REFIT: lmer's default method for fitting models is REML. Also, REML is the appropriate method when you want to compare models with a difference in their random effects. When comparing models differing in fixed effects, though, ML is the appropriate method.
-
-# look at variability throughout experiment / conditions?
-
-# when checking f0mean (not diff), try Cf0means a predictor
 
 # from 18.1.22:
 # - Use Speaker instead of BMI. Maybe BMI is a covariate and isn't a random effect.
