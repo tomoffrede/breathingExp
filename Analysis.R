@@ -137,7 +137,7 @@ anova(m4, m6)
 
 plot(fitted(m6), residuals(m6)) # seems alright!
 
-qqnorm(resid(m4));qqline(resid(m4)) # it seems relatively normal I think?
+qqnorm(resid(m6));qqline(resid(m6)) # it seems relatively normal I think?
 hist(resid(m6))
 
 # speech rate?
