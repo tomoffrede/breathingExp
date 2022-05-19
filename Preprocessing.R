@@ -679,13 +679,15 @@ save(brm, file=paste0(folder, "DataBreathing.RData"))
 
 # here, it doesn't make sense anymore to have information per IPU (we don't want to subtract the value of each IPU, just of the entire stretch of speech)
 
-dat <- fsm
+# load(paste0(folder, "DataSpeech.RData"))
 
-dat <- dat[!duplicated(dat$file),]
-dat$IPU <- NULL
-dat$f0mean <- NULL
+dat <- fsm %>%
+  filter(!duplicated(file)) %>%
+  select(-c(IPU, f0mean, label, f0z, speechRateIPU))
 
-conf <- dat[dat$Speaker=="Confederate", c(3:12, 25, 27:30, 32)]
+conf <- dat %>%
+  filter(Speaker == "Confederate") %>%
+  select(c("f0IPUmean", "articRate", "Condition", "Task", "Topic", "breathCycleDurMean", "breathRate"))
 colnames(conf) <- sub("^","C", colnames(conf))
 dat2 <-dat[dat$Speaker!="Confederate",]
 dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
@@ -694,7 +696,7 @@ conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALS
 
 dat4 <- cbind(dat3, conf2)
 
-dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Topic == dat4$CTopic) | (dat4$Condition == "Baseline"),]
 dat4[dat4$Condition=="Baseline", colnames(conf)] <- NA
 dat4 <- dat4[!duplicated(dat4),] # no duplicates of the same row
 
@@ -704,24 +706,16 @@ dat4$CTopic <- as.factor(dat4$CTopic)
 # calculate differences
 
 dat4$f0meanDiff <- dat4$f0IPUmean - dat4$Cf0IPUmean
-dat4$speechRateDiff <- dat4$speechRate - dat4$CspeechRate
 dat4$articRateDiff <- dat4$articRate - dat4$CarticRate
-dat4$pauseDurDiff <- dat4$pauseDur - dat4$CpauseDur
-dat4$breathRateSpeechDiff <- dat4$breathRateSpeech - dat4$CbreathRateSpeech
+dat4$breathCycleDurDiff <- dat4$breathCycleDurMean - dat4$CbreathCycleDurMean
+dat4$breathRateDiff <- dat4$breathRate - dat4$CbreathRate
 
-dat4[dat4$Condition=="Baseline", colnames(grepl("Diff", colnames(dat4)))] <- NA # turn the "Diff" values into NA for the baseline, because they don't make sense there
+# dat4[dat4$Condition=="Baseline", colnames(grepl("Diff", colnames(dat4)))] <- NA # turn the "Diff" values into NA for the baseline, because they don't make sense there
 
 # gender differences
 
 dat4$GenderDiff.TMFF <- dat4$ConfGenderF - dat4$TMF.F # difference between participants' gender identity and their perception of conf's gender expression
 dat4$GenderDiff.TMFM <- dat4$ConfGenderM - dat4$TMF.M
-dat4$GenderDiff.GEPAQF <- dat4$ConfGenderF - dat4$GEPAQ.F
-dat4$GenderDiff.GEPAQM <- dat4$ConfGenderM - dat4$GEPAQ.M
-
-dat4$GenderPercDiff.TMFF <- dat4$ConfGenderF - dat4$CTMF.F # difference between confederate's gender identity and participants' perception of conf's gender expression
-dat4$GenderPercDiff.TMFM <- dat4$ConfGenderM - dat4$CTMF.M
-dat4$GenderPercDiff.GEPAQF <- dat4$ConfGenderF - dat4$CGEPAQ.F
-dat4$GenderPercDiff.GEPAQM <- dat4$ConfGenderM - dat4$CGEPAQ.M
 
 # Still missing from dataset:
 # How well the participants synchronized their read speech
@@ -729,5 +723,5 @@ dat4$GenderPercDiff.GEPAQM <- dat4$ConfGenderM - dat4$CGEPAQ.M
 # 4
 dat <- dat4
 
-save(dat, file=paste0(folder, "DataWithDiff.RData"))
+save(dat, file=paste0(folder, "DataWithDifferences.RData"))
 
