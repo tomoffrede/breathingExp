@@ -10,7 +10,9 @@ folder3 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysi
 order <- c("Baseline", "Sitting", "Light", "Heavy")
 orderconf <- order[-1]
 
-load(paste0(folder, "DataNoDiff.RData"))
+load(paste0(folder, "DataSpeech.RData"))
+
+dat <- fsm
 
 #########################
 # if you want to plot the participants' data across the conf's breathing rate,
@@ -41,15 +43,15 @@ load(paste0(folder, "DataNoDiff.RData"))
 
 dat$Order <- as.integer(dat$Order)
 
-df <- dat[dat$Task=="Free",]
-
-df <- df[df$f0mean>125,]
+# df <- dat[dat$Task=="Free",]
+# 
+# df <- df[df$f0mean>125,]
 
 png(paste0(folder2, "ConditionsFreef0.png"), width=700, height=500)
-ggplot(df) +
-  geom_point(aes(x = Condition, y = f0mean, color = Role), size=4) +
-  geom_point(data = subset(df, Role == 'Confederate'),
-             aes(x = Condition, y = f0mean, color = Role), size=4)+
+ggplot() +
+  geom_point(dat %>% filter(Role=="Participant"), mapping = aes(x = Condition, y = f0mean, color = Role), size=4) +
+  geom_point(dat %>% filter(Role == 'Confederate'),
+             mapping=aes(x = Condition, y = f0mean, color = Role), size=4)+
   scale_color_viridis_d("Speaker", end=.65)+
   ggtitle("f0 mean (free speech) - no outliers ")+
   scale_x_discrete(limits = order)+
@@ -64,9 +66,14 @@ dev.off()
 # you want to use this dataset, and then, make sure that you filter only the participants
 # and then only the confederate for the visualization:
 
-load(paste0(folder, "DataNoDiff.RData"))
+load(paste0(folder, "DataSpeech.RData"))
 
-conf <- dat[dat$Speaker=="Confederate", c(3, 4, 5, 7:13, 26, 28:31, 33)]
+dat <- fsm
+
+conf <- dat %>%
+  filter(Speaker == "Confederate") %>%
+  select(c("f0IPUmean", "articRate", "Condition", "Task", "Topic", "breathCycleDurMean", "breathRate"))
+
 colnames(conf) <- sub("^","C", colnames(conf))
 dat2 <-dat
 dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
@@ -75,7 +82,7 @@ conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALS
 
 dat4 <- cbind(dat3, conf2)
 
-dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Task == dat4$CTask) | (dat4$Condition == "Baseline"),]
+dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Topic == dat4$CTopic) | (dat4$Condition == "Baseline"),]
 dat4 <- dat4[!duplicated(dat4$file),]
 
 dat <- dat4
@@ -90,9 +97,9 @@ df <- dat %>%
 # png(paste0(folder2, "ConditionsFreef0.png"), width=700, height=500)
 ggplot() +
   geom_point(df %>% filter(Role=="Participant"),
-    mapping=aes(x = CbreathRateSpeech, y = f0mean, color = Role), size=4) +
+    mapping=aes(x = CbreathRate, y = f0mean, color = Role), size=4) +
   geom_point(df %>% filter(Role=="Confederate"),
-             mapping=aes(x = CbreathRateSpeech, y = f0mean, color = Role), size=4)+
+             mapping=aes(x = breathRate, y = f0mean, color = Role), size=4)+
   scale_color_viridis_d("Speaker", direction=-1, end=.65)+
   ggtitle("f0 mean (free speech) - no outliers ")+
   theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
@@ -288,7 +295,8 @@ dev.off()
 
 
 #### individual f0s across conditions:
-
+load(paste0(folder, "DataSpeech.RData"))
+dat <- fsm
 df <- dat[dat$Task=="Free",]
 
 # turn Confederate's values into their mean
@@ -308,7 +316,7 @@ for(i in participants){
   if(i %in% abc){
     duo <- c(i, "Confederate")
     dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=f0mean, group=Speaker))+
+    p <- ggplot(data=dp, aes(x=Condition, y=f0IPUmean, group=Speaker))+
       geom_line(aes(color=Speaker), size=3)+
       geom_point(aes(color=Speaker), size=7)+
       theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -319,7 +327,7 @@ for(i in participants){
   } else if (i %!in% abc){
     duo <- c(i, "Confederate")
     dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=f0mean, group=Speaker))+
+    p <- ggplot(data=dp, aes(x=Condition, y=f0IPUmean, group=Speaker))+
       geom_line(aes(color=Speaker), size=3)+
       geom_point(aes(color=Speaker), size=7)+
       theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -346,63 +354,6 @@ dev.off()
 
 ####
 
-#### individual speech rates across conditions:
-
-df <- dat[dat$Task=="Free",]
-
-# turn Confederate's values into their mean
-for(c in df$Condition){
-  df$speechRate[df$Speaker=="Confederate" & df$Condition==c] <- mean(df$speechRate[df$Speaker=="Confederate" & df$Condition==c])
-}
-
-df <- df %>% distinct(speechRate, Speaker, Condition, .keep_all=TRUE)
-
-participants <- unique(df$Speaker[df$Speaker!="Confederate"])
-
-plots <- list()
-abc <- c("ATN", "BND", "CBE")
-`%!in%` <- Negate(`%in%`)
-
-for(i in participants){
-  if(i %in% abc){
-    duo <- c(i, "Confederate")
-    dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=speechRate, group=Speaker))+
-      geom_line(aes(color=Speaker), size=3)+
-      geom_point(aes(color=Speaker), size=7)+
-      theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
-            axis.title=element_text(size=28), axis.text=element_text(size=26))+
-      scale_x_discrete(limits = order)+
-      scale_color_viridis_d(end=.65, direction=-1) # have to change the direction of the color scale for three participants because their names come alphabetically before "Confederate", so they were getting the opposite colors as the other participants
-    plots[[i]] <- p
-  } else if (i %!in% abc){
-    duo <- c(i, "Confederate")
-    dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=speechRate, group=Speaker))+
-      geom_line(aes(color=Speaker), size=3)+
-      geom_point(aes(color=Speaker), size=7)+
-      theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
-            axis.title=element_text(size=28), axis.text=element_text(size=26))+
-      scale_x_discrete(limits = order)+
-      scale_color_viridis_d(end=.65, direction=1)
-    plots[[i]] <- p
-  }
-}
-
-plotgrid <- plot_grid(plotlist=plots)
-
-title <- ggdraw() + 
-  draw_label("Individual Speech Rates (Free Speech)", size=50, fontface = 'bold', x = 0, hjust = 0)+
-  theme(# add margin on the left of the drawing canvas,
-    # so title is aligned with left edge of first plot
-    plot.margin = margin(0, 0, 0, 7)
-  )
-
-png(paste0(folder2, "ConditionsIndividualFreeSRs.png"), width=3000, height=2000)
-plot_grid(title, plotgrid, ncol=1, rel_heights = c(0.1, 1))
-dev.off()
-
-####
 
 #### individual articulation rates across conditions:
 
@@ -468,10 +419,10 @@ df <- dat[dat$Task=="Free",]
 
 # turn Confederate's values into their mean
 for(c in df$Condition){
-  df$breathRateSpeech[df$Speaker=="Confederate" & df$Condition==c] <- mean(df$breathRateSpeech[df$Speaker=="Confederate" & df$Condition==c])
+  df$breathRate[df$Speaker=="Confederate" & df$Condition==c] <- mean(df$breathRate[df$Speaker=="Confederate" & df$Condition==c])
 }
 
-df <- df %>% distinct(breathRateSpeech, Speaker, Condition, .keep_all=TRUE)
+df <- df %>% distinct(breathRate, Speaker, Condition, .keep_all=TRUE)
 
 participants <- unique(df$Speaker[df$Speaker!="Confederate"])
 
@@ -483,7 +434,7 @@ for(i in participants){
   if(i %in% abc){
     duo <- c(i, "Confederate")
     dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=breathRateSpeech, group=Speaker))+
+    p <- ggplot(data=dp, aes(x=Condition, y=breathRate, group=Speaker))+
       geom_line(aes(color=Speaker), size=3)+
       geom_point(aes(color=Speaker), size=7)+
       theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -494,7 +445,7 @@ for(i in participants){
   } else if (i %!in% abc){
     duo <- c(i, "Confederate")
     dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=breathRateSpeech, group=Speaker))+
+    p <- ggplot(data=dp, aes(x=Condition, y=breathRate, group=Speaker))+
       geom_line(aes(color=Speaker), size=3)+
       geom_point(aes(color=Speaker), size=7)+
       theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -524,7 +475,7 @@ dev.off()
 
 ##### ACROSS ORDER
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 
 df <- dat[dat$Task=="Free",]
 
@@ -533,17 +484,17 @@ df <- dat[dat$Task=="Free",]
 alld <- list()
 
 for(i in df$Speaker){
-  df1 <- df[df$Speaker==i, c(1, 3, 5, 6, 20, 28, 30, 31)]
+  df1 <- df[df$Speaker==i, c("Speaker", "Order", "f0IPUmean", "durSpeech", "articRate", "breathCycleDurMean", "breathRate", "Cf0IPUmean", "CarticRate", "CbreathCycleDurMean", "CbreathRate")]
   df2 <- df1[rep(seq_len(nrow(df1)), each=2),]
   rownames(df2) <- 1:nrow(df2)
-  df2[c(2, 4, 6, 8),]$Speaker <- paste0("Confederate-",i)
-  df2$f0mean[df2$Speaker==paste0("Confederate-",i)] <- df2$Cf0mean[df2$Speaker==paste0("Confederate-",i)]
-  df2$speechRate[df2$Speaker==paste0("Confederate-",i)] <- df2$CspeechRate[df2$Speaker==paste0("Confederate-",i)]
+  df2[c(2, 4, 6, 8),]$Speaker <- paste0("Confederate-", i)
+  # continue from here: correct the C variables that need to be changed
+  df2$f0IPUmean[df2$Speaker==paste0("Confederate-",i)] <- df2$Cf0IPUmean[df2$Speaker==paste0("Confederate-",i)]
   df2$articRate[df2$Speaker==paste0("Confederate-",i)] <- df2$CarticRate[df2$Speaker==paste0("Confederate-",i)]
+  df2$breathCycleDurMean[df2$Speaker==paste0("Confederate-",i)] <- df2$CbreathCycleDurMean[df2$Speaker==paste0("Confederate-",i)]
+  df2$breathRate[df2$Speaker==paste0("Confederate-",i)] <- df2$CbreathRate[df2$Speaker==paste0("Confederate-",i)]
   df3 <- df2[!(df2$Order==0 & df2$Speaker==paste0("Confederate-",i)),]
-  df3$Cf0mean <- NULL
-  df3$CspeechRate <- NULL
-  df3$CarticRate <- NULL
+  df3 <- df3 %>% select(-c(Cf0IPUmean, CarticRate, CbreathCycleDurMean, CbreathRate))
   alld[[i]] <- df3
 }
 
@@ -567,7 +518,7 @@ for(i in participants){
     if(i %in% abc){
       duo <- c(i, paste0("Confederate-", i))
       dp <- dfo[dfo$Speaker %in% duo,]
-      plots[[i]] <- ggplot(data=dp, aes(x=Order, y=f0mean, group=Role))+
+      plots[[i]] <- ggplot(data=dp, aes(x=Order, y=f0IPUmean, group=Role))+
         geom_line(aes(color=Speaker), size=3)+
         geom_point(aes(color=Speaker), size=7)+
         theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -576,7 +527,7 @@ for(i in participants){
     } else if(i %!in% abc){
       duo <- c(i, paste0("Confederate-", i))
       dp <- dfo[dfo$Speaker %in% duo,]
-      plots[[i]] <- ggplot(data=dp, aes(x=Order, y=f0mean, group=Role))+
+      plots[[i]] <- ggplot(data=dp, aes(x=Order, y=f0IPUmean, group=Role))+
         geom_line(aes(color=Speaker), size=3)+
         geom_point(aes(color=Speaker), size=7)+
         theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -601,57 +552,8 @@ dev.off()
 
 ####
 
-#### individual speech rates across order
-
-participants <- unique(dfo$Speaker[substr(dfo$Speaker, 1, 6)!="Confed"])
-
-plots <- list()
-abc <- c("ATN", "BND", "CBE")
-`%!in%` <- Negate(`%in%`)
-
-
-for(i in participants){
-  for(c in df$Order){
-    if(i %in% abc){
-      duo <- c(i, paste0("Confederate-", i))
-      dp <- dfo[dfo$Speaker %in% duo,]
-      p <- ggplot(data=dp, aes(x=Order, y=speechRate, group=Role))+
-        geom_line(aes(color=Speaker), size=3)+
-        geom_point(aes(color=Speaker), size=7)+
-        theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
-              axis.title=element_text(size=28), axis.text=element_text(size=26))+
-        scale_color_viridis_d(end=.65, direction=-1)
-      plots[[i]] <- p
-    } else if(i %!in% abc){
-      duo <- c(i, paste0("Confederate-", i))
-      dp <- dfo[dfo$Speaker %in% duo,]
-      p <- ggplot(data=dp, aes(x=Order, y=speechRate, group=Role))+
-        geom_line(aes(color=Speaker), size=3)+
-        geom_point(aes(color=Speaker), size=7)+
-        theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
-              axis.title=element_text(size=28), axis.text=element_text(size=26))+
-        scale_color_viridis_d(end=.65)
-      plots[[i]] <- p
-    }
-  }
-}
-
-plotgrid <- plot_grid(plotlist=plots)
-
-title <- ggdraw() + 
-  draw_label("Individual speech rates (Free Speech)", size=50, fontface = 'bold', x = 0, hjust = 0)+
-  theme(# add margin on the left of the drawing canvas,
-    # so title is aligned with left edge of first plot
-    plot.margin = margin(0, 0, 0, 7)
-  )
-
-png(paste0(folder2, "OrderIndividualFreeSRs.png"), width=3000, height=2000)
-plot_grid(title, plotgrid, ncol=1, rel_heights = c(0.1, 1))
-dev.off()
-
-####
-
 #### individual articulation rates across order
+
 
 participants <- unique(dfo$Speaker[substr(dfo$Speaker, 1, 6)!="Confed"])
 
@@ -706,13 +608,13 @@ dev.off()
 
 # f0
 
-load(paste0(folder, "DataNoDiff.RData"))
-datn <- dat[dat$f0mean > 125,]
+load(paste0(folder, "DataSpeech.RData"))
+datn <- fsm
 
 png(paste0(folder1, "Tasksf0boxplots.png"), width=700, height=500)
 ggplot()+
-  geom_boxplot(subset(datn, Role=="Participant"), mapping=aes(Task, f0mean), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
-  geom_point(subset(datn, Role=="Confederate"), mapping=aes(Task, f0mean), color="#7AD151FF", size=5)+
+  geom_boxplot(subset(datn, Role=="Participant"), mapping=aes(Task, f0IPUmean), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  geom_point(subset(datn, Role=="Confederate"), mapping=aes(Task, f0IPUmean), color="#7AD151FF", size=5)+
   scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
   ggtitle("f0 (free speech) - no outliers")+
   facet_wrap(~Condition)+
@@ -763,7 +665,7 @@ dev.off()
 
 ## f0
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
 
 png(paste0(folder3, "Conditionsf0DiffFreeboxplots.png"), width=700, height=500)
@@ -789,7 +691,7 @@ dev.off()
 #############################
 
 # png(paste0(folder3, "ConditionsIndividualf0DiffFreeboxplots.png"), width=1500, height=1200)
-ggplot(df, aes(CbreathRateSpeech, f0meanDiff))+
+ggplot(df, aes(CbreathRate, f0meanDiff))+
   geom_point(color="#2D708EFF", size=4)+
   ggtitle("f0 difference (participant - confederate) (free speech)")+
   theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
@@ -802,7 +704,7 @@ ggplot(df, aes(CbreathRateSpeech, f0meanDiff))+
 
 ## speech rate
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
 
 png(paste0(folder3, "ConditionsSRDiffFreeboxplots.png"), width=700, height=500)
@@ -827,7 +729,7 @@ dev.off()
 
 ## articulation rate
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
 
 png(paste0(folder3, "ConditionsARDiffFreeboxplots.png"), width=700, height=500)
@@ -855,13 +757,13 @@ dev.off()
 
 ## f0
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
 df$Order <- as.factor(df$Order)
 
 png(paste0(folder3, "Orderf0DiffFreeboxplots.png"), width=700, height=500)
 ggplot(df, aes(Order, f0meanDiff))+
-  geom_boxplot(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
+  geom_point(fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D)(12))
   ggtitle("f0 difference (participant - confederate) (free speech)")+
   theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
         title=element_text(size=23))
@@ -878,7 +780,7 @@ dev.off()
 
 ## speech rate
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
 df$Order <- as.factor(df$Order)
 
@@ -902,7 +804,7 @@ dev.off()
 
 ## articulation rate
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Task=="Free" & dat$Condition!="Baseline",]
 df$Order <- as.factor(df$Order)
 
@@ -928,7 +830,7 @@ dev.off()
 
 ## f0
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Condition!="Baseline",]
 
 png(paste0(folder1, "Tasksf0Diffboxplots.png"), width=700, height=500)
@@ -960,7 +862,7 @@ dev.off()
 
 ## speech rate
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Condition!="Baseline",]
 
 png(paste0(folder1, "TasksSRDiffboxplots.png"), width=700, height=500)
@@ -993,7 +895,7 @@ dev.off()
 
 ## articulation rate
 
-load(paste0(folder, "DataWithDiff.RData"))
+load(paste0(folder, "DataWithDifferences.RData"))
 df <- dat[dat$Condition!="Baseline",]
 
 png(paste0(folder1, "TasksARDiffboxplots.png"), width=700, height=500)
