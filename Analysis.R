@@ -24,7 +24,7 @@ cor.test(fsm2$BMI, fsm2$f0mean)
 # but this value is probably too high because there's multiple repeated BMI values (from the same person)
 # so trying a regression controlling for participant:
 
-lmer(f0mean ~ BMI + (1 | Speaker), data=fsm)
+lmer(f0IPUmean ~ BMI + (1 | Speaker), data=fsm %>% filter(!duplicated(file)))
 
 fsm <- fsm %>%
   mutate(GenderDiffF = GEPAQ.F - ConfGenderF) %>%
@@ -43,125 +43,122 @@ fsm <- fsm %>%
 # f0
 
 df <- fsm %>%
-  filter(Task == "Free") %>%
-  filter(Role == "Participant")
-
+  filter(Task == "Free", Role == "Participant") %>%
+  mutate(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
+         f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))
 
 df$Condition <- relevel(df$Condition, ref="Sitting")
 
-ggplot(df, aes(Condition, f0mean))+
+ggplot(df, aes(Condition, f0IPUz))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)
 
+ggplot(df %>% filter(abs(f0IPUz) < 2), aes(Condition, f0IPUz))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
 
-summary(m1 <- lmer(f0mean ~ Condition + (1 | Speaker), df))
-summary(m2 <- lmer(f0mean ~ Condition + Order + (1 | Speaker), df))
+plot(df$ConfGenderF, df$f0IPUz)
 
-anova(m1, m2) # order doesn't change the AIC enough
+summary(m1 <- lmer(f0IPUz ~ Condition + (1 | Speaker), df))
+summary(m2 <- lmer(f0IPUz ~ Condition + Order + (1 | Speaker), df))
 
-summary(m3 <- lmer(f0mean ~ Condition + BMI + (1 | Speaker), df %>% filter(!is.na(BMI))))
+anova(m1, m2) # order makes the model worse
 
-anova(m1, m3) # BMI doesn't change AIC much
+summary(m2 <- lmer(f0IPUz ~ Condition + BMI + (1 | Speaker), df %>% filter(!is.na(BMI))))
 
-# summary(m4 <- lmer(f0mean ~ Condition * BMI + (1 | Speaker), df %>% filter(!is.na(BMI))))
+anova(m1, m2) # BMI makes the model worse (to compare it with m1, fit m1 with %>% filter(!is.na(BMI)))
+
+# summary(m4 <- lmer(f0IPUz ~ Condition * BMI + (1 | Speaker), df %>% filter(!is.na(BMI))))
 
 # anova(m3, m4) # the interaction between condition and BMI increases AIC, so not good
 
-summary(m3 <- lmer(f0mean ~ Condition + ConfFriendly + (1 | Speaker), df))
+summary(m2 <- lmer(f0IPUz ~ Condition + ConfFriendly + (1 | Speaker), df))
 
-anova(m1, m3) # ConfFriendly didn't change the AIC (and the t value was low in the model)
+anova(m1, m2) # ConfFriendly makes the model worse
 
-summary(m3 <- lmer(f0mean ~ Condition + InterEnjoy + (1 | Speaker), df))
+summary(m2 <- lmer(f0IPUz ~ Condition + InterEnjoy + (1 | Speaker), df))
 
-anova(m1, m3) # InterEnjoy made the model worse
+anova(m1, m2) # InterEnjoy made the model worse
 
-summary(m3 <- lmer(f0mean ~ Condition * InterEnjoy + (1 | Speaker), df))
+summary(m2a <- lmer(f0IPUz ~ Condition * InterEnjoy + (1 | Speaker), df))
 
-anova(m1, m3) # the interaction between Condition and InterEnjoy also made the model worse
+anova(m2, m2a) # the interaction between Condition and InterEnjoy also made the model worse
 
-summary(m3 <- lmer(f0mean ~ Condition + ConfGenderF + (1 | Speaker), df))
+summary(m2 <- lmer(f0IPUz ~ Condition + ConfGenderF + (1 | Speaker), df))
 
-anova(m1, m3) # the more feminine they found the confederate, the lower f0 they produced, but the t value was only close to 2 (-1.842)
+anova(m1, m2) # the more feminine they found the confederate, the lower f0 they produced, but the t value was only close to 2 (-1.842)
+# but the AIC was only reduced by 1.5, do we consider it a significantly better model?
 
-summary(m3a <- lmer(f0mean ~ Condition + ConfGenderM + (1 | Speaker), df))
+summary(m2a <- lmer(f0IPUz ~ Condition + ConfGenderM + (1 | Speaker), df))
 # also, the more masculine they found the confederate, the higher their f0, but this effect is weaker
 
-summary(m3b <- lmer(f0mean ~ Condition + ConfGenderF + ConfGenderM + (1 | Speaker), df))
+summary(m2b <- lmer(f0IPUz ~ Condition + ConfGenderF + ConfGenderM + (1 | Speaker), df))
 # including both masculinity and femininity perceptions took away from their effect
-# probably because ConfGenderF and ConfGenderM are correlated
+# because ConfGenderF and ConfGenderM are correlated
 
 cor.test(df$ConfGenderF[!duplicated(df$Speaker)], df$ConfGenderM[!duplicated(df$Speaker)])
 # indeed, there's a -0.58 correlation, p = 0.004
 
 # so let's just keep ConfGenderF in the model (its effect is stronger than that of ConfGenderM)
 
-summary(m4<- lmer(f0mean ~ Condition * ConfGenderF + (1 | Speaker), df)) # the only interaction that was strong enough was of ConfGenderF with the baseline condition, which doesn't make sense because the participants hadn't seen the conf yet then
+summary(m3<- lmer(f0IPUz ~ Condition * ConfGenderF + (1 | Speaker), df)) # the only interaction that was strong enough was of ConfGenderF with the baseline condition, which doesn't make sense because the participants hadn't seen the conf yet then
 
-anova(m3, m4) # the Condition * ConfGenderF interaction made the model worse
+anova(m2, m3) # the Condition * ConfGenderF interaction improved the model in terms of AIC, BUT the only t value higher than 2 is of the intercaton between baseline and gender, which is meaningless, so let's not keep this interaction
 
-summary(m4 <- lmer(f0mean ~ Condition + ConfGenderF + TMF.F + (1 | Speaker), df))
+summary(m3 <- lmer(f0IPUz ~ Condition + ConfGenderF + TMF.F + (1 | Speaker), df))
 
-anova(m3, m4) # the participants' own gender identity didn't matter (I also tried the interaction with ConfGender and also TMF.M)
+anova(m2, m3) # the participants' own gender identity didn't matter (I also tried the interaction with ConfGender and also TMF.M)
 
-summary(m4 <- lmer(f0mean ~ Condition + GenderDiffF + (1 | Speaker), df))
+summary(m3 <- lmer(f0IPUz ~ Condition + GenderDiffF + (1 | Speaker), df))
 # the gender difference between participant and their perception of the confederate's gender had a weaker effect than just the perception (ConfGenderF)
 
-anova(m1, m4)
+anova(m2, m3)
 anova(m1, m3)
 
-summary(m4 <- lmer(f0mean ~ Condition + ConfGenderF + (1 + Condition | Speaker), df))
+summary(m4 <- lmer(f0IPUz ~ Condition + ConfGenderF + (1 + Condition | Speaker), df))
 
-anova(m3, m4, refit=FALSE) # now comparing random effects, so refit=FALSE
+anova(m2, m4, refit=FALSE) # now comparing random effects, so refit=FALSE
 # the random slope for condition per speaker makes it better
 
 # I fit a model only with ConfGenderF, without Condition, but the model was way worse!
 
-summary(m5 <- lmer(f0mean ~ Condition + ConfGenderF + breathRate + (1 + Condition | Speaker), df))
+summary(m5 <- lmer(f0IPUz ~ Condition + ConfGenderF + breathCycleDur + (1 + Condition | Speaker), df %>% filter(!is.na(breathCycleDur))))
 
-anova(m4, m5) # the mean duration of breath cycles improves the model! the longer the mean duration, the lower the f0
+anova(m4, m5) # the duration of the breath cycle makes the model worse
+# you have to fit both with df %>% filter(!is.na(breathCycleDur))
 
-# there was no interaction with condition though!
+# is m4 the final model?
 
-summary(m6 <- lmer(f0mean ~ Condition + ConfGenderF + breathCycleDurMean + (1 + Condition | Speaker), df))
+plot(fitted(m4), residuals(m4)) # seems alright!
 
-anova(m4, m6)
+qqnorm(resid(m4));qqline(resid(m4)) # it seems relatively normal I think?
+hist(resid(m4))
 
-# breathRate is also good. breathRate and breathCycleDurMean are very strongly correlated though, so we can't have both in the model
-# breathCycleDurMean has a stronger effect than breathRate, and it reduces the AIC by a tiny little bit more than breathRate
-# (keep in mind that the effect of breathRate and breathCycleDurMean are in opposite directions; they're negatively correlated)
-# so let's keep m6
 
-# so the faster they breathe (which is related to shorter)
 
-# is m6 the final model?
 
-plot(fitted(m6), residuals(m6)) # seems alright!
-
-qqnorm(resid(m6));qqline(resid(m6)) # it seems relatively normal I think?
-hist(resid(m6))
-
-# speech rate?
+# articulation rate
 
 ggplot(df, aes(Condition, speechRate))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)+
   ggtitle("Participants' speech rate")
 
-ggplot(df, aes(Condition, articRate))+
+ggplot(df, aes(Condition, speechRateIPU))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)+
   ggtitle("Participants' articulation rate")
 
-plot(df$InterEnjoy, df$articRate)
+plot(df$InterEnjoy, df$speechRateIPU)
 
-plot(df$Order, df$articRate)
+plot(df$Order, df$speechRateIPU)
 
 ggplot(fsm %>% filter(Role == "Confederate"), aes(Condition, speechRate))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)+
   ggtitle("Confederate's speech rate")
 
-ggplot(fsm %>% filter(Role == "Confederate"), aes(Condition, articRate))+
+ggplot(fsm %>% filter(Role == "Confederate"), aes(Condition, speechRateIPU))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)+
   ggtitle("Confederate's articulation rate")
@@ -169,59 +166,58 @@ ggplot(fsm %>% filter(Role == "Confederate"), aes(Condition, articRate))+
 # the confederate's articulation rate (i.e. accounting for pauses) follows a pattern that makes much more sense than speech rate (not accounting for pauses)
 # a regression shows that these differences are significant
 
-summary(s1 <- lmer(articRate ~ Condition + (1 | Speaker), df))
+summary(s1 <- lmer(speechRateIPU ~ Condition + (1 | Speaker), df))
 # slight but significant difference between conditions! except no diff between sitting and light
 
-summary(s2 <- lmer(articRate ~ Condition + BMI + (1 | Speaker),  df %>% filter(!is.na(BMI))))
+summary(s2 <- lmer(speechRateIPU ~ Condition + BMI + (1 | Speaker),  df %>% filter(!is.na(BMI))))
 # BMI not significant
 anova(s1, s2) 
 
-summary(s2 <- lmer(articRate ~ Condition + ConfFriendly + (1 | Speaker),  df))
+summary(s2 <- lmer(speechRateIPU ~ Condition + ConfFriendly + (1 | Speaker),  df))
 anova(s1, s2)
 # ConfFriendly is not significant and increases AIC
 
-summary(s2 <- lmer(articRate ~ Condition + InterEnjoy + (1 | Speaker),  df))
+summary(s2 <- lmer(speechRateIPU ~ Condition + InterEnjoy + (1 | Speaker),  df))
 anova(s1, s2)
-# InterEnjoy reduced AIC by 3.6 and has a t value of -2.404
+# InterEnjoy reduced AIC by 3 and has a t value of -2.355
 
-summary(s3 <- lmer(articRate ~ Condition * InterEnjoy + (1 | Speaker),  df))
+summary(s3 <- lmer(speechRateIPU ~ Condition * InterEnjoy + (1 | Speaker),  df))
 anova(s2, s3)
-# the Condition * InterEnjoy interaction improved the model and has a bunch of high t values
+# the Condition * InterEnjoy interaction makes the model worse
 
-summary(s4 <- lmer(articRate ~ Condition * InterEnjoy + ConfGenderF + (1 | Speaker),  df))
-anova(s3, s4)
+summary(s3 <- lmer(speechRateIPU ~ Condition + InterEnjoy + ConfGenderF + (1 | Speaker),  df))
+anova(s2, s3)
 # here ConfGenderF made the model a lot worse, and had a very low t value (same for ConfGenderM, and similar for participants' own TMF.F and .M values)
 
-summary(s4 <- lmer(articRate ~ Condition * InterEnjoy + Order + (1 | Speaker),  df))
+summary(s3 <- lmer(speechRateIPU ~ Condition + InterEnjoy + Order + (1 | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+anova(s2, s3)
+# Order improved the model: the more time into the experiment, the faster people spoke
+
+summary(s4 <- lmer(speechRateIPU ~ (Condition + Order)^2 + InterEnjoy + (1 | Speaker),  df))
 anova(s3, s4)
-# Order was very significant and improved the model: the more time into the experiment, the faster people spoke
+# no interaction between condition, order and InterEnjoy (I also tested InterEnjoy in an interaction with the other ones)
 
-summary(s5 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + (1 | Speaker),  df))
-anova(s4, s5)
-# the three-way interaction between Condition, InterEnjoy and Order improved the model a lot and gave lots of significant interactions.
-# basically:
-# the main effect of Order became negative
-# the longer into the experiment, the higher articulation rate for the heavy condition, but not for the light condition
-# the more the participants enjoyed the interaction, the higher the articulation rate got throughout the experiment
-
-summary(s6 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + breathRate + (1 | Speaker),  df))
-anova(s5, s6) # breathRate doesn't improve the model
-
-summary(s6 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + breathCycleDurMean + (1 | Speaker),  df))
-anova(s5, s6) # breathCycleDurMean improves the model! and t value = -3.27
-# the longer the mean breath cycle duration, the slower people speak
+summary(s4 <- lmer(speechRateIPU ~ Condition + InterEnjoy + Order + breathCycleDur + (1 | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+anova(s3, s4) # breathCycleDur is a good predictor: longer breath cycles = slower articulation rates
 # (makes sense! if in general they have longer exhalations, the more time they give themselves to say the things they wanna say)
 # so this would mean that if someone has more time (i.e. more breath) to speak, they won't try to fit in more information in that time, they'll just speak slower
 
-summary(s7 <- lmer(articRate ~ (Condition + InterEnjoy + Order + breathCycleDurMean)^4 + (1 | Speaker),  df))
-anova(s6, s7) # AIC actually got reduced, but it's really hard to interpret this. so let's stick with s6
+summary(s5 <- lmer(speechRateIPU ~ Condition + InterEnjoy + Order *  breathCycleDur + (1 | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+anova(s4, s5) # I've tested the interaction between breathCycleDur and all the other predictors, and none of them was good
 
-df$articRateC <- scale(df$articRate, center=TRUE, scale=TRUE)
+summary(s5 <- lmer(speechRateIPU ~ InterEnjoy + Order +  breathCycleDur + (1 | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+anova(s4, s5) # testing a model without Condition: it has slightly lower AIC , so we should keep the simpler model (without Condition)
 
-summary(s7 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + breathCycleDurMean + (1 + Condition | Speaker),  df))
-# this model shows an output but it gives convergence warnings and says the model is nearly unidentifiable;
-# I've tried rescaling articRate, and I've also done ` (0 + Condition | Speaker) + (1 | Speaker` instead of `(1 + Condition | Speaker)` (as per a suggestion here: https://stats.stackexchange.com/questions/242109/model-failed-to-converge-warning-in-lmer)
-# depending on what I try, the warnings sometimes change, but they still appear
+summary(s6 <- lmer(speechRateIPU ~ InterEnjoy + Order +  breathCycleDur + (1 | Speaker) + (1 + Order | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+anova(s5, s6, refit=FALSE) # `(1 + Order | Speaker)` makes the model worse
+# I also tried doing `(1 + Condition | Speaker)`
+
+### NOW: TRY DIFFERENT RANDOM SLOPES / RANDOM EFFECTS STRUCTURES
+summary(s6 <- lmer(speechRateIPU ~ InterEnjoy + Order +  breathCycleDur + (1 + breathCycleDur | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+
+hist(resid(s6))
+qqnorm(resid(s6));qqline(resid(s6))
+plot(fitted(s6), resid(s6))
 
 ### NOTES
 # explanation of REFIT: lmer's default method for fitting models is REML. Also, REML is the appropriate method when you want to compare models with a difference in their random effects. When comparing models differing in fixed effects, though, ML is the appropriate method.
@@ -232,6 +228,7 @@ summary(s7 <- lmer(articRate ~ (Condition + InterEnjoy + Order)^3 + breathCycleD
 # - The difference being positive or negative depends on where the participant started (higher or lower than the confederate)
 # - See if each speaker was higher or lower in baseline in comparison with Carry (just to know. Maybe there can be two groups for example)
 # - Plot Carry's f0 in comparison with speakers in each condition
+
 
 
 
