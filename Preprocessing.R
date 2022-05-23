@@ -687,11 +687,11 @@ brm <- dat[[2]]
 
 fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
 fsm <- full_join(fsm, IPUandCycles, by=c("file", "IPU"), all=TRUE)
-for(i in 1:nrow(fsm)){
-  if(is.na(fsm$breathCycleDur[i])){
-    fsm$breathCycleDur[i] <- fsm$breathCycleDur[as.numeric(fsm$IPU[i])-1 & fsm$file[i]]
-  }
-}
+# for(i in 1:nrow(fsm)){
+#   if(is.na(fsm$breathCycleDur[i])){
+#     fsm$breathCycleDur[i] <- fsm$breathCycleDur[as.numeric(fsm$IPU[i])-1 & fsm$file[i]]
+#   }
+# } # didn't work
 
 save(fsm, file=paste0(folder, "DataSpeech.RData"))
 save(brm, file=paste0(folder, "DataBreathing.RData"))
