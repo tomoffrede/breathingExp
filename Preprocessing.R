@@ -281,6 +281,9 @@ listBREATHo <- c(listBREATHf, listBREATHl, listBREATHb, listCBf)
 PV <- data.frame(matrix(ncol=3, nrow=0))
 names(PV) <- c("file", "peaks", "valleys")
 
+IPUandCycles <- data.frame(matrix(nrow=0, ncol=3))
+names(IPUandCycles) <- c("IPU", "file", "breathCycleDur")
+
 for(i in listBREATHo){
   breath <- tg.read(paste0(folder2, i))
   PV[nrow(PV)+1,] <- c(i, tg.getNumberOfPoints(breath, 1), tg.getNumberOfPoints(breath, 2))
@@ -329,7 +332,7 @@ for(i in 1:nrow(listBGf)){
                                      as.numeric(tg.getPointTime(breath, 2, t)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))),
                                      as.numeric(tg.getPointTime(breath, 1, t)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))),
                                      as.numeric(tg.getPointTime(breath, 2, t+1)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))), # next valley
-                                     NA, NA, NA, NA, NA)
+                                     NA, NA, NA, NA)
     } else if(listBGf$breath[i] %in% listCBf){ # confederate files: the audio files are already aligned to the breathing files, so no need to add anything to the times of the peaks and valleys
       PVtimes[nrow(PVtimes)+1,] <- c(substr(listBGf$breath[i], 1, 6),
                                      act,
@@ -337,7 +340,7 @@ for(i in 1:nrow(listBGf)){
                                      as.numeric(tg.getPointTime(breath, 2, t)),
                                      as.numeric(tg.getPointTime(breath, 1, t)),
                                      as.numeric(tg.getPointTime(breath, 2, t+1)), # next valley
-                                     NA, NA, NA, NA, NA)
+                                     NA, NA, NA, NA)
     }
     
   }
@@ -354,11 +357,13 @@ for(i in 1:nrow(listBGf)){
   # get number of IPUs within each cycle
   ic <- data.frame(matrix(ncol=2, nrow=0))
   names(ic) <- c("cycle", "IPU")
-  PVtimes$breathCycle <- as.factor(PVtimes$breathCycle)
-  IPUtimes$IPU <- as.factor(IPUtimes$IPU)
-  PVtimes$onset <- as.numeric(PVtimes$onset)
-  PVtimes$offset <- as.numeric(PVtimes$offset)
-  IPUtimes$start <- as.numeric(IPUtimes$start)
+  PVtimes <- PVtimes %>%
+    mutate_at(c("onset", "offset"), as.numeric) %>%
+    mutate_at("breathCycle", as.factor)
+  IPUtimes <- IPUtimes %>%
+    mutate_at("IPU", as.factor) %>%
+    mutate_at(c("start", "end"), as.numeric)
+
   for(t in 1:nrow(PVtimes)){
     for(n in 1:nrow(IPUtimes)){
       if(IPUtimes$start[n] >= PVtimes$onset[t] && IPUtimes$start[n] <= PVtimes$offset[t]){ # start of IPU before the OFFSET of the cycle: because they were annotated manually and sometimes the END of the IPU is marked as AFTER the offset of the cycle
@@ -366,7 +371,7 @@ for(i in 1:nrow(listBGf)){
       }
     }
   }
-  
+  ic$IPU <- paste0("IPU", 1:nrow(ic))
   k <- data.frame(table(ic$cycle)) # get number of IPUs per cycle
   
   for(l in 1:nrow(PVtimes)){
@@ -380,7 +385,21 @@ for(i in 1:nrow(listBGf)){
   PVtimes <- PVtimes %>% select(-c("onset", "peak", "offset", "cycleOK"))
   
   pbr1 <- rbind(pbr1, PVtimes)
+  
+  # save the length of breath cycle in which each IPU is inserted -- join this with speech dataset
+  ic <- ic %>%
+    mutate(file = substr(listBGf$breath[i], 1, 6)) %>%
+    rename(breathCycle = cycle)
+  tojoin <- PVtimes %>% select(breathCycle, cycleDur)
+  ic <- merge(ic, tojoin, by="breathCycle")
+  ic <- ic %>%
+    rename(breathCycleDur = cycleDur) %>%
+    select(-"breathCycle")
+  
+  IPUandCycles <- rbind(IPUandCycles, ic)
 }
+
+IPUandCycles$IPU <- gsub("IPU", "", IPUandCycles$IPU)
 
 pbr2 <- data.frame(matrix(ncol=8, nrow=0))
 colnames(pbr2) <- c("file", "act", "breathCycle", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "numberIPUs")
@@ -667,6 +686,7 @@ fsm <- dat[[1]]
 brm <- dat[[2]]
 
 fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
+fsm <- full_join(fsm, IPUandCycles, by=c("file", "IPU"), all=TRUE)
 
 save(fsm, file=paste0(folder, "DataSpeech.RData"))
 save(brm, file=paste0(folder, "DataBreathing.RData"))
