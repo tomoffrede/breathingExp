@@ -210,14 +210,19 @@ anova(s4, s5) # testing a model without Condition: it has slightly lower AIC , s
 
 summary(s6 <- lmer(speechRateIPU ~ InterEnjoy + Order +  breathCycleDur + (1 | Speaker) + (1 + Order | Speaker),  df %>% filter(!is.na(breathCycleDur))))
 anova(s5, s6, refit=FALSE) # `(1 + Order | Speaker)` makes the model worse
-# I also tried doing `(1 + Condition | Speaker)`
+# I also tried doing `(1 + Condition | Speaker)`, also made it worse
 
-### NOW: TRY DIFFERENT RANDOM SLOPES / RANDOM EFFECTS STRUCTURES
 summary(s6 <- lmer(speechRateIPU ~ InterEnjoy + Order +  breathCycleDur + (1 + breathCycleDur | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+anova(s5, s6, refit=FALSE)
+# if I include the random slope for breathCycleDur per speaker, AIC is reduced BUT the model has a singular fit. (and indeed, the correlation for the random effect of breathCycleDur is -1.00)
+# so let's not include this random slope
+# (I also tried with Condition instead of breathCycleDur)
 
-hist(resid(s6))
-qqnorm(resid(s6));qqline(resid(s6))
-plot(fitted(s6), resid(s6))
+# so we stick with s5?
+
+hist(resid(s5))
+qqnorm(resid(s5));qqline(resid(s5))
+plot(fitted(s5), resid(s5))
 
 ### NOTES
 # explanation of REFIT: lmer's default method for fitting models is REML. Also, REML is the appropriate method when you want to compare models with a difference in their random effects. When comparing models differing in fixed effects, though, ML is the appropriate method.
@@ -228,6 +233,140 @@ plot(fitted(s6), resid(s6))
 # - The difference being positive or negative depends on where the participant started (higher or lower than the confederate)
 # - See if each speaker was higher or lower in baseline in comparison with Carry (just to know. Maybe there can be two groups for example)
 # - Plot Carry's f0 in comparison with speakers in each condition
+
+#### look at differences between participants' and confederate's speech
+
+load(paste0(folder, "DataWithDifferences.RData"))
+
+orderCondNoBase <- c("Sitting", "Light", "Heavy")
+
+dat <- dat %>% filter(Condition != "Baseline") # there are no differences here
+
+dat$f0diffGroup <- ifelse(dat$articRateDiff[dat$Order==3] < 0, "StartNegative", "StartPositive")
+dat$ARdiffGroup <- ifelse(dat$articRateDiff[dat$Order==3] < 0, "StartNegative", "StartPositive")
+dat$BRdiffGroup <- ifelse(dat$breathRateDiff[dat$Order==3] < 0, "StartNegative", "StartPositive")
+dat$cyclediffGroup <- ifelse(dat$breathCycleDurDiff[dat$Order==3] < 0, "StartNegative", "StartPositive")
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+
+# f0 difference
+
+ggplot(dat %>% filter(f0diffGroup == "StartNegative"), aes(Condition, f0meanDiff))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat, aes(Condition, abs(f0meanDiff)))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat %>% filter(f0diffGroup == "StartNegative"), aes(Order, f0meanDiff))+
+  geom_point()
+
+summary(fd1 <- lmer(f0meanDiff ~ Condition + (1 | Speaker), dat %>% filter(f0diffGroup == "StartNegative")))
+
+summary(fd2 <- lmer(f0meanDiff ~ Condition + Order + (1 | Speaker), dat %>% filter(f0diffGroup == "StartNegative")))
+anova(fd1, fd2) # order doesn't improve it: participants didn't get closer to the confederate throughout the experiment
+# I've also tried adding a bunch of other predictors here, but none of them were significant or improved the model
+# I've also tried adding a random slope for condition but the dataset doesn't have enough observations for that
+# So condition is only good predictor -- not because people changed their speech much, but because the confederate had higher f0 with each condition, so the difference increased
+
+hist(resid(fd1))
+qqnorm(resid(fd1));qqline(resid(fd1))
+plot(fitted(fd1), resid(fd1))
+# weird residuals at around -100 (on the x axis) -- maybe because of the speaker DKG
+
+# articulation rate difference
+
+ggplot(dat %>% filter(ARdiffGroup == "StartNegative"), aes(Condition, articRateDiff))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat, aes(Condition, abs(articRateDiff)))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat %>% filter(ARdiffGroup == "StartNegative"), aes(Order, articRateDiff))+
+  geom_point()
+
+
+summary(ad1 <- lmer(articRateDiff ~ Condition + (1 | Speaker), dat %>% filter(ARdiffGroup == "StartNegative")))
+summary(ad2 <- lmer(articRateDiff ~ Condition + InterEnjoy + (1 | Speaker), dat %>% filter(ARdiffGroup == "StartNegative")))
+anova(ad1, ad2) # the more they enjoyed the interaction, the more negative (i.e. larger) the difference in articulation rate
+# I tried a bunch of other predictors but none of them were good
+
+summary(ad3 <- lmer(articRateDiff ~ Condition * InterEnjoy + (1 | Speaker), dat %>% filter(ARdiffGroup == "StartNegative")))
+anova(ad2, ad3) # the interaction isn't good
+
+hist(resid(ad2))
+qqnorm(resid(ad2));qqline(resid(ad2))
+plot(fitted(ad2), resid(ad2))
+
+# breathing rate difference
+
+ggplot(dat %>% filter(BRdiffGroup == "StartNegative"), aes(Condition, breathRateDiff))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat, aes(Condition, abs(breathRateDiff)))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat %>% filter(BRdiffGroup == "StartNegative"), aes(Order, breathRateDiff))+
+  geom_point()
+
+ggplot(dat %>% filter(BRdiffGroup == "StartPositive"), aes(Condition, breathRateDiff))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat %>% filter(BRdiffGroup == "StartPositive"), aes(Order, breathRateDiff))+
+  geom_point()
+
+summary(bd1n <- lmer(breathRateDiff ~ Condition + (1 | Speaker), dat %>% filter(BRdiffGroup == "StartNegative")))
+summary(bd2n <- lmer(breathRateDiff ~ Condition + Order + (1 | Speaker), dat %>% filter(BRdiffGroup == "StartNegative")))
+anova(bd1n, bd2n) # made the model worse: Order, ConfFriendly, InterEnjoy, ConfGenderF
+
+hist(resid(bd1))
+qqnorm(resid(bd1));qqline(resid(bd1))
+plot(fitted(bd1), resid(bd1))
+
+summary(bd1p <- lmer(breathRateDiff ~ Condition + (1 | Speaker), dat %>% filter(BRdiffGroup == "StartPositive")))
+
+hist(resid(bd1))
+qqnorm(resid(bd1));qqline(resid(bd1))
+plot(fitted(bd1), resid(bd1))
+
+# difference between strength of each condition's effect on StartPositive vs StartNegative groups
+# caveat: there are only four speaker in the StartPositive group
+
+# again, the difference in conditions is because the participants stayed mostly constant in their breathing while the confederate changed a lot
+
+# breath cycle duration mean
+
+
+ggplot(dat %>% filter(cyclediffGroup == "StartNegative"), aes(Condition, breathCycleDurDiff))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat, aes(Condition, abs(breathCycleDurDiff)))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat %>% filter(cyclediffGroup == "StartNegative"), aes(Order, breathCycleDurDiff))+
+  geom_point()
+
+ggplot(dat %>% filter(cyclediffGroup == "StartPositive"), aes(Condition, breathCycleDurDiff))+
+  geom_point()+
+  scale_x_discrete(limits = orderCondNoBase)
+
+ggplot(dat %>% filter(cyclediffGroup == "StartPositive"), aes(Order, breathCycleDurDiff))+
+  geom_point()
+
+summary(cd1n <- lmer(breathCycleDurDiff ~ Condition + (1 | Speaker), dat %>% filter(cyclediffGroup == "StartNegative")))
+summary(cd1p <- lmer(breathCycleDurDiff ~ Condition + (1 | Speaker), dat %>% filter(cyclediffGroup == "StartPositive")))
+
+# I don't even know how to interpret this, I don't think this means anything to us
+
+
 
 
 
