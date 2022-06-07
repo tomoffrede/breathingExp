@@ -1,6 +1,6 @@
 library(lme4)
 library(tidyverse)
-library(influence.ME)
+# library(influence.ME)
 
 folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 
@@ -116,7 +116,11 @@ anova(m2, m3)
 anova(m1, m3)
 
 summary(m4 <- lmer(f0IPUz ~ Condition + ConfGenderF + (1 + Condition | Speaker), df))
+summary(m4a <- lmer(f0IPUz ~ ConfGenderF + (1 + Condition | Speaker), df))
+summary(m4b <- lmer(f0IPUz ~ ConfGenderF + (1 | Speaker), df))
 
+anova(m4, m4a)
+anova(m4a, m4b, refit=FALSE)
 anova(m2, m4, refit=FALSE) # now comparing random effects, so refit=FALSE
 # the random slope for condition per speaker makes it better
 
@@ -365,11 +369,3 @@ summary(cd1n <- lmer(breathCycleDurDiff ~ Condition + (1 | Speaker), dat %>% fil
 summary(cd1p <- lmer(breathCycleDurDiff ~ Condition + (1 | Speaker), dat %>% filter(cyclediffGroup == "StartPositive")))
 
 # I don't even know how to interpret this, I don't think this means anything to us
-
-
-
-
-
-
-
-
