@@ -1,7 +1,7 @@
 library(lme4)
 library(tidyverse)
-library(influence.ME)
-library(MASS)
+# library(influence.ME)
+# library(MASS)
 
 folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 
@@ -28,7 +28,7 @@ dat <- brm %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
-  mutate(across(act, factor, levels=c("watching","listening ")))
+  mutate(across(act, factor, levels=c("watching","listening")))
 
 dat$Condition <- relevel(dat$Condition, ref = "Sitting")
 dat$act <- relevel(dat$act, ref = "watching")
@@ -54,7 +54,7 @@ anova(m1, m2)
 # act improved the model a lot: listening has higher breath rates than watching
 
 # so is the model better without Condition?
-summary(m2a <- lmer(breathRate ~ act + (1|Speaker), dat))
+summary(m2a <- lmer(breathRate ~ act + (1 + act|Speaker), dat))
 anova(m2, m2a)
 # the model is better without condition
 
@@ -104,7 +104,8 @@ ggplot(dat, aes(act, cycleDur))+
   geom_boxplot()
 
 ggplot(dat, aes(breathCycle, cycleDur))+
-  geom_point()
+  geom_point()+
+  facet_wrap(~act)
 
 ggplot(dat, aes(act, cycleDur))+
   geom_boxplot()+
@@ -210,17 +211,16 @@ ggplot(dat, aes(Condition, cycleDur))+
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
-# START ANALYSIS
-
-summary(c1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+summary(c1 <- lmer(logCycleDur ~ Condition + (1 | Speaker), dat))
 
 # sitting = baseline, but light and heavy have higher cycle durations
 
-summary(c2 <- lmer(cycleDur ~ Condition + (1 + Condition | Speaker), dat))
+summary(c2 <- lmer(logCycleDur ~ Condition + (1 + Condition | Speaker), dat))
 anova(c1, c2, refit=FALSE)
 # the t values are now below 2, but the AIC is considerably lower
+# but now there's a singularity issue!
 
-summary(c3 <- lmer(cycleDur ~ Condition + TMF.F + (1 + Condition | Speaker), dat))
+summary(c3 <- lmer(logCycleDur ~ Condition + TMF.F + (1 + Condition | Speaker), dat))
 anova(c2, c3) # didn't improve the model: BMI, ConfFriendly, ConfGenderF, InterEnjoy, TMF.F
 
 plot(fitted(c2), resid(c2))
@@ -251,28 +251,27 @@ dat$Condition <- relevel(dat$Condition, ref = "Sitting")
 
 dat$numberIPUs <- as.factor(dat$numberIPUs)
 
-summary(n1 <- polr(numberIPUs ~ Condition, data=dat, Hess=TRUE))
+summary(n1 <- MASS::polr(numberIPUs ~ Condition, data=dat, Hess=TRUE))
 
-summary(n2 <- polr(numberIPUs ~ Condition + breathCycle, data=dat, Hess=TRUE))
+summary(n2 <- MASS::polr(numberIPUs ~ Condition + breathCycle, data=dat, Hess=TRUE))
 
 # without condition
-summary(n2a <- polr(numberIPUs ~ breathCycle, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
+summary(n2a <- MASS::polr(numberIPUs ~ breathCycle, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
 # lower AIC!
 
-summary(n3 <- polr(numberIPUs ~ breathCycle + TMF.F, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
+summary(n3 <- MASS::polr(numberIPUs ~ breathCycle + TMF.F, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
 # not good predictors: ConfGenderF, ConfFriendly, TMF.F
 
-summary(n3 <- polr(numberIPUs ~ breathCycle + BMI, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
+summary(n3 <- MASS::polr(numberIPUs ~ breathCycle + BMI, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
 # BMI reduced the AIC
 # the higher the BMI, the fewer IPUs in the cycle (this isn't related to breath cycle duration (see analysis above),
 # but could be because the higher the BMI, the less amplitude of breath you have available)
 
-summary(n4 <- polr(numberIPUs ~ breathCycle + BMI + InterEnjoy, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
+summary(n4 <- MASS::polr(numberIPUs ~ breathCycle + BMI + InterEnjoy, data=dat %>% filter(!is.na(BMI)), Hess=TRUE))
 # InterEnjoy also improved the model
 # the more they enjoyed the interaction, the more IPUs they had in each breath cycle
 # this can be explained by difference in speech rate (see speech rate analysis): the more they enjoyed the interaction, the faster they spoke
 # (this isn't related to cycle length; see analysis above)
-
 
 
 ## BUT THIS DOESN'T HAVE RANDOM EFFECTS!!
