@@ -177,7 +177,7 @@ for(i in 1:nrow(listTxg)){
     mutate(f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
     mutate(f0mean = ifelse(abs(f0z) > 2, NA, f0mean)) %>% # I don't want to use the IPUs with outlier f0mean, but I don't want to completely delete those IPUs from the dataset because they'll still be joined with the speech rate information. So just turn them into NA here.
     mutate(f0IPUmean = mean(f0mean, na.rm=TRUE))
-  f <- merge(f0perIPU, IPUtimes %>% select("IPU", "label"), by="IPU")
+  f <- merge(f0perIPU, IPUtimes %>% select(IPU, label), by="IPU")
   ff <- rbind(ff, f)
 }
 
@@ -297,10 +297,11 @@ listBGf <- listBGf %>% filter(breath %in% pointsok) # make sure to get only the 
 listBREATHlb <- listBREATHlb[listBREATHlb %in% pointsok]
 listBREATHo <- listBREATHo[listBREATHo %in% pointsok]
 
-pbr1 <- data.frame(matrix(ncol=8, nrow=0))
-colnames(pbr1) <- c("file", "act", "breathCycle", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "numberIPUs")
+pbr1 <- data.frame(matrix(ncol=11, nrow=0))
+colnames(pbr1) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "numberIPUs")
 
-# i=88
+
+# i=71
 
 for(i in 1:nrow(listBGf)){
   act <- "speaking"
@@ -382,7 +383,7 @@ for(i in 1:nrow(listBGf)){
     }
   }
   
-  PVtimes <- PVtimes %>% select(-c("onset", "peak", "offset", "cycleOK"))
+  PVtimes <- PVtimes %>% select(-c("cycleOK"))
   
   pbr1 <- rbind(pbr1, PVtimes)
   
@@ -401,8 +402,8 @@ for(i in 1:nrow(listBGf)){
 
 IPUandCycles$IPU <- gsub("IPU", "", IPUandCycles$IPU)
 
-pbr2 <- data.frame(matrix(ncol=8, nrow=0))
-colnames(pbr2) <- c("file", "act", "breathCycle", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "numberIPUs")
+pbr2 <- data.frame(matrix(ncol=11, nrow=0))
+colnames(pbr2) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "numberIPUs")
 
 # i="HF-ATN007_SUM_200_breathL_wav.TextGrid"
 
@@ -437,7 +438,7 @@ for(i in listBREATHlb){ # list with the listening part of the free spech files a
   PVtimes$breathCycleDurMean <- mean(PVtimes$cycleDur)
   PVtimes$breathRate <- (nrow(PVtimes) / ((PVtimes$offset[nrow(PVtimes)] - PVtimes$onset[1]) / 60)) # breathing rate = number of cycles / time from first to last valley divided by 60 (to turn into minutes)
   
-  PVtimes <- PVtimes %>% select(-c("onset", "peak", "offset", "cycleOK"))
+  PVtimes <- PVtimes %>% select(-c("cycleOK"))
   
   pbr2 <- rbind(pbr2, PVtimes)
 }
@@ -693,8 +694,17 @@ fsm <- full_join(fsm, IPUandCycles, by=c("file", "IPU"), all=TRUE)
 #   }
 # } # didn't work
 
+# in SF-WJH f0IPUmean is NA, so fix that:
+unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
+fsm$f0IPUmean[fsm$file=="SF-WJH"] <- unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
+
 save(fsm, file=paste0(folder, "DataSpeech.RData"))
 save(brm, file=paste0(folder, "DataBreathing.RData"))
+
+# for Susanne
+brm <- brm %>% filter(Speaker=="Confederate")
+write.csv(brm, file=paste0(folder, "ConfederateBreathingData.csv"))
+###
 
 # #####
 
