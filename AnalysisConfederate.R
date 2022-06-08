@@ -132,4 +132,4 @@ summary(n3 <- MASS::polr(numberIPUs ~ Condition * breathCycle, data=dat, Hess=TR
 AIC(n1, n2)
 AIC(n2, n3)
 
-# n3 wins!10292.33
+# n3 wins!

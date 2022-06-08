@@ -124,19 +124,20 @@ anova(m4a, m4b, refit=FALSE)
 anova(m2, m4, refit=FALSE) # now comparing random effects, so refit=FALSE
 # the random slope for condition per speaker makes it better
 
-# I fit a model only with ConfGenderF, without Condition, but the model was way worse!
+# the model without condition as a fixed effect is better
+# but the one without condition as a fixed effect BUT with random slope for condition was better than without it
 
 summary(m5 <- lmer(f0IPUz ~ Condition + ConfGenderF + breathCycleDur + (1 + Condition | Speaker), df %>% filter(!is.na(breathCycleDur))))
 
 anova(m4, m5) # the duration of the breath cycle makes the model worse
 # you have to fit both with df %>% filter(!is.na(breathCycleDur))
 
-# is m4 the final model?
+# is m4a the final model?
 
-plot(fitted(m4), residuals(m4)) # seems alright!
+plot(fitted(m4), residuals(m4)) # is this alright?
 
-qqnorm(resid(m4));qqline(resid(m4)) # it seems relatively normal I think?
-hist(resid(m4))
+qqnorm(resid(m4a));qqline(resid(m4a)) # it seems relatively normal I think?
+hist(resid(m4a))
 
 
 
