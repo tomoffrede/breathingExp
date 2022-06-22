@@ -42,6 +42,13 @@ summary(dat$TMF.F); print(paste("SD:", sd(dat$TMF.F)))
 ```{r, echo=FALSE}
 summary(dat$TMF.M); print(paste("SD:", sd(dat$TMF.M)))
 ```
+### Correlation between gender scales
+```{r, echo=FALSE}
+cor.test(dat$TMF.F, dat$GEPAQ.F)
+cor.test(dat$TMF.M, dat$GEPAQ.M)
+```
+
+
 ## BMI
 
 ```{r, echo=FALSE}
