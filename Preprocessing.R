@@ -19,6 +19,7 @@
 library(rPraat) # to work with TextGrids
 library(tidyverse)
 library(sylly.de) # for counting syllables
+library(tuneR) # to read WAV (breathing) file
 
 folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
 `%!in%` <- Negate(`%in%`)
@@ -235,6 +236,7 @@ folder2 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysi
 # participants: 
 
 listBREATH <- list.files(folder2, pattern="SUM")
+listWAVpf <- listBREATH[grepl("wav", listBREATH) & !grepl("TextGrid", listBREATH) & substr(listBREATH, 2, 2)=="F" & !grepl("breathL", listBREATH)]
 listBREATH <- listBREATH[grepl("TextGrid", listBREATH)]
 listBREATHr <- listBREATH[substr(listBREATH, 2, 2)=="R"]
 listBREATHf <- listBREATH[substr(listBREATH, 2, 2)=="F" & !grepl("breathL", listBREATH)]
@@ -248,11 +250,15 @@ listTGf <- listTG[substr(listTG, 2, 2)=="F"]
 listTGf <- listTGf[substr(listTGf, 1, 6) %in% substr(listBREATHf, 1, 6)]
 listBREATHf <- listBREATHf[substr(listBREATHf, 1, 6) %in% substr(listTGf, 1, 6)]
 
-listPBGf <- as.data.frame(cbind(listBREATHf, listTGf))
-colnames(listPBGf) <- c("breath", "tg")
-listPBGf$worked[substr(listPBGf$breath, 1, 6)==substr(listPBGf$tg, 1, 6)] <- "worked!"
-listPBGf$worked[substr(listPBGf$breath, 1, 6)!=substr(listPBGf$tg, 1, 6)] <- "NO!!!!!!!!!"
-table(listPBGf$worked) # make sure all the TXT and Textgrid files are matching in each row
+listPBGf0 <- as.data.frame(cbind(listBREATHf, listTGf))
+listPBGf <- as.data.frame(cbind(listPBGf0, listWAVpf))
+colnames(listPBGf) <- c("breath", "tg", "wav")
+listPBGf$workedTGs[substr(listPBGf$breath, 1, 6)==substr(listPBGf$tg, 1, 6)] <- "worked!"
+listPBGf$workedTGs[substr(listPBGf$breath, 1, 6)!=substr(listPBGf$tg, 1, 6)] <- "NO!!!!!!!!!"
+listPBGf$workedwav[substr(listPBGf$breath, 1, 6)==substr(listPBGf$wav, 1, 6)] <- "worked!"
+listPBGf$workedwav[substr(listPBGf$breath, 1, 6)!=substr(listPBGf$wav, 1, 6)] <- "NO!!!!!!!!!"
+table(listPBGf$workedTGs) # make sure all the TXT and Textgrid files are matching in each row
+table(listPBGf$workedwav) # make sure all the TXT and Textgrid files are matching in each row
 
 # confederate:
 
@@ -272,7 +278,7 @@ listCBGf$worked[substr(listCBGf$breath, 1, 6)!=substr(listCBGf$tg, 1, 6)] <- "NO
 table(listCBGf$worked) # make sure all the TXT and Textgrid files are matching in each row
 
 listBGf <- rbind(listPBGf, listCBGf)
-listBREATHo <- c(listBREATHf, listBREATHl, listBREATHb, listCBf)
+listBREATHo <- c(listBREATHf, listBREATHl, listBREATHb, listCBf, listBREATHr)
 
 ### GETTING DURATION OF BREATHING CYCLES AND BREATHING RATE
 
@@ -297,16 +303,28 @@ listBGf <- listBGf %>% filter(breath %in% pointsok) # make sure to get only the 
 listBREATHlb <- listBREATHlb[listBREATHlb %in% pointsok]
 listBREATHo <- listBREATHo[listBREATHo %in% pointsok]
 
-pbr1 <- data.frame(matrix(ncol=11, nrow=0))
-colnames(pbr1) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "numberIPUs")
+pbr1 <- data.frame(matrix(ncol=13, nrow=0))
+colnames(pbr1) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "inhalAmp", "inhalDur", "numberIPUs")
 
+durationsOK <- data.frame(matrix(ncol=2, nrow=0))
+names(durationsOK) <- c("file", "sameDurations")
 
 # i=71
+
+########### TO DO!!!!!!!
+# include the wav list in listBGf (so far I only included in listPBGf, not sure if it's already included here. for sure not the conf's wav files)
+###########
 
 for(i in 1:nrow(listBGf)){
   act <- "speaking"
   breath <- tg.read(paste0(folder2, listBGf$breath[i]))
   tg <- tg.read(paste0(folder, listBGf$tg[i]), encoding=detectEncoding(paste0(folder, listBGf$tg[i])))
+  b <- (w <- readWave(paste0(folder2, lisBGf$wav[i])))@left
+  b <- (b - min(b)) / (max(b) - min(b))
+  
+  ifelse(length(w@left)/w@samp.rate==tg.getTotalDuration(breath), # keep a file to make sure that all durations of wave and textgrid are the same
+         durationsOK[nrow(durationsOK)+1] <- c(substr(listBGf$breath[i], 1, 6), "OK!"),
+         durationsOK[nrow(durationsOK)+1] <- c(substr(listBGf$breath[i], 1, 6), "NO!!!!!!!"))
 
   # get onset and offset of each interval (IPU)
   IPUtimes <- data.frame(matrix(ncol=4, nrow=0))
@@ -322,9 +340,9 @@ for(i in 1:nrow(listBGf)){
     # filter(start >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))) # exclude everything before the "task" section ---- UPDATE: no need to do this because we'll only get the IPUs within the breathing cycles, and those are already correct
   IPUtimes$IPU <- paste0("IPU", 1:nrow(IPUtimes))
 
-  # get time of each point (peaks and valleys)
-  PVtimes <- data.frame(matrix(ncol=10, nrow=0))
-  colnames(PVtimes) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate")
+  # get time of each point (peaks and valleys) and inhalation amplitude and duration for each cycle
+  PVtimes <- data.frame(matrix(ncol=12, nrow=0))
+  colnames(PVtimes) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "inhalAmp", "inhalDur")
   for(t in 1:(tg.getNumberOfPoints(breath, 2)-1)){ # number of valleys minus one (the last valley is only counted as offset of its previous cycle)
     if(listBGf$breath[i] %in% listBREATHf){ # for participants: to the time of each peak/valley, add the time between beginning of tg and the interval called "breathS"
       PVtimes[nrow(PVtimes)+1,] <- c(substr(listBGf$breath[i], 1, 6),
@@ -333,7 +351,10 @@ for(i in 1:nrow(listBGf)){
                                      as.numeric(tg.getPointTime(breath, 2, t)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))),
                                      as.numeric(tg.getPointTime(breath, 1, t)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))),
                                      as.numeric(tg.getPointTime(breath, 2, t+1)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))), # next valley
-                                     NA, NA, NA, NA)
+                                     NA, NA, NA, NA,
+                                     b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate], # inhalation amplitude
+                                     NA)
+      
     } else if(listBGf$breath[i] %in% listCBf){ # confederate files: the audio files are already aligned to the breathing files, so no need to add anything to the times of the peaks and valleys
       PVtimes[nrow(PVtimes)+1,] <- c(substr(listBGf$breath[i], 1, 6),
                                      act,
@@ -341,7 +362,9 @@ for(i in 1:nrow(listBGf)){
                                      as.numeric(tg.getPointTime(breath, 2, t)),
                                      as.numeric(tg.getPointTime(breath, 1, t)),
                                      as.numeric(tg.getPointTime(breath, 2, t+1)), # next valley
-                                     NA, NA, NA, NA)
+                                     NA, NA, NA, NA,
+                                     b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate], # inhalation amplitude
+                                     NA)
     }
     
   }
@@ -354,6 +377,7 @@ for(i in 1:nrow(listBGf)){
   PVtimes$numberBreathCycles <- nrow(PVtimes)
   PVtimes$breathCycleDurMean <- mean(PVtimes$cycleDur)
   PVtimes$breathRate <- (nrow(PVtimes) / ((PVtimes$offset[nrow(PVtimes)] - PVtimes$onset[1]) / 60)) # breathing rate = number of cycles / time from first to last valley divided by 60 (to turn into minutes)
+  PVtimes$inhalDur <- PVtimes$peak - PVtimes$onset
   
   # get number of IPUs within each cycle
   ic <- data.frame(matrix(ncol=2, nrow=0))
@@ -399,6 +423,8 @@ for(i in 1:nrow(listBGf)){
   
   IPUandCycles <- rbind(IPUandCycles, ic)
 }
+
+table(durationsOK$sameDurations)
 
 IPUandCycles$IPU <- gsub("IPU", "", IPUandCycles$IPU)
 
