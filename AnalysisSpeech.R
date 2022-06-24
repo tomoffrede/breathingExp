@@ -45,8 +45,17 @@ fsm <- fsm %>%
 
 df <- fsm %>%
   filter(Task == "Free", Role == "Participant") %>%
+  group_by(Speaker)%>%
   mutate(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
-         f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))
+         f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))%>%
+  ungroup()
+
+  
+  #%>%
+  # mutate(Condition = ifelse(Condition %in% c("Light", "Heavy"), "Biking", ifelse(Condition=="Sitting", "Sitting", "Baseline")),
+  #        Condition = as.factor(Condition))
+
+  # (I also tried conflating the two biking conditions, but this didn't change the result)
 
 df$Condition <- relevel(df$Condition, ref="Sitting")
 
@@ -140,7 +149,7 @@ anova(m4, m5)
 # and it goes in the direction expected (higher breathing rate = higher f0)
 
 summary(m5a <- lmer(f0IPUz ~ ConfGenderF + breathRate + (1 + Condition | Speaker), df))
-anova(m5a, m5, refit=FALSE)
+anova(m5a, m5)
 # the model without Condition is better
 
 # maybe m5a is the best model
@@ -384,7 +393,7 @@ summary(cd1p <- lmer(breathCycleDurDiff ~ Condition + (1 | Speaker), dat %>% fil
 
 dat <- fsm %>%
   filter(Role=="Participant", Task=="Free") %>%
-  filter(!duplicated(file))
+  filter(!duplicated(file)) %>%
 
 dat$conditionChange[dat$Condition=="Sitting"] <- "BS"
 dat$conditionChange[dat$Condition=="Light"] <- "SL"
