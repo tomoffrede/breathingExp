@@ -50,7 +50,6 @@ df <- fsm %>%
          f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))%>%
   ungroup()
 
-  
   #%>%
   # mutate(Condition = ifelse(Condition %in% c("Light", "Heavy"), "Biking", ifelse(Condition=="Sitting", "Sitting", "Baseline")),
   #        Condition = as.factor(Condition))
@@ -152,6 +151,9 @@ summary(m5a <- lmer(f0IPUz ~ ConfGenderF + breathRate + (1 + Condition | Speaker
 anova(m5a, m5)
 # the model without Condition is better
 
+summary(m6 <- lmer(f0IPUz ~ ConfGenderF + breathRate + inhalDur + (1 + Condition | Speaker), df))
+anova(m5a, m6) # also tried inhalAmp, neither is good
+
 # maybe m5a is the best model
 
 plot(fitted(m5a), residuals(m5a)) # is this alright?
@@ -241,11 +243,15 @@ anova(s5, s6, refit=FALSE)
 # so let's not include this random slope
 # (I also tried with Condition instead of breathCycleDur)
 
+summary(s6 <- lmer(speechRateIPU ~ InterEnjoy + Order +  breathCycleDur + inhalAmp + (1 | Speaker),  df %>% filter(!is.na(breathCycleDur))))
+anova(s5, s6) # inhalDur and inhalAmp not good
+
 # so we stick with s5?
 
 hist(resid(s5))
 qqnorm(resid(s5));qqline(resid(s5))
 plot(fitted(s5), resid(s5))
+
 
 ### NOTES
 # explanation of REFIT: lmer's default method for fitting models is REML. Also, REML is the appropriate method when you want to compare models with a difference in their random effects. When comparing models differing in fixed effects, though, ML is the appropriate method.
@@ -391,9 +397,19 @@ summary(cd1p <- lmer(breathCycleDurDiff ~ Condition + (1 | Speaker), dat %>% fil
 
 # Change in participants' f0 and breath rate
 
-dat <- fsm %>%
+{dat <- fsm %>%
   filter(Role=="Participant", Task=="Free") %>%
   filter(!duplicated(file)) %>%
+  group_by(file) %>%
+  mutate(inhalAmpMean = mean(inhalAmp),
+         inhalDurMean = mean(inhalDur)) %>%
+  ungroup() %>%
+  mutate(conditionChange = NA,
+         f0Change = NA,
+         breathRateChange = NA,
+         speechRateChange = NA,
+         inhalDurChange = NA,
+         inhalAmpChange = NA)
 
 dat$conditionChange[dat$Condition=="Sitting"] <- "BS"
 dat$conditionChange[dat$Condition=="Light"] <- "SL"
@@ -409,6 +425,12 @@ for(i in dat$Speaker){
   dat$speechRateChange[dat$Speaker==i & dat$conditionChange=="BS"] <- dat$articRate[dat$Condition=="Sitting" & dat$Speaker==i] - dat$articRate[dat$Condition=="Baseline" & dat$Speaker==i]
   dat$speechRateChange[dat$Speaker==i & dat$conditionChange=="SL"] <- dat$articRate[dat$Condition=="Light" & dat$Speaker==i] - dat$articRate[dat$Condition=="Sitting" & dat$Speaker==i]
   dat$speechRateChange[dat$Speaker==i & dat$conditionChange=="LH"] <- dat$articRate[dat$Condition=="Heavy" & dat$Speaker==i] - dat$articRate[dat$Condition=="Light" & dat$Speaker==i]
+  dat$inhalDurChange[dat$Speaker==i & dat$conditionChange=="BS"] <- dat$inhalDurMean[dat$Condition=="Sitting" & dat$Speaker==i] - dat$inhalDurMean[dat$Condition=="Baseline" & dat$Speaker==i]
+  dat$inhalDurChange[dat$Speaker==i & dat$conditionChange=="SL"] <- dat$inhalDurMean[dat$Condition=="Light" & dat$Speaker==i] - dat$inhalDurMean[dat$Condition=="Sitting" & dat$Speaker==i]
+  dat$inhalDurChange[dat$Speaker==i & dat$conditionChange=="LH"] <- dat$inhalDurMean[dat$Condition=="Heavy" & dat$Speaker==i] - dat$inhalDurMean[dat$Condition=="Light" & dat$Speaker==i]
+  dat$inhalAmpChange[dat$Speaker==i & dat$conditionChange=="BS"] <- dat$inhalAmpMean[dat$Condition=="Sitting" & dat$Speaker==i] - dat$inhalAmpMean[dat$Condition=="Baseline" & dat$Speaker==i]
+  dat$inhalAmpChange[dat$Speaker==i & dat$conditionChange=="SL"] <- dat$inhalAmpMean[dat$Condition=="Light" & dat$Speaker==i] - dat$inhalAmpMean[dat$Condition=="Sitting" & dat$Speaker==i]
+  dat$inhalAmpChange[dat$Speaker==i & dat$conditionChange=="LH"] <- dat$inhalAmpMean[dat$Condition=="Heavy" & dat$Speaker==i] - dat$inhalAmpMean[dat$Condition=="Light" & dat$Speaker==i]
 }
 
 dat <- filter(dat, !is.na(conditionChange))
@@ -422,6 +444,11 @@ datNb <- dat %>% filter(breathRateChange < 0)
 datPs <- dat %>% filter(speechRateChange >= 0)
 datNs <- dat %>% filter(speechRateChange < 0)
 
+datPd <- dat %>% filter(inhalDurChange >= 0)
+datNd <- dat %>% filter(inhalDurChange < 0)
+
+datPa <- dat %>% filter(inhalAmpChange >= 0)
+datNa <- dat %>% filter(inhalAmpChange < 0)}
 
 ggplot(dat, aes(conditionChange, f0Change))+
   geom_boxplot()+
@@ -468,6 +495,36 @@ ggplot(datNs, aes(conditionChange, speechRateChange))+
   geom_point()+
   scale_x_discrete(limits = orderChange)
 
+ggplot(dat, aes(conditionChange, inhalDurChange))+
+  geom_boxplot()+
+  geom_point()+
+  scale_x_discrete(limits = orderChange)
+
+ggplot(datPs, aes(conditionChange, inhalDurChange))+
+  geom_boxplot()+
+  geom_point()+
+  scale_x_discrete(limits = orderChange)
+
+ggplot(datNs, aes(conditionChange, inhalDurChange))+
+  geom_boxplot()+
+  geom_point()+
+  scale_x_discrete(limits = orderChange)
+
+ggplot(dat, aes(conditionChange, inhalAmpChange))+
+  geom_boxplot()+
+  geom_point()+
+  scale_x_discrete(limits = orderChange)
+
+ggplot(datPs, aes(conditionChange, inhalAmpChange))+
+  geom_boxplot()+
+  geom_point()+
+  scale_x_discrete(limits = orderChange)
+
+ggplot(datNs, aes(conditionChange, inhalAmpChange))+
+  geom_boxplot()+
+  geom_point()+
+  scale_x_discrete(limits = orderChange)
+
 ggplot(dat, aes(f0Change, breathRateChange))+
   geom_point()
 
@@ -490,6 +547,9 @@ anova(v2a, v3) # didn't improve the model: InterEnjoy, ConfFriendly, ConfGenderF
 
 summary(v3 <- lmer(f0Change ~ breathRateChange + speechRateChange + (1 | Speaker), dat))
 anova(v2a, v3)
+
+summary(v4 <- lmer(f0Change ~ breathRateChange + speechRateChange + inhalAmpChange + (1 | Speaker), dat))
+anova(v3, v4) # inhalAmpChange and inhalDurChange not good
 
 hist(resid(v3))
 qqnorm(resid(v3));qqline(resid(v3))
