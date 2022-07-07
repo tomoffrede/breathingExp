@@ -108,6 +108,8 @@ listTXTf <- listTXT[substr(listTXT, 2, 2)=="F" | listTXT %in% confF]
 confRA <- c("H-Hirsch_alone.txt", "H-Pferd_alone.txt", "H-Schwalbe_alone.txt", "L-Hirsch_alone.txt", "L-Pferd_alone.txt", "L-Schwalbe_alone.txt", "S-Hirsch_alone.txt", "S-Pferd_alone.txt", "S-Schwalbe_alone.txt")
 confRJ <- c("H-Hirsch_joint.txt", "H-Pferd_joint.txt", "H-Schwalbe_joint.txt", "L-Hirsch_joint.txt", "L-Pferd_joint.txt", "L-Schwalbe_joint.txt", "S-Hirsch_joint.txt", "S-Pferd_joint.txt", "S-Schwalbe_joint.txt")
 f <- c("BF", "HF", "LF", "SF")
+readB <- listTXT[substr(listTXT, 1, 2) == "BR"]
+readB <- readB[!grepl("HIRSCH", readB) & !grepl("PFERD", readB) & !grepl("SCHWALBE", readB)]
 readJ <- list.files(folder, pattern="joint.txt")
 readJ <- readJ[substr(readJ, 2, 2) != "-"]
 readA <- list.files(folder, pattern="alone.txt")
@@ -117,12 +119,25 @@ listTG <- list.files(folder, pattern=".TextGrid")
 listTG <- listTG[!grepl("_VUV", listTG)]
 confFtg <- listTG[grepl("Home", listTG)|grepl("Hobbies", listTG)|grepl("Holidays", listTG)]
 listTGf <- listTG[substr(listTG, 2, 2)=="F" | listTG %in% confFtg]
+listTGRBTask <- listTG[grepl("Task", listTG)] # baseline recordings have a "task" section annotated
+listTGBsil <- listTG[substr(listTG, 1, 2) == "BR" & !grepl("Task", listTG)] # baseline reading
+listTGRsil <- listTG[grepl("joint", listTG)] # conditions joint reading
 
 listTxg <- as.data.frame(cbind(listTXTf, listTGf))
 colnames(listTxg) <- c("txt", "tg")
 listTxg$worked[substr(listTxg$txt, 1, 6)==substr(listTxg$tg, 1, 6)] <- "worked!"
 listTxg$worked[substr(listTxg$txt, 1, 6)!=substr(listTxg$tg, 1, 6)] <- "NO!!!!!!!!!"
 unique(listTxg$worked) # make sure all the TXT and Textgrid files are matching in each row
+
+{listReadBase0 <- data.frame(cbind(readB, listTGRBTask))
+listReadBase <- data.frame(cbind(listReadBase0, listTGBsil))
+names(listReadBase) <- c("txt", "task", "sil")
+ifelse(substr(listReadBase$txt, 1, 6) == substr(listReadBase$task, 1, 6),
+       listReadBase$worked1 <- "worked!", listReadBase$worked1 <- "NO!!!!!!")
+ifelse(substr(listReadBase$task, 1, 6) == substr(listReadBase$sil, 1, 6),
+       listReadBase$worked2 <- "worked!", listReadBase$worked2 <- "NO!!!!!!")}
+table(listReadBase$worked1)
+table(listReadBase$worked2)
 
 ff <- data.frame(matrix(ncol=4, nrow=0))
 colnames(ff) <- c("IPU", "f0mean", "file", "label")
@@ -132,7 +147,7 @@ for(i in 1:nrow(listTxg)){
   txt$f0mean <- as.numeric(txt$f0mean)
   tg <- tg.read(paste0(folder, listTxg$tg[i]), encoding=detectEncoding(paste0(folder, listTxg$tg[i]))) # load textgrid with defined IPUs
   
-  # create object ("intervals") with the index of each IPU and its onset and offset time
+  # create object with the index of each IPU and its onset and offset time
   IPUtimes <- data.frame(matrix(ncol=4, nrow=0))
   colnames(IPUtimes) <- c("IPU", "label", "start", "end")
   for(n in 1:tg.getNumberOfIntervals(tg, 1)){
@@ -193,9 +208,83 @@ ff <- ff %>% mutate(f0mean = ifelse(abs(f0z) > 2, NA, f0mean)) # keep f0 below 2
 #   readline("Continue")
 # }
 
-# listTXTr <- listTXT[listTXT %!in% listTXTf]
-# 
-# # for reading files: no IPU separation:
+{fr <- data.frame(matrix(ncol=3, nrow=0))
+colnames(fr) <- c("IPU", "f0mean", "file")}
+
+# not working: rows 5:7, 10, 12, 16, 20
+
+# compare number of intervals of all files to see if that explains it?
+{d <- data.frame(matrix(ncol=4, nrow=0))
+names(d) <- c("file", "numberInt", "encoding", "worked")
+for(i in 1:nrow(listReadBase)){
+  sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
+  if(i %in% c(5:7, 10, 12, 16, 20)){
+    d[nrow(d)+1,] <- c(substr(listReadBase$sil[i], 1, 6), tg.getNumberOfIntervals(sil, 1), 1, "no")
+  } else{
+    d[nrow(d)+1,] <- c(substr(listReadBase$sil[i], 1, 6), tg.getNumberOfIntervals(sil, 1), 1, "yes")
+  }
+}
+d <- d %>% mutate_at(c("file", "worked"), as.factor) %>% mutate_at("numberInt", as.numeric)
+View(d)}
+
+# i=5
+
+for(i in 1:nrow(listReadBase)){
+  txt <- read.table(paste0(folder, listReadBase$txt[i]), header=TRUE, na.strings = "--undefined--")
+  task <- tg.read(paste0(folder, listReadBase$task[i]), encoding=detectEncoding(paste0(folder, listReadBase$task[i])))
+  sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
+  
+  # remove within-IPU boundaries in the textgrids containing silences
+  for(b in 2:(tg.getNumberOfIntervals(sil, 1))){
+    if(tg.getLabel(sil, 1, b-1) == tg.getLabel(sil, 1, b)){
+      sil <- tg.removeIntervalLeftBoundary(sil, 1, b)
+    }
+    if(b == tg.getNumberOfIntervals(sil, 1)){ # as we remove boundaries, the initial max b value gets out of reach, so recalculate the number of intervals after each removal and stop when we reach the last interval
+      break
+    }
+  }
+  
+  # get "IPU" intervals and save them in an object
+  {IPUtimes <- data.frame(matrix(ncol=4, nrow=0))
+  colnames(IPUtimes) <- c("IPU", "label", "start", "end")
+  for(n in 1:tg.getNumberOfIntervals(sil, 1)){
+      if(tg.getIntervalStartTime(sil, 1, n) >= tg.getIntervalStartTime(task, 1, as.numeric(tg.findLabels(task, 1, "task"))) && tg.getIntervalEndTime(sil, 1, n) <= tg.getIntervalEndTime(task, 1, as.numeric(tg.findLabels(task, 1, "task")))){
+        IPUtimes[nrow(IPUtimes)+1,] <- c(n,
+                                         tg.getLabel(sil, 1, n),
+                                         as.numeric(tg.getIntervalStartTime(sil, 1, n)),
+                                         as.numeric(tg.getIntervalEndTime(sil, 1, n)))
+    }
+  }
+  IPUtimes <- IPUtimes %>%
+    filter(label == "") %>%
+    mutate_at(c("start", "end"), as.numeric) %>%
+    select(-label)
+  IPUtimes$IPU <- 1:nrow(IPUtimes)}
+  
+  # get mean f0 for each non-silent period ("IPU")
+  {f0 <- data.frame(matrix(ncol=2, nrow=0))
+  colnames(f0) <- c("IPU", "f0mean")
+  for(p in 1:nrow(IPUtimes)){
+    for(n in 1:nrow(txt)){
+      if(txt$onset[n] >= IPUtimes$start[p] && txt$offset[n] <= IPUtimes$end[p]){
+        f0[nrow(f0)+1,] <- c(IPUtimes$IPU[p], as.numeric(txt$f0mean[n]))
+      }
+    }
+  }
+  f0 <- f0 %>%
+    filter(!is.na(f0mean)) %>%
+    mutate_at(c("IPU", "f0mean"), as.numeric)}
+  f0perIPU <- aggregate(f0$f0mean, list(f0$IPU), FUN=mean)
+  colnames(f0perIPU) <- c("IPU", "f0mean")
+  f0perIPU <- f0perIPU %>%
+    mutate(file = substr(listReadBase$txt[i], 1, 6),
+           f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
+    mutate(f0mean = ifelse(abs(f0z) > 2, NA, f0mean)) %>% # I don't want to use the IPUs with outlier f0mean, but I don't want to completely delete those IPUs from the dataset because they'll still be joined with the speech rate information. So just turn them into NA here.
+    mutate(f0IPUmean = mean(f0mean, na.rm=TRUE))
+  fr <- rbind(fr, f0perIPU) 
+}
+
+
 # 
 # for (i in listTXTr){
 #   txt <- read.table(paste0(folder, i), header=TRUE)
@@ -374,7 +463,7 @@ for(i in 1:nrow(listBGf)){
                                      as.numeric(tg.getPointTime(breath, 1, t)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))),
                                      as.numeric(tg.getPointTime(breath, 2, t+1)) + as.numeric(tg.getIntervalStartTime(tg, 3, as.numeric(tg.findLabels(tg, 3, "breathS")))), # next valley
                                      NA, NA, NA, NA,
-                                     b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate], # inhalation amplitude
+                                     as.numeric(b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate]), # inhalation amplitude
                                      NA)
     } else if(listBGf$breath[i] %in% listCBf){ # confederate files: the audio files are already aligned to the breathing files, so no need to add anything to the times of the peaks and valleys
       PVtimes[nrow(PVtimes)+1,] <- c(substr(listBGf$breath[i], 1, 6),
@@ -384,7 +473,7 @@ for(i in 1:nrow(listBGf)){
                                      as.numeric(tg.getPointTime(breath, 1, t)),
                                      as.numeric(tg.getPointTime(breath, 2, t+1)), # next valley
                                      NA, NA, NA, NA,
-                                     b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate], # inhalation amplitude
+                                     as.numeric(b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate]), # inhalation amplitude
                                      NA)
     }
     
@@ -449,7 +538,6 @@ table(durationsOK$sameDurations)
 
 IPUandCycles$IPU <- gsub("IPU", "", IPUandCycles$IPU)
 
-
 pbr2 <- data.frame(matrix(ncol=12, nrow=0))
 colnames(pbr2) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "inhalAmp", "inhalDur")
 
@@ -477,7 +565,7 @@ for(i in 1:nrow(listBREATHlbw)){ # list with the listening part of the free spec
                                    as.numeric(tg.getPointTime(breath, 1, t)),
                                    as.numeric(tg.getPointTime(breath, 2, t+1)), # next valley
                                    NA, NA, NA, NA,
-                                   b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate], # inhalation amplitude
+                                   as.numeric(b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate]), # inhalation amplitude
                                    NA)
   }
   PVtimes[, c("onset", "peak", "offset")] <- lapply(PVtimes[, c("onset", "peak", "offset")], as.numeric)
@@ -529,7 +617,7 @@ for(i in 1:nrow(listREAD)){ # list with the listening part of the free spech fil
                                    as.numeric(tg.getPointTime(breath, 1, t)),
                                    as.numeric(tg.getPointTime(breath, 2, t+1)), # next valley
                                    NA, NA, NA, NA,
-                                   b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate], # inhalation amplitude
+                                   as.numeric(b[tg.getPointTime(breath, 1, t)*w@samp.rate] - b[tg.getPointTime(breath, 2, t)*w@samp.rate]), # inhalation amplitude
                                    NA)
   }
   PVtimes[, c("onset", "peak", "offset")] <- lapply(PVtimes[, c("onset", "peak", "offset")], as.numeric)
@@ -587,6 +675,7 @@ for(i in 1:length(d)){
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "A"] <- "ReadAlone"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "J"] <- "ReadJoint"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "-"] <- "Free"
+  d[[i]]$Task[d[[i]]$act == "ReadJoint"] <- "ReadJoint"
   d[[i]]$Task <- as.factor(d[[i]]$Task)
 }
 
@@ -757,7 +846,9 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
 fsm <- dat[[1]]
 brm <- dat[[2]]
 
-fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
+brm <- brm %>% mutate_at(c("inhalDur", "inhalAmp"), as.numeric)
+
+fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate, inhalDur, inhalAmp)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
 
 # for(i in 1:nrow(fsm)){
 #   if(is.na(fsm$breathCycleDur[i])){
