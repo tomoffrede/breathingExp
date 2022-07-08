@@ -123,6 +123,7 @@ listTGRBTask <- listTG[grepl("Task", listTG)] # baseline recordings have a "task
 listTGBsil <- listTG[substr(listTG, 1, 2) == "BR" & !grepl("Task", listTG)] # baseline reading
 listTGRsil <- listTG[grepl("joint", listTG)] # conditions joint reading
 
+
 listTxg <- as.data.frame(cbind(listTXTf, listTGf))
 colnames(listTxg) <- c("txt", "tg")
 listTxg$worked[substr(listTxg$txt, 1, 6)==substr(listTxg$tg, 1, 6)] <- "worked!"
@@ -138,6 +139,13 @@ ifelse(substr(listReadBase$task, 1, 6) == substr(listReadBase$sil, 1, 6),
        listReadBase$worked2 <- "worked!", listReadBase$worked2 <- "NO!!!!!!")}
 table(listReadBase$worked1)
 table(listReadBase$worked2)
+
+{listReadCond <- data.frame(cbind(readJ, listTGRsil))
+names(listReadCond) <- c("txt", "sil")
+ifelse(substr(listReadCond$txt, 1, 6) == substr(listReadCond$sil, 1, 6),
+       listReadCond$worked <- "worked!",
+       listReadCond$worked <- "NO!!!!!!!!")}
+table(listReadCond$worked)
 
 ff <- data.frame(matrix(ncol=4, nrow=0))
 colnames(ff) <- c("IPU", "f0mean", "file", "label")
@@ -210,22 +218,23 @@ ff <- ff %>% mutate(f0mean = ifelse(abs(f0z) > 2, NA, f0mean)) # keep f0 below 2
 
 {fr <- data.frame(matrix(ncol=3, nrow=0))
 colnames(fr) <- c("IPU", "f0mean", "file")}
-
-# not working: rows 5:7, 10, 12, 16, 20
+ 
+{# not working when trying to remove boundaries of adjacent intervals with same label: rows 5:7, 10, 12, 16, 20 (from listReadBase)
 
 # compare number of intervals of all files to see if that explains it?
-{d <- data.frame(matrix(ncol=4, nrow=0))
-names(d) <- c("file", "numberInt", "encoding", "worked")
-for(i in 1:nrow(listReadBase)){
-  sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
-  if(i %in% c(5:7, 10, 12, 16, 20)){
-    d[nrow(d)+1,] <- c(substr(listReadBase$sil[i], 1, 6), tg.getNumberOfIntervals(sil, 1), 1, "no")
-  } else{
-    d[nrow(d)+1,] <- c(substr(listReadBase$sil[i], 1, 6), tg.getNumberOfIntervals(sil, 1), 1, "yes")
-  }
+# {d <- data.frame(matrix(ncol=4, nrow=0))
+# names(d) <- c("file", "numberInt", "encoding", "worked")
+# for(i in 1:nrow(listReadBase)){
+#   sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
+#   if(i %in% c(5:7, 10, 12, 16, 20)){
+#     d[nrow(d)+1,] <- c(substr(listReadBase$sil[i], 1, 6), tg.getNumberOfIntervals(sil, 1), 1, "no")
+#   } else{
+#     d[nrow(d)+1,] <- c(substr(listReadBase$sil[i], 1, 6), tg.getNumberOfIntervals(sil, 1), 1, "yes")
+#   }
+# }
+# d <- d %>% mutate_at(c("file", "worked"), as.factor) %>% mutate_at("numberInt", as.numeric)
+# View(d)}
 }
-d <- d %>% mutate_at(c("file", "worked"), as.factor) %>% mutate_at("numberInt", as.numeric)
-View(d)}
 
 # i=5
 
@@ -234,56 +243,55 @@ for(i in 1:nrow(listReadBase)){
   task <- tg.read(paste0(folder, listReadBase$task[i]), encoding=detectEncoding(paste0(folder, listReadBase$task[i])))
   sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
   
-  # remove within-IPU boundaries in the textgrids containing silences
-  for(b in 2:(tg.getNumberOfIntervals(sil, 1))){
-    if(tg.getLabel(sil, 1, b-1) == tg.getLabel(sil, 1, b)){
-      sil <- tg.removeIntervalLeftBoundary(sil, 1, b)
-    }
-    if(b == tg.getNumberOfIntervals(sil, 1)){ # as we remove boundaries, the initial max b value gets out of reach, so recalculate the number of intervals after each removal and stop when we reach the last interval
-      break
-    }
-  }
-  
-  # get "IPU" intervals and save them in an object
-  {IPUtimes <- data.frame(matrix(ncol=4, nrow=0))
-  colnames(IPUtimes) <- c("IPU", "label", "start", "end")
-  for(n in 1:tg.getNumberOfIntervals(sil, 1)){
-      if(tg.getIntervalStartTime(sil, 1, n) >= tg.getIntervalStartTime(task, 1, as.numeric(tg.findLabels(task, 1, "task"))) && tg.getIntervalEndTime(sil, 1, n) <= tg.getIntervalEndTime(task, 1, as.numeric(tg.findLabels(task, 1, "task")))){
-        IPUtimes[nrow(IPUtimes)+1,] <- c(n,
-                                         tg.getLabel(sil, 1, n),
-                                         as.numeric(tg.getIntervalStartTime(sil, 1, n)),
-                                         as.numeric(tg.getIntervalEndTime(sil, 1, n)))
-    }
-  }
-  IPUtimes <- IPUtimes %>%
-    filter(label == "") %>%
-    mutate_at(c("start", "end"), as.numeric) %>%
-    select(-label)
-  IPUtimes$IPU <- 1:nrow(IPUtimes)}
-  
   # get mean f0 for each non-silent period ("IPU")
   {f0 <- data.frame(matrix(ncol=2, nrow=0))
   colnames(f0) <- c("IPU", "f0mean")
-  for(p in 1:nrow(IPUtimes)){
+  for(p in 1:tg.getNumberOfIntervals(sil, 1)){
     for(n in 1:nrow(txt)){
-      if(txt$onset[n] >= IPUtimes$start[p] && txt$offset[n] <= IPUtimes$end[p]){
-        f0[nrow(f0)+1,] <- c(IPUtimes$IPU[p], as.numeric(txt$f0mean[n]))
+      if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == "" && txt$onset[n] >= tg.getIntervalStartTime(task, 1, as.numeric(tg.findLabels(task, 1, "task"))) && txt$offset[n] <= tg.getIntervalEndTime(task, 1, as.numeric(tg.findLabels(task, 1, "task")))){
+        f0[nrow(f0)+1,] <- c(p, as.numeric(txt$f0mean[n]))
       }
     }
   }
   f0 <- f0 %>%
     filter(!is.na(f0mean)) %>%
     mutate_at(c("IPU", "f0mean"), as.numeric)}
-  f0perIPU <- aggregate(f0$f0mean, list(f0$IPU), FUN=mean)
-  colnames(f0perIPU) <- c("IPU", "f0mean")
-  f0perIPU <- f0perIPU %>%
+  f0 <- f0 %>%
     mutate(file = substr(listReadBase$txt[i], 1, 6),
            f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
-    mutate(f0mean = ifelse(abs(f0z) > 2, NA, f0mean)) %>% # I don't want to use the IPUs with outlier f0mean, but I don't want to completely delete those IPUs from the dataset because they'll still be joined with the speech rate information. So just turn them into NA here.
-    mutate(f0IPUmean = mean(f0mean, na.rm=TRUE))
-  fr <- rbind(fr, f0perIPU) 
+    filter(abs(f0z) < 2)
+  f0$IPU <- 1:nrow(f0)
+  
+  fr <- rbind(fr, f0)
 }
 
+for(i in 1:nrow(listReadCond)){
+  txt <- read.table(paste0(folder, listReadCond$txt[i]), header=TRUE, na.strings = "--undefined--")
+  sil <- tg.read(paste0(folder, listReadCond$sil[i]), encoding=detectEncoding(paste0(folder, listReadCond$sil[i])))
+  
+  # get mean f0 for each non-silent period ("IPU")
+  {f0 <- data.frame(matrix(ncol=2, nrow=0))
+    colnames(f0) <- c("IPU", "f0mean")
+    for(p in 1:tg.getNumberOfIntervals(sil, 1)){
+      for(n in 1:nrow(txt)){
+        if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == ""){
+          f0[nrow(f0)+1,] <- c(p, as.numeric(txt$f0mean[n]))
+        }
+      }
+    }
+    f0 <- f0 %>%
+      filter(!is.na(f0mean)) %>%
+      mutate_at(c("IPU", "f0mean"), as.numeric)}
+  f0 <- f0 %>%
+    mutate(file = substr(listReadCond$txt[i], 1, 6),
+           f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
+    filter(abs(f0z) < 2)
+  f0$IPU <- 1:nrow(f0)
+  
+  fr <- rbind(fr, f0)
+}
+
+fr$Task <- "ReadJoint"
 
 # 
 # for (i in listTXTr){
@@ -645,7 +653,6 @@ br <- rbind(br0, pbr3)
 #######################################################################################################################
 
 # 3
-
 
 ff$IPU <- as.factor(ff$IPU)
 
