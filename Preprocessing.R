@@ -244,23 +244,31 @@ for(i in 1:nrow(listReadBase)){
   sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
   
   # get mean f0 for each non-silent period ("IPU")
-  {f0 <- data.frame(matrix(ncol=2, nrow=0))
-  colnames(f0) <- c("IPU", "f0mean")
+  f0 <- data.frame(matrix(ncol=4, nrow=0))
+  colnames(f0) <- c("IPU", "f0raw", "onset", "offset")
   for(p in 1:tg.getNumberOfIntervals(sil, 1)){
     for(n in 1:nrow(txt)){
       if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == "" && txt$onset[n] >= tg.getIntervalStartTime(task, 1, as.numeric(tg.findLabels(task, 1, "task"))) && txt$offset[n] <= tg.getIntervalEndTime(task, 1, as.numeric(tg.findLabels(task, 1, "task")))){
-        f0[nrow(f0)+1,] <- c(p, as.numeric(txt$f0mean[n]))
+        f0[nrow(f0)+1,] <- c(p,
+                             as.numeric(txt$f0mean[n]),
+                             as.numeric(tg.getIntervalStartTime(sil, 1, p)),
+                             as.numeric(tg.getIntervalEndTime(sil, 1, p)))
       }
     }
   }
+  timings <- f0 %>% select(-f0raw)
   f0 <- f0 %>%
-    filter(!is.na(f0mean)) %>%
-    mutate_at(c("IPU", "f0mean"), as.numeric)}
-  f0 <- f0 %>%
-    mutate(file = substr(listReadBase$txt[i], 1, 6),
+    filter(!is.na(f0raw)) %>%
+    mutate_at(c("IPU", "f0raw", "onset", "offset"), as.numeric) %>% 
+    group_by(IPU) %>% 
+    summarize(f0mean = mean(f0raw)) %>%
+    ungroup()
+  f0 <- merge(timings, f0, by="IPU") %>%
+    filter(!duplicated(IPU)) %>%
+    mutate(IPU = 1:nrow(f0),
+           file = substr(listReadBase$txt[i], 1, 6),
            f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
     filter(abs(f0z) < 2)
-  f0$IPU <- 1:nrow(f0)
   
   fr <- rbind(fr, f0)
 }
@@ -270,23 +278,31 @@ for(i in 1:nrow(listReadCond)){
   sil <- tg.read(paste0(folder, listReadCond$sil[i]), encoding=detectEncoding(paste0(folder, listReadCond$sil[i])))
   
   # get mean f0 for each non-silent period ("IPU")
-  {f0 <- data.frame(matrix(ncol=2, nrow=0))
-    colnames(f0) <- c("IPU", "f0mean")
+  f0 <- data.frame(matrix(ncol=4, nrow=0))
+  colnames(f0) <- c("IPU", "f0raw", "onset", "offset")
     for(p in 1:tg.getNumberOfIntervals(sil, 1)){
       for(n in 1:nrow(txt)){
         if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == ""){
-          f0[nrow(f0)+1,] <- c(p, as.numeric(txt$f0mean[n]))
+          f0[nrow(f0)+1,] <- c(p,
+                               as.numeric(txt$f0mean[n]),
+                               as.numeric(tg.getIntervalStartTime(sil, 1, p)),
+                               as.numeric(tg.getIntervalEndTime(sil, 1, p)))
         }
       }
     }
+    timings <- f0 %>% select(-f0raw)
     f0 <- f0 %>%
-      filter(!is.na(f0mean)) %>%
-      mutate_at(c("IPU", "f0mean"), as.numeric)}
-  f0 <- f0 %>%
-    mutate(file = substr(listReadCond$txt[i], 1, 6),
-           f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
-    filter(abs(f0z) < 2)
-  f0$IPU <- 1:nrow(f0)
+      filter(!is.na(f0raw)) %>%
+      mutate_at(c("IPU", "f0raw", "onset", "offset"), as.numeric) %>% 
+      group_by(IPU) %>% 
+      summarize(f0mean = mean(f0raw)) %>%
+      ungroup()
+    f0 <- merge(timings, f0, by="IPU") %>%
+      filter(!duplicated(IPU)) %>%
+      mutate(IPU = 1:nrow(f0),
+             file = substr(listReadCond$txt[i], 1, 6),
+             f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
+      filter(abs(f0z) < 2)
   
   fr <- rbind(fr, f0)
 }
@@ -335,7 +351,7 @@ listBREATHall <- list.files(folder2, pattern="SUM")
 listWAVpf <- listBREATHall[grepl("wav", listBREATHall) & !grepl("TextGrid", listBREATHall) & substr(listBREATHall, 2, 2)=="F" & !grepl("breathL", listBREATHall)]
 listBREATH <- listBREATHall[grepl("TextGrid", listBREATHall)]
 listBREATHr <- listBREATH[substr(listBREATH, 2, 2)=="R"]
-listBREATHrj <- listBREATHr[grepl("joint", listBREATHr)]
+listBREATHrj <- listBREATHr[grepl("joint", listBREATHr) | substr(listBREATHr, 1, 2) == "BR"] # read joint AND baseline reading
 listBREATHf <- listBREATH[substr(listBREATH, 2, 2)=="F" & !grepl("breathL", listBREATH)]
 listBREATHl <- listBREATH[grepl("breathL", listBREATH)] # breathing during listening
 listBREATHb <- listBREATH[substr(listBREATH, 2, 2) == "B"] # breathing during baseline period (i.e. just watching the confedearate sitting/biking in silence)
@@ -603,9 +619,13 @@ br0 <- rbind(pbr1, pbr2)
 pbr3 <- data.frame(matrix(ncol=12, nrow=0))
 colnames(pbr3) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "inhalAmp", "inhalDur")
 
-for(i in 1:nrow(listREAD)){ # list with the listening part of the free spech files and with the "watching" files (where the participants just watched Carry with everyone in silence)
-  if(substr(listREAD$breath[i], 1, 2) == "BR"){
-    act <- "ReadBaseline"
+for(i in 1:nrow(listREAD)){
+  if(grepl("HIRSCH", listREAD$breath[i])){
+    act <- "ReadBaseline-HIRSCH"
+  } else if(grepl("PFERD", listREAD$breath[i])){
+    act <- "ReadBaseline-PFERD"
+  } else if(grepl("SCHWALBE", listREAD$breath[i])){
+    act <- "ReadBaseline-SCHWALBE"
   } else if(grepl("joint", listREAD$breath[i])){
     act <- "ReadJoint"
   }
@@ -659,6 +679,19 @@ ff$IPU <- as.factor(ff$IPU)
 fs0 <- full_join(ff, sr, by=c("file", "IPU"), all=TRUE)
 
 fs <- full_join(fs0, IPUandCycles, by=c("file", "IPU"), all=TRUE)
+
+fr$breathCycle <- NA
+brToJoin <- br %>% filter(act == "ReadJoint")
+brToJoin$breathCycle <- as.character(brToJoin$breathCycle)
+for(r in 1:nrow(fr)){
+  for(b in 1:nrow(brToJoin)){
+    if(fr$file == brToJoin$file && fr$onset[r] >= brToJoin$onset[b] && fr$offset[r] <= brToJoin$offset[b]){
+      fr$breathCycle[r] <- brToJoin$breathCycle[b]
+    }
+  }
+}
+
+frb <- full_join(br %>% filter(act == "ReadJoint"), fr, by=c("file", "breathCycle"))
 
 conffiles <- c("irs", "obb", "oli", "ome", "fer", "chw")
 
