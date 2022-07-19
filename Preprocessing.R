@@ -109,18 +109,16 @@ confRA <- c("H-Hirsch_alone.txt", "H-Pferd_alone.txt", "H-Schwalbe_alone.txt", "
 confRJ <- c("H-Hirsch_joint.txt", "H-Pferd_joint.txt", "H-Schwalbe_joint.txt", "L-Hirsch_joint.txt", "L-Pferd_joint.txt", "L-Schwalbe_joint.txt", "S-Hirsch_joint.txt", "S-Pferd_joint.txt", "S-Schwalbe_joint.txt")
 f <- c("BF", "HF", "LF", "SF")
 readB <- listTXT[substr(listTXT, 1, 2) == "BR"]
-readB <- readB[!grepl("HIRSCH", readB) & !grepl("PFERD", readB) & !grepl("SCHWALBE", readB)]
 readJ <- list.files(folder, pattern="joint.txt")
 readJ <- readJ[substr(readJ, 2, 2) != "-"]
 readA <- list.files(folder, pattern="alone.txt")
 readA <- readA[substr(readA, 2, 2) != "-"]
 
 listTG <- list.files(folder, pattern=".TextGrid")
-listTG <- listTG[!grepl("_VUV", listTG)]
+listTG <- listTG[!grepl("_VUV", listTG) & !grepl("HSP", listTG)]
 confFtg <- listTG[grepl("Home", listTG)|grepl("Hobbies", listTG)|grepl("Holidays", listTG)]
 listTGf <- listTG[substr(listTG, 2, 2)=="F" | listTG %in% confFtg]
-listTGRBTask <- listTG[grepl("Task", listTG)] # baseline recordings have a "task" section annotated
-listTGBsil <- listTG[substr(listTG, 1, 2) == "BR" & !grepl("Task", listTG)] # baseline reading
+listTGBsil <- listTG[substr(listTG, 1, 2) == "BR"] # baseline reading
 listTGRsil <- listTG[grepl("joint", listTG)] # conditions joint reading
 
 
@@ -130,15 +128,11 @@ listTxg$worked[substr(listTxg$txt, 1, 6)==substr(listTxg$tg, 1, 6)] <- "worked!"
 listTxg$worked[substr(listTxg$txt, 1, 6)!=substr(listTxg$tg, 1, 6)] <- "NO!!!!!!!!!"
 unique(listTxg$worked) # make sure all the TXT and Textgrid files are matching in each row
 
-{listReadBase0 <- data.frame(cbind(readB, listTGRBTask))
-listReadBase <- data.frame(cbind(listReadBase0, listTGBsil))
-names(listReadBase) <- c("txt", "task", "sil")
-ifelse(substr(listReadBase$txt, 1, 6) == substr(listReadBase$task, 1, 6),
-       listReadBase$worked1 <- "worked!", listReadBase$worked1 <- "NO!!!!!!")
-ifelse(substr(listReadBase$task, 1, 6) == substr(listReadBase$sil, 1, 6),
-       listReadBase$worked2 <- "worked!", listReadBase$worked2 <- "NO!!!!!!")}
-table(listReadBase$worked1)
-table(listReadBase$worked2)
+{listReadBase <- data.frame(cbind(readB, listTGBsil))
+names(listReadBase) <- c("txt", "sil")
+ifelse(substr(listReadBase$txt, 1, 20) == substr(listReadBase$sil, 1, 20),
+       listReadBase$worked <- "worked!", listReadBase$worked <- "NO!!!!!!")}
+table(listReadBase$worked)
 
 {listReadCond <- data.frame(cbind(readJ, listTGRsil))
 names(listReadCond) <- c("txt", "sil")
@@ -240,15 +234,22 @@ colnames(fr) <- c("IPU", "f0mean", "file")}
 
 for(i in 1:nrow(listReadBase)){
   txt <- read.table(paste0(folder, listReadBase$txt[i]), header=TRUE, na.strings = "--undefined--")
-  task <- tg.read(paste0(folder, listReadBase$task[i]), encoding=detectEncoding(paste0(folder, listReadBase$task[i])))
   sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
+  
+  if(grepl("Hirsch", listReadBase$txt[i])){
+    text <- "-Hirsch"
+  } else if(grepl("Schwalbe", listReadBase$txt[i])){
+    text <- "-Schwalbe"
+  } else if(grepl("Pferd", listReadBase$txt[i])){
+    text <- "-Pferd"
+  }
   
   # get mean f0 for each non-silent period ("IPU")
   f0 <- data.frame(matrix(ncol=4, nrow=0))
   colnames(f0) <- c("IPU", "f0raw", "onset", "offset")
   for(p in 1:tg.getNumberOfIntervals(sil, 1)){
     for(n in 1:nrow(txt)){
-      if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == "" && txt$onset[n] >= tg.getIntervalStartTime(task, 1, as.numeric(tg.findLabels(task, 1, "task"))) && txt$offset[n] <= tg.getIntervalEndTime(task, 1, as.numeric(tg.findLabels(task, 1, "task")))){
+      if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == ""){
         f0[nrow(f0)+1,] <- c(p,
                              as.numeric(txt$f0mean[n]),
                              as.numeric(tg.getIntervalStartTime(sil, 1, p)),
@@ -266,7 +267,7 @@ for(i in 1:nrow(listReadBase)){
   f0 <- merge(timings, f0, by="IPU") %>%
     filter(!duplicated(IPU)) %>%
     mutate(IPU = 1:nrow(f0),
-           file = substr(listReadBase$txt[i], 1, 6),
+           file = paste0(substr(listReadBase$txt[i], 1, 6), text),
            f0z = (f0mean - mean(f0mean))/sd(f0mean)) %>%
     filter(abs(f0z) < 2)
   
