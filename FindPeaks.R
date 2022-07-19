@@ -5,12 +5,14 @@ library(quantmod)
 library(rPraat)
 library(tidyverse)
 
-setwd(folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Confederate/BreathingWithEntireCycle-Free/")
+setwd(folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/runScript/")
 
 
 ### creating plots of all the breathing files
 
 listWAV <- list.files(folder, pattern=".wav")
+listWAV <- listWAV[grepl("200_", listWAV) & !grepl("breath", listWAV)]
+
 # 
 # for (i in listWAV){
 #   dat <- readWave(paste0(folder, i))
@@ -49,6 +51,8 @@ listWAV <- list.files(folder, pattern=".wav")
 # 
 # i= "H-Pferd_THORAX_alone_200.wav"
 
+# toMatch <- c("HF", "LF")
+# listWAV <- listWAV[grepl(paste(toMatch,collapse="|"), listWAV) & grepl("DKG", listWAV)]
 
 for (i in listWAV){
   r <- readWave(paste0(folder, i))
