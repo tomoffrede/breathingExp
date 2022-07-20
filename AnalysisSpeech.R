@@ -43,10 +43,21 @@ fsm <- fsm %>%
 
 # f0
 
+fz <- fsm %>% 
+  filter(Task == "Free", Role == "Participant") %>%
+  group_by(Speaker) %>% 
+  summarize(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
+            f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE),
+            IPU = IPU,
+            ) %>%
+  ungroup()
+
+
+
 df <- fsm %>%
   filter(Task == "Free", Role == "Participant") %>%
   group_by(Speaker)%>%
-  mutate(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
+  summarise(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
          f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))%>%
   ungroup()
 
