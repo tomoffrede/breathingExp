@@ -15,11 +15,11 @@ orderChange <- c("BS", "SL", "LH")
 # GenderPercDiff: difference between confederate's gender identity and participants' perception of conf's gender expression
 # ConfGender: participant's perception of confederate's gender
 
-plot(fsm$BMI, fsm$f0mean)
+plot(fsm$BMI, fsm$f0raw)
 #excluding the outlier:
 fsm2 <- fsm[fsm$BMI < 26,]
 
-cor.test(fsm2$BMI, fsm2$f0mean)
+cor.test(fsm2$BMI, fsm2$f0raw)
 
 # apparently there's a significant weak correlation between BMI and f0, which is in line with Pisanski et al 2016.
 # but this value is probably too high because there's multiple repeated BMI values (from the same person)
@@ -34,7 +34,7 @@ fsm <- fsm %>%
 # it does seem to have a small effect
 
 # > names(fsm)
-# [1] "Speaker"       "file"          "IPU"           "f0mean"        "f0IPUmean"     "label"         "f0z"           "speechRateIPU"
+# [1] "Speaker"       "file"          "IPU"           "f0raw"        "f0IPUmean"     "label"         "f0z"           "speechRateIPU"
 # [9] "durSpeech"     "durPauses"     "speechRate"    "articRate"     "Condition"     "Task"          "List"          "Age"          
 # [17] "Height"        "Weight"        "Gender"        "Education"     "OtherL1"       "ConfFriendly"  "InterEnjoy"    "ConfGenderM"  
 # [25] "ConfGenderF"   "Order"         "Topic"         "BMI"           "GEPAQ.F"       "GEPAQ.M"       "TMF.F"         "TMF.M"        
@@ -46,7 +46,7 @@ fsm <- fsm %>%
 fz <- fsm %>% 
   filter(Task == "Free", Role == "Participant") %>%
   group_by(Speaker) %>% 
-  summarize(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
+  summarize(f0IPUz = (f0raw - f0raw(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
             f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE),
             IPU = IPU,
             ) %>%
@@ -57,7 +57,7 @@ fz <- fsm %>%
 df <- fsm %>%
   filter(Task == "Free", Role == "Participant") %>%
   group_by(Speaker)%>%
-  summarise(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
+  summarise(f0IPUz = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
          f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))%>%
   ungroup()
 
@@ -291,20 +291,20 @@ dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
 # f0 difference
 
-ggplot(dat %>% filter(f0diffGroup == "StartNegative"), aes(Condition, f0meanDiff))+
+ggplot(dat %>% filter(f0diffGroup == "StartNegative"), aes(Condition, f0rawDiff))+
   geom_point()+
   scale_x_discrete(limits = orderCondNoBase)
 
-ggplot(dat, aes(Condition, abs(f0meanDiff)))+
+ggplot(dat, aes(Condition, abs(f0rawDiff)))+
   geom_point()+
   scale_x_discrete(limits = orderCondNoBase)
 
-ggplot(dat %>% filter(f0diffGroup == "StartNegative"), aes(Order, f0meanDiff))+
+ggplot(dat %>% filter(f0diffGroup == "StartNegative"), aes(Order, f0rawDiff))+
   geom_point()
 
-summary(fd1 <- lmer(f0meanDiff ~ Condition + (1 | Speaker), dat %>% filter(f0diffGroup == "StartNegative")))
+summary(fd1 <- lmer(f0rawDiff ~ Condition + (1 | Speaker), dat %>% filter(f0diffGroup == "StartNegative")))
 
-summary(fd2 <- lmer(f0meanDiff ~ Condition + Order + (1 | Speaker), dat %>% filter(f0diffGroup == "StartNegative")))
+summary(fd2 <- lmer(f0rawDiff ~ Condition + Order + (1 | Speaker), dat %>% filter(f0diffGroup == "StartNegative")))
 anova(fd1, fd2) # order doesn't improve it: participants didn't get closer to the confederate throughout the experiment
 # I've also tried adding a bunch of other predictors here, but none of them were significant or improved the model
 # I've also tried adding a random slope for condition but the dataset doesn't have enough observations for that

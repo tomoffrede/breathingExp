@@ -11,8 +11,8 @@ load(paste0(folder, "DataSpeech.RData"))
 
 df <- fsm %>%
   filter(Task == "Free", Speaker == "Confederate") %>%
-  select(c("file", "Speaker", "IPU", "f0mean", "f0IPUmean", "speechRateIPU", "durSpeech", "durPauses", "speechRate", "articRate", "Condition", "breathCycleDurMean", "breathRate", "breathCycleDur")) %>%
-  mutate(f0IPUz = (f0mean - mean(f0mean, na.rm=TRUE)) / sd(f0mean, na.rm=TRUE),
+  select(c("file", "Speaker", "IPU", "f0raw", "f0IPUmean", "speechRateIPU", "durSpeech", "durPauses", "speechRate", "articRate", "Condition", "breathCycleDurMean", "breathRate", "breathCycleDur")) %>%
+  mutate(f0IPUz = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
          f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))
 
 df$Condition <- relevel(df$Condition, ref="Sitting")
@@ -26,7 +26,7 @@ ggplot(df, aes(Condition, f0IPUz))+
 plot(df$breathRate, df$f0IPUz)
 
 # > names(df)
-# [1] "file"               "Speaker"            "IPU"                "f0mean"             "f0IPUmean"          "speechRateIPU"      "durSpeech"         
+# [1] "file"               "Speaker"            "IPU"                "f0raw"             "f0IPUmean"          "speechRateIPU"      "durSpeech"         
 # [8] "durPauses"          "speechRate"         "articRate"          "Condition"          "breathCycleDurMean" "breathRate"         "breathCycleDur"    
 # [15] "f0IPUz"             "f0filez"        
 
