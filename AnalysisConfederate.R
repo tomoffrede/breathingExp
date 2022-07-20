@@ -33,7 +33,6 @@ plot(df$breathRate, df$f0IPUz)
 summary(m1 <- lm(f0IPUz ~ Condition, df))
 summary(m1a <- lmer(f0IPUz ~ Condition + (1 | file), df))
 anova(m1, m1a)
-AIC(m1, m1a) # AIC for m1 is different in anova() and AIC() ???
 # but either way we should keep m1
 
 summary(m2 <- lm(f0IPUz ~ breathRate, df))
@@ -53,6 +52,8 @@ plot(fitted(m1), resid(m1)) # not ok! interval data???
 ggplot(df, aes(Condition, speechRateIPU))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)
+
+df$Condition <- relevel(df$Condition, ref="Light")
 
 summary(s1 <- lm(speechRateIPU ~ Condition, df))
 summary(s1a <- lmer(speechRateIPU ~ Condition + (1 | file), df)) # singular!
@@ -84,6 +85,8 @@ dat <- brm %>%
 ggplot(dat, aes(Condition, breathRate))+
   geom_point()
 
+
+dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lm(breathRate ~ Condition, dat))
 
 ### cycle Durations
@@ -104,13 +107,22 @@ ggplot(dat, aes(breathCycle, cycleDur))+
   facet_wrap(~Condition)
 
 
-summary(c1 <- lm(cycleDur ~ Condition, dat))
-summary(c2 <- lm(cycleDur ~ Condition + breathCycle, dat))
-summary(c3 <- lm(cycleDur ~ Condition * breathCycle, dat))
+summary(c1 <- lm(logCycleDur ~ Condition, dat))
+summary(c2 <- lm(logCycleDur ~ Condition + breathCycle, dat))
+summary(c3 <- lm(logCycleDur ~ Condition * breathCycle, dat))
 AIC(c1, c2)
 AIC(c2, c3)
 
 # c3 is the best model
+
+hist(resid(c3))
+qqnorm(resid(c3));qqline(resid(c3))
+plot(fitted(c3), resid(c3))
+
+hist(resid(c1))
+qqnorm(resid(c1));qqline(resid(c1))
+plot(fitted(c1), resid(c1))
+
 
 # shorter cycles with more physical effort (related to increase in breath rate)
 # shorter cycles the further into the speaking period : easier to visualize if you collapse all conditions, but also:
@@ -122,7 +134,70 @@ ggplot(dat, aes(Condition, numberIPUs))+
   geom_boxplot()
 
 ggplot(dat, aes(breathCycle, numberIPUs))+
-  geom_point()
+  geom_point()+
+  facet_wrap(~Condition)
+
+
+# percentage of breath cycles that had n IPUs (per condition)
+
+d <- dat %>% filter(Condition=="Sitting")
+length(d$breathCycle) # 142
+table(d$numberIPUs)
+
+# 1 IPU: 63 / 142 = 0.443662
+# 2 IPUs: 38 / 142 = 0.2676056
+# 3 IPUs: 22 / 142 = 0.1549296
+# 4 IPUs: 13 / 142 = 0.0915493
+# 5 IPUs: 3 / 142 = 0.02112676
+# 6 IPUs: 2 / 142 = 0.01408451
+# 7 IPUs: 1 / 142 = 0.007042254
+
+d <- dat %>% filter(Condition=="Light")
+length(d$breathCycle) # 199
+table(d$numberIPUs)
+
+# 1 IPU: 103 / 199 = 0.5175879
+# 2 IPUs: 77 / 199 = 0.3869347
+# 3 IPUs: 17 / 199 = 0.08542714
+# 4 IPUs: 2 / 199 = 0.01005025
+
+d <- dat %>% filter(Condition=="Heavy")
+length(d$breathCycle) # 173
+table(d$numberIPUs)
+
+# 1 IPU: 75 / 173 = 0.433526
+# 2 IPUs: 87 / 173 = 0.5028902
+# 3 IPUs: 9 / 173 = 0.05202312
+# 4 IPUs: 2 / 173 = 0.01156069
+
+p <- data.frame(matrix(nrow=0, ncol=3))
+names(p) = c("Condition", "NumberIPUs", "Percentage")
+p[nrow(p)+1,] <- c("Sitting", 1, 0.443662)
+p[nrow(p)+1,] <- c("Sitting", 2, 0.2676056)
+p[nrow(p)+1,] <- c("Sitting", 3, 0.1549296)
+p[nrow(p)+1,] <- c("Sitting", 4, 0.0915493)
+p[nrow(p)+1,] <- c("Sitting", 5, 0.02112676)
+p[nrow(p)+1,] <- c("Sitting", 6, 0.01408451)
+p[nrow(p)+1,] <- c("Sitting", 7, 0.007042254)
+p[nrow(p)+1,] <- c("Light", 1, 0.5175879)
+p[nrow(p)+1,] <- c("Light", 2, 0.3869347)
+p[nrow(p)+1,] <- c("Light", 3, 0.08542714)
+p[nrow(p)+1,] <- c("Light", 4, 0.01005025)
+p[nrow(p)+1,] <- c("Heavy", 1, 0.433526)
+p[nrow(p)+1,] <- c("Heavy", 2, 0.5028902)
+p[nrow(p)+1,] <- c("Heavy", 3, 0.05202312)
+p[nrow(p)+1,] <- c("Heavy", 4, 0.01156069)
+
+p$Condition <- as.factor(p$Condition)
+p$NumberIPUs <- as.integer(p$NumberIPUs)
+p$Percentage <- as.numeric(p$Percentage)
+
+ggplot(p, aes(NumberIPUs, Percentage))+
+  geom_point()+
+  facet_wrap(~Condition)
+
+# end of percentage
+
 
 dat$numberIPUs <- as.factor(dat$numberIPUs)
 
