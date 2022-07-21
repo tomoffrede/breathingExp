@@ -146,7 +146,7 @@ colnames(ff) <- c("IPU", "f0raw", "file", "label")
 
 for(i in 1:nrow(listTxg)){
   txt <- read.table(paste0(folder, listTxg$txt[i]), header=TRUE, na.strings = "--undefined--") # load file with f0 means
-  txt$f0raw <- as.numeric(txt$f0raw)
+  txt$f0mean <- as.numeric(txt$f0mean)
   tg <- tg.read(paste0(folder, listTxg$tg[i]), encoding=detectEncoding(paste0(folder, listTxg$tg[i]))) # load textgrid with defined IPUs
   
   # create object with the index of each IPU and its onset and offset time
@@ -180,14 +180,14 @@ for(i in 1:nrow(listTxg)){
   for(p in 1:nrow(IPUtimes)){
     for(n in 1:nrow(txt)){
       if(txt$onset[n] >= IPUtimes$start[p] && txt$offset[n] <= IPUtimes$end[p]){
-        f0[nrow(f0)+1,] <- c(IPUtimes$IPU[p], as.numeric(txt$f0raw[n]))
+        f0[nrow(f0)+1,] <- c(IPUtimes$IPU[p], as.numeric(txt$f0mean[n]))
       }
     }
   }
   f0 <- f0 %>%
     filter(!is.na(f0raw)) %>%
     mutate_at(c("IPU", "f0raw"), as.numeric)
-  f0perIPU <- aggregate(f0$f0raw, list(f0$IPU), FUN=f0raw)
+  f0perIPU <- aggregate(f0$f0raw, list(f0$IPU), FUN=mean)
   colnames(f0perIPU) <- c("IPU", "f0raw")
   f0perIPU <- f0perIPU %>%
     mutate(file = substr(listTxg$txt[i], 1, 6),
@@ -247,7 +247,7 @@ for(i in 1:nrow(listReadBase)){
     for(n in 1:nrow(txt)){
       if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == ""){
         f0[nrow(f0)+1,] <- c(p,
-                             as.numeric(txt$f0raw[n]),
+                             as.numeric(txt$f0mean[n]),
                              as.numeric(tg.getIntervalStartTime(sil, 1, p)),
                              as.numeric(tg.getIntervalEndTime(sil, 1, p)))
       }
@@ -282,7 +282,7 @@ for(i in 1:nrow(listReadCond)){
       for(n in 1:nrow(txt)){
         if(txt$onset[n] >= tg.getIntervalStartTime(sil, 1, p) && txt$offset[n] <= tg.getIntervalEndTime(sil, 1, p) && tg.getLabel(sil, 1, p) == ""){
           f0[nrow(f0)+1,] <- c(p,
-                               as.numeric(txt$f0raw[n]),
+                               as.numeric(txt$f0mean[n]),
                                as.numeric(tg.getIntervalStartTime(sil, 1, p)),
                                as.numeric(tg.getIntervalEndTime(sil, 1, p)))
         }
@@ -311,8 +311,8 @@ fr <- fr %>% mutate(Task = ifelse(substr(file, 1, 1) != "B", "ReadJoint", ifelse
  
 # for (i in listTXTr){
 #   txt <- read.table(paste0(folder, i), header=TRUE)
-#   txt$f0raw <- as.numeric(txt$f0raw)
-#   txt$zmean <- (txt$f0raw - mean(txt$f0raw))/sd(txt$f0raw) # get z scores
+#   txt$f0mean <- as.numeric(txt$f0mean)
+#   txt$zmean <- (txt$f0mean - mean(txt$f0mean))/sd(txt$f0mean) # get z scores
 #   txt <- txt[txt$zmean < 3,] # keep values below 3 SDs (there don't seem to be any low outliers, only high ones)
 #   if (i %in% confRA){ # confederate's reading files, alone section
 #     i <- paste0(substr(i, 1, 1), "A", substr(i, 3, 6))
@@ -329,7 +329,7 @@ fr <- fr %>% mutate(Task = ifelse(substr(file, 1, 1) != "B", "ReadJoint", ifelse
 #   } else if(substr(i, 17, 24)=="SCHWALBE"){
 #     i <- paste0(substr(i, 1, 2), "S", substr(i, 4, 6))
 #   }
-#   ff[nrow(ff)+1,] <- c(i, NA, mean(txt$f0raw), mean(txt$f0raw))
+#   ff[nrow(ff)+1,] <- c(i, NA, mean(txt$f0mean), mean(txt$f0mean))
 # }
 # 
 # ff$file <- as.factor(ff$file)
@@ -698,22 +698,28 @@ fs0 <- full_join(ff, sr, by=c("file", "IPU"), all=TRUE)
 
 fs <- full_join(fs0, IPUandCycles, by=c("file", "IPU"), all=TRUE)
 
-fr$breathCycle <- NA
-brToJoin <- br %>% filter(grepl("Read", act))
-brToJoin$breathCycle <- as.character(brToJoin$breathCycle)
-for(r in 1:nrow(fr)){
-  for(b in 1:nrow(brToJoin)){
-    if(fr$file == brToJoin$file && fr$onset[r] >= brToJoin$onset[b] && fr$offset[r] <= brToJoin$offset[b]){
-      fr$breathCycle[r] <- brToJoin$breathCycle[b]
-    }
-  }
+{# # I wanted to include the number of "IPUs" per breath cycle, but the code below takes _really_ long, and I don't think it works right.
+# # Now that I think of it, maybe this metric doesn't even make sense.
+# fr$breathCycle <- NA
+# brToJoin <- br %>% filter(grepl("Read", act))
+# brToJoin$breathCycle <- as.character(brToJoin$breathCycle)
+# for(r in 1:nrow(fr)){
+#   for(b in 1:nrow(brToJoin)){
+#     if(fr$file == brToJoin$file && fr$onset[r] >= brToJoin$onset[b] && fr$offset[r] <= brToJoin$offset[b]){
+#       fr$breathCycle[r] <- brToJoin$breathCycle[b]
+#     }
+#   }
+# }
 }
 
-frb <- full_join(br %>% filter(act == "ReadJoint"), fr, by=c("file", "breathCycle"))
+frb <- merge(fr, br %>% select(file, breathRate), by="file")
+
+frb <- frb %>% 
+  mutate(Task = ifelse(grepl("Baseline", Task), "ReadBaseline", Task))
 
 conffiles <- c("irs", "obb", "oli", "ome", "fer", "chw")
 
-d <- list(fs, br)
+d <- list(fs, br, frb)
 
 for(i in 1:length(d)){
   d[[i]]$Speaker <- substr(d[[i]]$file, 4, 6)
@@ -727,9 +733,9 @@ for(i in 1:length(d)){
   d[[i]]$Condition <- as.factor(d[[i]]$Condition)
   
   d[[i]]$Task[substr(d[[i]]$file, 2, 2) == "F"] <- "Free"
-  d[[i]]$Task[substr(d[[i]]$file, 2, 3) == "RA"] <- "ReadAlone"
-  d[[i]]$Task[substr(d[[i]]$file, 2, 3) == "RJ"] <- "ReadJoint"
-  d[[i]]$Task[substr(d[[i]]$file, 1, 2) == "BR"] <- "ReadAlone" # baseline reading is also alone
+  # d[[i]]$Task[substr(d[[i]]$file, 2, 3) == "RA"] <- "ReadAlone"
+  # d[[i]]$Task[substr(d[[i]]$file, 2, 3) == "RJ"] <- "ReadJoint"
+  # d[[i]]$Task[substr(d[[i]]$file, 1, 2) == "BR"] <- "ReadAlone" # baseline reading is also alone
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "A"] <- "ReadAlone"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "J"] <- "ReadJoint"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "-"] <- "Free"
@@ -739,14 +745,16 @@ for(i in 1:length(d)){
 
 fs <- d[[1]]
 br <- d[[2]]
+frb <- d[[3]]
 
 meta <- read.csv("C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/metadata.csv", fileEncoding="UTF-8-BOM")
 names(meta)[names(meta) == "Participant"] <- "Speaker"
 
 fsm <- merge(fs, meta, by="Speaker", all=TRUE)
 brm <- merge(br, meta, by="Speaker", all=TRUE)
+frm <- merge(frb, meta, by="Speaker", all=TRUE)
 
-dat <- list(fsm, brm)
+dat <- list(fsm, brm, frm)
 
 for(i in 1:length(dat)){ # since we have one dataset with breathing info and one with speech info, do all the same naming of conditions etc for each
   dat[[i]]$Order[dat[[i]]$Condition=="Baseline"] <- 0
@@ -868,6 +876,12 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
   dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Hirs"] <- "Hirsch"
   dat[[i]]$Topic[dat[[i]]$Speaker == "Confederate" & substr(dat[[i]]$file, 3, 6) == "Holi"] <- "Holidays"
   
+  dat[[i]] <- dat[[i]] %>% 
+    mutate(Topic = ifelse(grepl("Schwalbe", file), "Schwalbe",
+                          ifelse(grepl("Pferd", file), "Pferd",
+                                 ifelse(grepl("Hirsch", file), "Hirsch",
+                                        Topic))))
+  
   ### Calculate BMI
   
   dat[[i]]$BMI <- dat[[i]]$Weight/((dat[[i]]$Height/100)^2) # dividing height by 100 because it has to be in meters
@@ -903,6 +917,7 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
 
 fsm <- dat[[1]]
 brm <- dat[[2]]
+frb <- dat[[3]]
 
 brm <- brm %>% mutate_at(c("inhalDur", "inhalAmp"), as.numeric)
 
@@ -920,10 +935,11 @@ fsm$f0IPUmean[fsm$file=="SF-WJH"] <- unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!
 
 save(fsm, file=paste0(folder, "DataSpeech.RData"))
 save(brm, file=paste0(folder, "DataBreathing.RData"))
+save(frb, file=paste0(folder, "DataReadSpeech.RData"))
 
-# for Susanne
-brm <- brm %>% filter(Speaker=="Confederate")
-write.csv(brm, file=paste0(folder, "ConfederateBreathingData.csv"))
+# # for Susanne
+# brm <- brm %>% filter(Speaker=="Confederate")
+# write.csv(brm, file=paste0(folder, "ConfederateBreathingData.csv"))
 ###
 
 # #####
