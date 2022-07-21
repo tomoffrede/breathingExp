@@ -954,7 +954,7 @@ save(frb, file=paste0(folder, "DataReadSpeech.RData"))
 
 dat <- fsm %>%
   filter(!duplicated(file)) %>%
-  select(-c(IPU, f0raw, label, f0z, speechRateIPU))
+  select(-c(IPU, f0raw, label, speechRateIPU))
 
 conf <- dat %>%
   filter(Speaker == "Confederate") %>%

@@ -11,7 +11,7 @@ load(paste0(folder, "DataSpeech.RData"))
 
 df <- fsm %>%
   filter(Task == "Free", Speaker == "Confederate") %>%
-  select(c("file", "Speaker", "IPU", "f0raw", "f0IPUmean", "speechRateIPU", "durSpeech", "durPauses", "speechRate", "articRate", "Condition", "breathCycleDurMean", "breathRate", "breathCycleDur")) %>%
+  # select(c("file", "Speaker", "IPU", "f0raw", "f0IPUmean", "speechRateIPU", "durSpeech", "durPauses", "speechRate", "articRate", "Condition", "breathCycleDurMean", "breathRate", "breathCycleDur")) %>%
   mutate(f0IPUz = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
          f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))
 

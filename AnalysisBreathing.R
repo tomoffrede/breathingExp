@@ -25,18 +25,21 @@ orderAct <- c("watching", "listening")
 ##### breathing rate
 
 dat <- brm %>%
-  filter(Role=="Participant", act %in% c("listening", "watching"), !duplicated(file)) %>%
+  filter(Role=="Participant", act %in% c("listening", "watching")) %>%
+  filter(!duplicated(file)) %>% 
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
   mutate(across(act, factor, levels=c("watching","listening"))) %>%
-  group_by(Speaker)%>%
-  mutate(inhalDurz = (inhalDur - mean(inhalDur, na.rm=TRUE) / sd(inhalDur, na.rm=TRUE)))%>%
+  group_by(Speaker) %>%
+  mutate(inhalDurz = (inhalDur - mean(inhalDur, na.rm=TRUE) / sd(inhalDur, na.rm=TRUE)),
+         inhalAmpz = (inhalAmp - mean(inhalAmp, na.rm=TRUE) / sd(inhalAmp, na.rm=TRUE)),
+         breathRateZ = (breathRate - mean(breathRate, na.rm=TRUE) / sd(breathRate, na.rm=TRUE))) %>%
   ungroup() %>%
-  mutate(logInhalDur = log(inhalDur))
+  mutate(logInhalDur = log(inhalDur),
+         logInhalAmp = log(inhalAmp))
 
-dat$logInhalDurz <- log(dat$inhalDurz)
 # I calculated inhalation amplitude from the normalized values of the breathing wave form (0 to 1)
 #  so should I still do the analysis based on z scores?
 # and what about inhalation duration? when I look at the z scores, the difference between acts disappears. I'm not 100% sure why and how I should do this analysis
@@ -47,7 +50,13 @@ dat$act <- relevel(dat$act, ref = "watching")
 ggplot(dat, aes(Condition, breathRate))+
   geom_boxplot()
 
+ggplot(dat, aes(Condition, breathRateZ))+
+  geom_boxplot()
+
 ggplot(dat, aes(act, breathRate))+
+  geom_boxplot()
+
+ggplot(dat, aes(act, breathRateZ))+
   geom_boxplot()
 
 ggplot(dat, aes(Condition, breathRate))+
@@ -97,7 +106,7 @@ plot(fitted(m2a), resid(m2a))
 ##### cycle Durations
 
 dat <- brm %>%
-  filter(Role=="Participant", act!="speaking") %>%
+  filter(Role=="Participant", act %in% c("watching", "listening")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -174,21 +183,27 @@ qqnorm(resid(c5));qqline(resid(c5)) # I think doing the log of the cycle duratio
 #### inhalation duration
 
 dat <- brm %>%
-  filter(Role=="Participant", act %in% c("listening", "watching"), !duplicated(file)) %>%
+  filter(Role=="Participant", act %in% c("listening", "watching")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
   mutate(across(act, factor, levels=c("watching","listening"))) %>%
   group_by(Speaker)%>%
-  mutate(inhalDurz = (inhalDur - mean(inhalDur, na.rm=TRUE) / sd(inhalDur, na.rm=TRUE)))%>%
+  mutate(inhalDurz = (inhalDur - mean(inhalDur, na.rm=TRUE) / sd(inhalDur, na.rm=TRUE)),
+         inhalAmpz = (inhalAmp - mean(inhalAmp, na.rm=TRUE) / sd(inhalAmp, na.rm=TRUE))) %>%
   ungroup() %>%
-  mutate(logInhalDur = log(inhalDur))
+  mutate(logInhalDur = log(inhalDur),
+         logInhalAmp = log(inhalAmp))
 
 ggplot(dat, aes(Condition, inhalDur))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)+
   facet_wrap(~act)
+
+ggplot(dat, aes(act, inhalDurz))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderAct)
 
 summary(d1 <- lmer(logInhalDur ~ act + (1 | Speaker), dat))
 summary(d2 <- lmer(logInhalDur ~ act + Condition + (1 | Speaker), dat))
@@ -198,23 +213,20 @@ summary(d2 <- lmer(logInhalDur ~ act + ConfGenderF + (1 | Speaker), dat))
 anova(d1, d2) # not good: breathCycle, BMI (though BMI is almost good), TMF.F, GEPAQ.F, ConfFriendly, InterEnjoy, ConfGenderF
 
 summary(d2 <- lmer(logInhalDur ~ act + (1 + act | Speaker), dat))
-anova(d1, d2, refit=FALSE) # the random slope with the intercept didn't improve the model much
+anova(d1, d2, refit=FALSE) # the random slope with the intercept improves the model a lot
 
-summary(d2 <- lmer(logInhalDur ~ act + (0 + act | Speaker) + (1 | Speaker), dat))
-anova(d1, d2, refit=FALSE) # without the interaction it was even worse
+# so the best model should be d2
 
-# so the best model should be d1
-
-hist(resid(d1))
-qqnorm(resid(d1));qqline(resid(d1))
-plot(fitted(d1), resid(d1))
+hist(resid(d2))
+qqnorm(resid(d2));qqline(resid(d2))
+plot(fitted(d2), resid(d2))
 # at first I'd done the analysis with the z scores of inhalation duration, but the residuals weren't normal or homoskedastic,
 # but if we use the log of inhalation duration, they look at lot better!
 
 # inhalation amplitude
 
 dat <- brm %>%
-  filter(Role=="Participant", act %in% c("listening", "watching"), !duplicated(file)) %>%
+  filter(Role=="Participant", act %in% c("listening", "watching")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -229,20 +241,23 @@ ggplot(dat, aes(Condition, inhalAmp))+
 
 summary(a1 <- lmer(logInhalAmp ~ act + (1 | Speaker), dat))
 summary(a2 <- lmer(logInhalAmp ~ act + Condition + (1 | Speaker), dat))
-anova(a1, a2) # one of the condition t values was actually 1.96, but this predictor made the model worse
+anova(a1, a2) # Condition improved the model
 
-summary(a2 <- lmer(logInhalAmp ~ act + ConfGenderF + (1 | Speaker), dat))
-anova(a1, a2) # not good: breathCycle, BMI, ConfFriendly, InterEnjoy, TMF.F, ConfGenderF
+summary(a3 <- lmer(logInhalAmp ~ act * Condition + (1 | Speaker), dat))
+anova(a2, a3) # the interaction also improved it
 
-names(dat)
+summary(a4 <- lmer(logInhalAmp ~ act * Condition + ConfGenderF +(1 | Speaker), dat))
+anova(a3, a4) # not good: breathCycle, BMI, ConfFriendly, InterEnjoy, TMF.F, ConfGenderF
 
-# it seems that a1 is the best model
 
-hist(resid(a1))
-qqnorm(resid(a1));qqline(resid(a1))
-plot(fitted(a1), resid(a1))
+# it seems that a3 is the best model
 
-# again, the residuals looked a lot more normally distributed and homoskedastic with the log of the amplitude
+hist(resid(a3))
+qqnorm(resid(a3));qqline(resid(a3))
+plot(fitted(a3), resid(a3))
+
+# they look very normally distributed, but are they homoskedastic?
+# (again, the residuals looked a lot more normally distributed and homoskedastic with the log of the amplitude)
 
 #########################
 
@@ -259,18 +274,20 @@ dat <- brm %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
-  mutate(logBreathRate = log(breathRate))
+  mutate(logBreathRate = log(breathRate)) %>% 
+  group_by(Speaker) %>% 
+  mutate(breathRateZ = (breathRate - mean(breathRate)) / sd(breathRate)) %>% 
+  ungroup
 
 ggplot(dat, aes(Condition, breathRate))+
   geom_boxplot()
 
 dat$Condition <- relevel(dat$Condition, ref = "Sitting")
 
-
 summary(b1 <- lmer(logBreathRate ~ Condition + (1 | Speaker), dat))
 # during speaking, a decrease in breathing rate with condition (but the t values are low)
 
-summary(b2 <- lmer(breathRate ~ Condition + ConfGenderF + (1 | Speaker), dat))
+summary(b2 <- lmer(logBreathRate ~ Condition + ConfGenderF + (1 | Speaker), dat))
 anova(b1, b2)
 # didn't improve the model: BMI (using dat %>% filter(!is.na(BMI))), TMF.F, ConfFriendly, InterEnjoy, ConfGenderF
 
@@ -322,14 +339,23 @@ dat <- brm %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
-  mutate(logInhalDur = log(inhalDur),
-         inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur))
+  mutate(logInhalDur = log(inhalDur)) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur)) %>% 
+  ungroup() %>% 
+  mutate(Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction")) # Cond2 = Alone vs Interaction
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
 ggplot(dat, aes(Condition, inhalDur))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat, aes(Cond2, inhalDur))+
+  geom_boxplot()
+
+ggplot(dat, aes(numberIPUs, inhalDur))+
+  geom_point()
 
 summary(d1 <- lmer(logInhalDur ~ Condition + (1 | Speaker), dat))
 summary(d2 <- lmer(logInhalDur ~ Condition + numberIPUs + (1 | Speaker), dat))
@@ -341,13 +367,22 @@ anova(d2, d3) # not good: breathCycle, BMI, ConfFriendly, InterEnjoy, ConfGender
 summary(d3 <- lmer(logInhalDur ~ numberIPUs + (1 | Speaker), dat))
 anova(d2, d3) # the model WITH condition is much better!
 
+
+# if we divide Conditions as `Alone` vs `Interaction`, then the model is also good
+summary(d4 <- lmer(logInhalDur ~ numberIPUs + Cond2 + (1 | Speaker), dat))
+anova(d3, d4) # the model WITH condition is much better!
+
 # Condition: no difference between the three conditions, but schon between baseline and interaction
 
-# d2 should be the best model
+# d2 should be the best model, or d4 if we do Alone vs Interaction
 
 hist(resid(d2))
 qqnorm(resid(d2));qqline(resid(d2))
 plot(fitted(d2), resid(d2))
+
+hist(resid(d4))
+qqnorm(resid(d4));qqline(resid(d4))
+plot(fitted(d4), resid(d4)) # they're the same thing!
 
 # they look ok
 
@@ -359,8 +394,9 @@ dat <- brm %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
-  mutate(logInhalAmp = log(inhalAmp),
-         inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp))
+  mutate(logInhalAmp = log(inhalAmp)) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp))
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
@@ -382,15 +418,15 @@ anova(a2, a3) # not good: breathCycle (though almost good), ConfFriendly, InterE
 # so the best model should just ignore it
 
 summary(a3 <- lmer(logInhalAmp ~ numberIPUs + (1 | Speaker), dat))
-anova(a2, a3, refit=FALSE) # here the model isn't better with condition
+anova(a2, a3) # the model is indeed better with condition
 
-# a3 should be the best model
+# a2 should be the best model
 
-hist(resid(a3))
-qqnorm(resid(a3));qqline(resid(a3))
-plot(fitted(a3), resid(a3))
+hist(resid(a2))
+qqnorm(resid(a2));qqline(resid(a2))
+plot(fitted(a2), resid(a2))
 
-# residuals are mostly ok I think, but not sure 
+# residuals are mostly ok I think
 
 #### number of IPUs
 
@@ -446,12 +482,41 @@ summary(n4 <- MASS::polr(numberIPUs ~ breathCycle + BMI + InterEnjoy, data=dat %
 ##########################################################
 ##########################################################
 
-# Joint reading!
+# Read speech
+
+#### breathing rate
+
+dat <- brm %>%
+  filter(Role=="Participant", grepl("Read", Task)) %>%
+  filter(!duplicated(file)) %>% 
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  group_by(Speaker) %>%
+  mutate(breathRateZ = (breathRate - mean(breathRate, na.rm=TRUE) / sd(breathRate, na.rm=TRUE))) %>%
+  ungroup()
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+
+ggplot(dat, aes(Condition, breathRate))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+summary(b1 <- lmer(breathRateZ ~ Condition + (1 | Speaker), dat))
+# Condition isn't a good predictor
+
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+
+# see plot: not okay!
 
 #### inhalation duration
 
 dat <- brm %>%
-  filter(Role=="Participant", Task=="ReadJoint") %>%
+  filter(Role=="Participant", grepl("Read", Task)) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -461,12 +526,13 @@ dat <- brm %>%
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
-ggplot(dat, aes(Condition, inhalDur))+
+ggplot(dat %>% filter(inhalDur < 3), aes(Condition, inhalDur))+
   geom_boxplot()+
-  scale_x_discrete(limits = orderCond)
+  scale_x_discrete(limits = orderCondBase)
 
 ggplot(dat, aes(breathCycle, inhalDur))+
-  geom_point()
+  geom_point()+
+  facet_wrap(~Condition)
 
 summary(d1 <- lmer(logInhalDur ~ Condition + (1 | Speaker), dat))
 summary(d2 <- lmer(logInhalDur ~ Condition + breathCycle + (1 | Speaker), dat))
@@ -477,73 +543,87 @@ summary(d3 <- lmer(logInhalDur ~ breathCycle + (1 | Speaker), dat))
 anova(d2, d3) # the model with condition is much better
 
 summary(d4 <- lmer(logInhalDur ~ Condition * breathCycle + (1 | Speaker), dat))
-anova(d2, d4) # the interaction didn't improve it
+anova(d2, d4) # the interaction improved it: it seems it was only during baseline that inhales got shorter with breath cycle
 
-summary(d4 <- lmer(logInhalDur ~ Condition + breathCycle + (1 + Condition | Speaker), dat))
-anova(d2, d4, refit=FALSE) # the random slope with intercept wasn't good
+summary(d5 <- lmer(logInhalDur ~ Condition * breathCycle + (1 + Condition | Speaker), dat))
+anova(d4, d5, refit=FALSE) # the random slope with intercept improved it too
 
-summary(d4 <- lmer(logInhalDur ~ Condition + breathCycle + (0 + Condition | Speaker) + (1 | Speaker), dat))
-anova(d2, d4, refit=FALSE) # the random slope without the interaction was also bad
+summary(d5a <- lmer(logInhalDur ~ breathCycle + (1 + Condition | Speaker), dat))
+anova(d5, d5a)
 
-# so the best model should be d2
+summary(d5b <- lmer(logInhalDur ~ breathCycle + (1 | Speaker), dat))
+anova(d5a, d5b, refit=FALSE)
+
+# so the best model should be d5
 # condition: expected improvement, though difference between sitting and light not significant
 
-hist(resid(d2))
-qqnorm(resid(d2));qqline(resid(d2))
-plot(fitted(d2), resid(d2))
+hist(resid(d5))
+qqnorm(resid(d5));qqline(resid(d5))
+plot(fitted(d5), resid(d5))
 
-# residuals look super ok!
+# good looking residuals!
 
 #### inhalation amplitude
 
 dat <- brm %>%
-  filter(Role=="Participant", Task=="ReadJoint") %>%
+  filter(Role=="Participant", grepl("Read", Task)) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
-  mutate(logInhalAmp = log(inhalAmp),
-         inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp))
+  mutate(logInhalAmp = log(inhalAmp)) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp)) %>% 
+  ungroup()
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
 ggplot(dat, aes(Condition, inhalAmp))+
   geom_boxplot()+
-  scale_x_discrete(limits = orderCond)
+  scale_x_discrete(limits = orderCondBase)
 
 ggplot(dat, aes(breathCycle, inhalAmp))+
-  geom_point()
+  geom_point() + 
+  facet_wrap(~Condition)
 
 summary(a1 <- lmer(logInhalAmp ~ Condition + (1 | Speaker), dat))
 summary(a2 <- lmer(logInhalAmp ~ Condition + breathCycle + (1 | Speaker), dat))
 summary(a3 <- lmer(logInhalAmp ~ breathCycle + (1 | Speaker), dat))
 anova(a1, a2)
-anova(a2, a3) # the model without condition is better (a3)
+anova(a2, a3) # the model with condition is better (a2)
 
-summary(a4 <- lmer(logInhalAmp ~ breathCycle + ConfGenderF + (1 | Speaker), dat))
-anova(a3, a4) # not good: BMI, ConfFriendly, Interenjoy, ConfGenderF, TMF.F
+summary(a3 <- lmer(logInhalAmp ~ Condition * breathCycle + (1 | Speaker), dat))
+anova(a2, a3) # the interaction isn't good
 
-# so a3 should be the best model
+summary(a4 <- lmer(logInhalAmp ~ Condition + breathCycle + ConfGenderF + (1 | Speaker), dat))
+anova(a2, a4) # not good: BMI, ConfFriendly, Interenjoy, ConfGenderF, TMF.F
 
-hist(resid(a3))
-qqnorm(resid(a3));qqline(resid(a3))
-plot(fitted(a3), resid(a3))
+# so a2 should be the best model
 
-# residuals seem ok
+hist(resid(a2))
+qqnorm(resid(a2));qqline(resid(a2))
+plot(fitted(a2), resid(a2))
 
-###############
-######## Inhalation: comparing ReadJoint and FreeSpeech
+# residuals not very normal, and i wonder if heteroskedastic?
+
+############################################################
+############################################################
+
+#### Comparing Read and Free Speech
 
 # Inhalation Duration
 
 dat <- brm %>%
-  filter(Role=="Participant", Task %in% c("ReadJoint", "Free"), act %!in% c("listening", "watching")) %>%
+  filter(Role=="Participant", (Task=="Free" | grepl("Read", Task)), act %!in% c("listening", "watching")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
   mutate(logInhalDur = log(inhalDur),
-         inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur))
+         Task = ifelse(grepl("Read", Task), "Read", "Free")) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur)) %>% 
+  ungroup()
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
@@ -566,10 +646,10 @@ summary(d4 <- lmer(logInhalDur ~ Condition * Task + TMF.F + (1 | Speaker), dat))
 anova(d3, d4) # not good: breathCycle, BMI, GEPAQ.F, TMF.F
 
 summary(d4 <- lmer(logInhalDur ~ Condition * Task + (1 + Condition | Speaker), dat))
-anova(d3, d4, refit=FALSE) # the random slope with intercept improved the model
+anova(d3, d4, refit=FALSE) # the random slope with intercept improved the model (Condition)
 
-summary(d5 <- lmer(logInhalDur ~ Condition * Task + (1 + Condition | Speaker) + (0 + Task | Speaker), dat))
-anova(d4, d5, refit=FALSE) # the random slope for Task also improved it
+summary(d5 <- lmer(logInhalDur ~ Condition * Task + (1 + Condition + Task | Speaker), dat))
+anova(d4, d5, refit=FALSE) # the random slope with intercept improved the model (Condition + Task)
 
 # best model should be d5
 
@@ -582,13 +662,16 @@ plot(fitted(d5), resid(d5))
 # Inhalation Amplitude
 
 dat <- brm %>%
-  filter(Role=="Participant", Task %in% c("ReadJoint", "Free"), act %!in% c("listening", "watching")) %>%
+  filter(Role=="Participant", (Task=="Free" | grepl("Read", Task)), act %!in% c("listening", "watching")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
   mutate(logInhalAmp = log(inhalAmp),
-         inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp))
+         Task = ifelse(grepl("Read", Task), "Read", "Free")) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp)) %>% 
+  ungroup()
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
@@ -598,39 +681,79 @@ ggplot(dat, aes(Condition, inhalAmp))+
   facet_wrap(~Task)
 
 ggplot(dat, aes(breathCycle, inhalAmp))+
-  geom_point()
+  geom_point()+
+  facet_wrap(~Condition)
 
 summary(a1 <- lmer(logInhalAmp ~ Condition + (1 | Speaker), dat))
 summary(a2 <- lmer(logInhalAmp ~ Condition + Task + (1 | Speaker), dat))
 anova(a1, a2) # a2 better
 
 summary(a3 <- lmer(logInhalAmp ~ Condition * Task + (1 | Speaker), dat))
-anova(a2, a3) # interaction not better
+anova(a2, a3) # interaction much better
 
-summary(a3 <- lmer(logInhalAmp ~ Condition + Task + breathCycle + (1 | Speaker), dat))
-anova(a2, a3) # people breathed less deeper the longer into the text
+summary(a4 <- lmer(logInhalAmp ~ Condition * Task + breathCycle + (1 | Speaker), dat))
+anova(a3, a4) # people breathed less deeper the longer into the speech
 
-summary(a4 <- lmer(logInhalAmp ~ Condition + Task + breathCycle + ConfFriendly + (1 | Speaker), dat))
-anova(a3, a4) # the friendlier the confederate, the deeper the inhales
+summary(a5 <- lmer(logInhalAmp ~ (Condition + Task + breathCycle)^2 + (1 | Speaker), dat))
+anova(a4, a5) # the interaction between the three improved the model
 
-summary(a5 <- lmer(logInhalAmp ~ (Condition + Task + ConfFriendly)^2 + breathCycle +(1 | Speaker), dat))
-anova(a4, a5) # interaction not good (though conditionLight : task had t > 2)
+summary(a6 <- lmer(logInhalAmp ~ (Condition + Task + breathCycle)^2 + ConfFriendly + (1 | Speaker), dat))
+anova(a5, a6) # ConfFriendly improved the model, but now that I think of it, I can't justify it theoretically and this isn't necessarily related to my hypothesis (only if it's also true that the confederate breathes deeper)
+# (I just checked: We don't have the confederate inhalation data for read speech)
+# but at least for now, let's leave this out
+# not good: BMI, InterEnjoy, ConfGenderF, TMF.F
 
-summary(a5 <- lmer(logInhalAmp ~ Condition + Task + breathCycle + ConfFriendly + (1 + Condition | Speaker), dat))
-anova(a4, a5, refit=FALSE) # not good: BMI, InterEnjoy, ConfGenderF, TMF.F
-# the random slope with intercept for Condition and speaker improved the model
+summary(a5a <- lmer(logInhalAmp ~ (Task + breathCycle)^2 + (1 | Speaker), dat))
+anova(a5, a5a) # checking that Condition is still good in the model -- it is!
 
-summary(a6 <- lmer(logInhalAmp ~ Condition + Task + breathCycle + ConfFriendly + (1 + Condition | Speaker) + (1 + Task | Speaker), dat))
-# model didn't converge like this (maybe too complex?) -- also tried with (0 + Task | Speaker)
+summary(a6 <- lmer(logInhalAmp ~ (Condition + Task + breathCycle)^2 + (1 + Condition | Speaker), dat))
+anova(a5, a6, refit=FALSE) # the random slope with intercept for Condition and speaker improved the model
 
-# but try again to remove condition, since t values all kinda low
-summary(a6 <- lmer(logInhalAmp ~ Task + breathCycle + ConfFriendly + (1 + Condition | Speaker), dat))
-anova(a5, a6) # model is better without condition
+summary(a7 <- lmer(logInhalAmp ~ (Condition + Task + breathCycle)^2 + (1 + Condition + Task | Speaker), dat))
+anova(a5, a6, refit=FALSE) # this slope also improved it
 
-# so a5 should be the best model
+# so a7 should be the best model
+# but is it too complex? Do I even know how to interpret it?
 
-hist(resid(a5))
-qqnorm(resid(a5));qqline(resid(a5))
-plot(fitted(a5), resid(a5))
+hist(resid(a7))
+qqnorm(resid(a7));qqline(resid(a7))
+plot(fitted(a7), resid(a7))
 
-# the residuals look ok!
+# the residuals look ok! (but not super normally distributed?)
+
+
+## breathing rate
+
+dat <- brm %>%
+  filter(Role=="Participant", (Task=="Free" | grepl("Read", Task)), act %!in% c("listening", "watching")) %>%
+  filter(!duplicated(file)) %>% 
+  mutate(breathCycle = gsub("cycle", "", breathCycle),
+         Task = ifelse(grepl("Read", Task), "Read", "Free")) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  group_by(Speaker) %>%
+  mutate(breathRateZ = (breathRate - mean(breathRate, na.rm=TRUE) / sd(breathRate, na.rm=TRUE))) %>%
+  ungroup()
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+
+ggplot(dat, aes(Condition, breathRate))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+summary(b1 <- lmer(breathRateZ ~ Condition + (1 | Speaker), dat))
+summary(b2 <- lmer(breathRateZ ~ Condition + Task + (1 | Speaker), dat))
+summary(b3 <- lmer(breathRateZ ~ Task + (1 | Speaker), dat))
+summary(b4 <- lmer(breathRateZ ~ Condition * Task + (1 | Speaker), dat))
+anova(b1, b2)
+anova(b2, b3)
+anova(b2, b4)
+
+# is b2 the best model?
+
+hist(resid(b2))
+qqnorm(resid(b2));qqline(resid(b2)) # residuals look ok
+plot(fitted(b2), resid(b2))
+
