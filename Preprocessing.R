@@ -740,7 +740,9 @@ for(i in 1:length(d)){
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "J"] <- "ReadJoint"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "-"] <- "Free"
   d[[i]]$Task[d[[i]]$act == "ReadJoint"] <- "ReadJoint"
+  d[[i]]$Task[d[[i]]$act == "ReadBaseline"] <- "ReadBaseline"
   d[[i]]$Task <- as.factor(d[[i]]$Task)
+
 }
 
 fs <- d[[1]]
