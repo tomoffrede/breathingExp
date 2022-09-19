@@ -22,8 +22,8 @@ library(dplR)
 
 #FOR TESTING
 #parentfolder <- (dirname(rstudioapi::getSourceEditorContext()$path))  #what is the current folder
-# parentfolder <- "C:/Users/tomof/Documents/1.Humboldt-Universität_zu_Berlin/ExperimentBreathing/Data/DataForAnalysis/AllData/"
-parentfolder <- "C:/Users/tomof/Documents/1.Humboldt-Universität_zu_Berlin/ExperimentBreathing/Data/2secsnippets/"
+# parentfolder <- "C:/Users/tomof/Documents/1.Humboldt-Universit?t_zu_Berlin/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+parentfolder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 #data_to_process <- paste0(dirname(parentfolder), "/DATA_TO_PROCESS/") #This is the folder where your wav's are saved
 #you can set it to parentfolder if you dropped this R code in that folder
 data_to_process = parentfolder

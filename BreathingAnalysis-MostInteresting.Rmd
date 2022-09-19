@@ -192,7 +192,7 @@ summary(lm(numberIPUs ~ Condition, br %>% filter(Role == "Confederate")))
 
 ```{r, echo=FALSE}
 ggplot(br %>% filter(Role=="Participant"), aes(Condition, numberIPUs))+
-  geom_boxplot()+
+  geom_hist()+
   ggtitle("number of IPUs per breath cycle (participants)")+
   scale_x_discrete(limits = orderCondBase)
 

@@ -14,20 +14,20 @@ order <- c("Sitting", "Light", "Heavy")
 ### final figure for SMC abstract
 ### with f0 and breathing rate through conditions
 
-load(paste0(folder, "DataNoDiff.RData"))
+load(paste0(folder, "DataSpeech.RData"))
 
-dat <- dat %>%
+dat <- fsm %>%
   filter(Speaker=="Confederate") %>%
-  filter(Condition!="Baseline") %>%
+  # filter(Condition!="Baseline") %>%
   filter(Task=="Free")
 
-dat$Condition[dat$Condition=="Light"] <- "Light Biking"
-dat$Condition[dat$Condition=="Heavy"] <- "Heavy Biking"
+# dat$Condition[dat$Condition=="Light"] <- "Light Biking"
+# dat$Condition[dat$Condition=="Heavy"] <- "Heavy Biking"
 
 png(paste0(folder2, "figure.png"), width=600, height=550)
 ggplot() +
   geom_boxplot(dat, mapping=aes(Condition, f0IPUmean), fill="#1E9B8AFF") +
-  geom_point(dat, mapping=aes(Condition, breathRateSpeech*12), color="#482677FF", size=4) +
+  geom_point(dat, mapping=aes(Condition, breathRate*12), color="#482677FF", size=4) +
   scale_x_discrete(limits = order, labels=c("Sitting", "Light Biking", "Heavy Biking")) +
   scale_y_continuous(name="Fundamental Frequency (f0)", sec.axis=sec_axis(~ ./12, name=("Breathing Rate"))) +
   ggtitle("Confederate's f0 (boxplots) and breathing rate (points)") +
@@ -42,11 +42,11 @@ ggplot() +
   )
 dev.off()
 
-range(dat$breathRateSpeech) # 15 - 30
+range(dat$breathRate) # 15 - 30
 range(dat$f0IPUmean) # 200 - 280
 
 
-###### end o figure
+###### end of figure
 
 ## Free speech
 

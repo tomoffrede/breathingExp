@@ -56,7 +56,6 @@ for(i in 1:nrow(listTxg)){
     mutate_at(c("IPU", "f0mean"), as.numeric)
   f0perIPU <- aggregate(f0$f0mean, list(f0$IPU), FUN=mean)
   colnames(f0perIPU) <- c("IPU", "f0mean")
-  # f0perIPU$IPU <- 1:nrow(f0perIPU)
   f0perIPU <- f0perIPU %>%
     mutate(IPU = 1:nrow(f0perIPU)) %>%
     mutate(file = substr(listTxg$txt[i], 1, 6)) %>%

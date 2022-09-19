@@ -119,7 +119,9 @@ listTG <- listTG[!grepl("_VUV", listTG) & !grepl("HSP", listTG)]
 confFtg <- listTG[grepl("Home", listTG)|grepl("Hobbies", listTG)|grepl("Holidays", listTG)]
 listTGf <- listTG[substr(listTG, 2, 2)=="F" | listTG %in% confFtg]
 listTGBsil <- listTG[substr(listTG, 1, 2) == "BR"] # baseline reading
-listTGRsil <- listTG[grepl("joint", listTG)] # conditions joint reading
+listTGRsil0 <- listTG[grepl("joint", listTG)] # conditions joint reading, participants
+listTGRsil <- listTGRsil0[substr(listTGRsil0, 2, 2) != "-"]
+listCRsil <- listTGRsil0[substr(listTGRsil0, 2, 2) == "-"]
 
 
 listTxg <- as.data.frame(cbind(listTXTf, listTGf))
@@ -134,12 +136,21 @@ listReadBase$worked[substr(listReadBase$txt, 1, 20)==substr(listReadBase$sil, 1,
 listReadBase$worked[substr(listReadBase$txt, 1, 20)!=substr(listReadBase$sil, 1, 20)] <- "NO!!!!!!!!!"}
 table(listReadBase$worked)
 
-{listReadCond <- data.frame(cbind(readJ, listTGRsil))
-names(listReadCond) <- c("txt", "sil")
-ifelse(substr(listReadCond$txt, 1, 6) == substr(listReadCond$sil, 1, 6),
-       listReadCond$worked <- "worked!",
-       listReadCond$worked <- "NO!!!!!!!!")}
-table(listReadCond$worked)
+{listReadC <- data.frame(cbind(confRJ, listCRsil))
+names(listReadC) <- c("txt", "sil")
+ifelse(substr(listReadC$txt, 1, 6) == substr(listReadC$sil, 1, 6),
+       listReadC$worked <- "worked!",
+       listReadC$worked <- "NO!!!!!!!!")}
+table(listReadC$worked)
+
+{listReadCond0 <- data.frame(cbind(readJ, listTGRsil))
+names(listReadCond0) <- c("txt", "sil")
+ifelse(substr(listReadCond0$txt, 1, 6) == substr(listReadCond0$sil, 1, 6),
+       listReadCond0$worked <- "worked!",
+       listReadCond0$worked <- "NO!!!!!!!!")}
+table(listReadCond0$worked)
+
+listReadCond <- rbind(listReadCond0, listReadC)
 
 ff <- data.frame(matrix(ncol=4, nrow=0))
 colnames(ff) <- c("IPU", "f0raw", "file", "label")
@@ -387,26 +398,27 @@ listPBGf$workedwav[substr(listPBGf$breath, 1, 6)!=substr(listPBGf$wav, 1, 6)] <-
 table(listPBGf$workedTGs) # make sure all the TXT and Textgrid files are matching in each row
 table(listPBGf$workedwav)
 
-listREAD <- data.frame(cbind(listBREATHrj, listWAVrj))
-colnames(listREAD) <- c("breath", "wav")
-listREAD$workedwav[substr(listREAD$breath, 1, 6)==substr(listREAD$wav, 1, 6)] <- "worked!"
-listREAD$workedwav[substr(listREAD$breath, 1, 6)!=substr(listREAD$wav, 1, 6)] <- "NO!!!!!!!!!"
-table(listPBGf$workedwav) # make sure all the TXT and Textgrid files are matching in each row
+listREAD0 <- data.frame(cbind(listBREATHrj, listWAVrj))
+colnames(listREAD0) <- c("breath", "wav")
+listREAD0$worked[substr(listREAD0$breath, 1, 6)==substr(listREAD0$wav, 1, 6)] <- "worked!"
+listREAD0$worked[substr(listREAD0$breath, 1, 6)!=substr(listREAD0$wav, 1, 6)] <- "NO!!!!!!!!!"
+table(listREAD0$worked) # make sure all the TXT and Textgrid files are matching in each row
 
 # confederate:
 
 listCB <- list.files(folder2, pattern="THORAX") # we use the measurement from the thorax only for the confederate
 listCB <- listCB[grepl(".TextGrid", listCB)]
-listCBr <- listCB[grepl("alone", listCB)|grepl("joint", listCB)]
+listCBr <- listCB[grepl("joint", listCB)]
 listCBf <- listCB[grepl("Holidays", listCB)|grepl("Hobbies", listCB)|grepl("Home", listCB)]
 
 listCT <- list.files(folder, pattern="TextGrid")
 listCT <- listCT[!grepl("THORAX", listCT)]
-listCTr <- listCT[grepl("Schwalbe", listCT)|grepl("Hirsch", listCT)|grepl("Pferd", listCT)]
+listCTr <- listCT[grepl("-Schwalbe", listCT)|grepl("-Hirsch", listCT)|grepl("-Pferd", listCT)]
 listCTf <- listCT[grepl("Holidays", listCT)|grepl("Hobbies", listCT)|grepl("Home", listCT)]
 
 listCW <- list.files(folder2, pattern="THORAX")
 listCW <- listCW[!grepl("TextGrid", listCW)]
+listCWr <- listCW[grepl("joint", listCW)]
 
 listCBGf0 <- as.data.frame(cbind(listCBf, listCTf))
 listCBGf <- as.data.frame(cbind(listCBGf0, listCW))
@@ -419,7 +431,15 @@ table(listCBGf$workedTGs) # make sure all the TXT and Textgrid files are matchin
 table(listCBGf$workedwav)
 
 listBGf <- rbind(listPBGf, listCBGf)
-listBREATHo <- c(listBREATHf, listBREATHl, listBREATHb, listCBf, listBREATHr)
+listBREATHo <- c(listBREATHf, listBREATHl, listBREATHb, listCBf, listBREATHr, listCBr)
+
+{listREADc <- data.frame(cbind(listCBr, listCWr))
+names(listREADc) <- c("breath", "wav")
+listREADc <- listREADc %>% 
+  mutate(worked = ifelse(substr(listREADc$breath, 1, 6) == substr(listREADc$wav, 1, 6), "worked!", "NO!!!!!"))}
+table(listREADc$worked)
+
+listREAD <- rbind(listREAD0, listREADc)
 
 ### GETTING DURATION OF BREATHING CYCLES AND BREATHING RATE
 
@@ -622,11 +642,11 @@ pbr3 <- data.frame(matrix(ncol=12, nrow=0))
 colnames(pbr3) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "inhalAmp", "inhalDur")
 
 for(i in 1:nrow(listREAD)){
-  if(grepl("Hirsch", listREAD$breath[i])){
+  if(grepl("_Hirsch", listREAD$breath[i])){
     act <- "ReadBaseline-Hirsch"
-  } else if(grepl("Pferd", listREAD$breath[i])){
+  } else if(grepl("_Pferd", listREAD$breath[i])){
     act <- "ReadBaseline-Pferd"
-  } else if(grepl("Schwalbe", listREAD$breath[i])){
+  } else if(grepl("_Schwalbe", listREAD$breath[i])){
     act <- "ReadBaseline-Schwalbe"
   } else if(grepl("joint", listREAD$breath[i])){
     act <- "ReadJoint"
@@ -738,7 +758,8 @@ for(i in 1:length(d)){
   # d[[i]]$Task[substr(d[[i]]$file, 1, 2) == "BR"] <- "ReadAlone" # baseline reading is also alone
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "A"] <- "ReadAlone"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "J"] <- "ReadJoint"
-  d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "-"] <- "Free"
+  d[[i]]$Task[d[[i]]$Speaker == "Confederate" & grepl("Hirs|Schw|Pfer", d[[i]]$file)] <- "ReadJoint"
+  d[[i]]$Task[d[[i]]$Speaker == "Confederate" & grepl("Hobb|Holi|Home", d[[i]]$file)] <- "Free"
   d[[i]]$Task[d[[i]]$act == "ReadJoint"] <- "ReadJoint"
   d[[i]]$Task[d[[i]]$act == "ReadBaseline"] <- "ReadBaseline"
   d[[i]]$Task <- as.factor(d[[i]]$Task)

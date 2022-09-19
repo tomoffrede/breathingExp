@@ -24,9 +24,9 @@ df <- fsm %>%
 png(paste0(folderPlot, "conf-f0.png"), height=550, width=550)
 ggplot(df, aes(Condition, f0mean))+
   geom_boxplot(fill="#39558CFF")+
-  scale_x_discrete(limits = orderCond)+
-  geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), annotations=c("***", "***"))+
-  labs(title="Confederate: f0", y="f0", caption="***: < 0.001")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), annotations=c("**", "***"))+
+  labs(title="Confederate: f0", y="f0", caption="**: |t| > 3; ***: |t| > 4")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
@@ -47,13 +47,13 @@ df <- fsm %>%
 png(paste0(folderPlot, "conf-speechRate.png"), height=550, width=550)
 ggplot(df, aes(Condition, speechRateIPU))+
   geom_boxplot(fill="#39558CFF")+
-  scale_x_discrete(limits = orderCond)+
-  geom_signif(comparisons=list(c("Sitting", "Heavy"), c("Light", "Heavy")), annotations=c("***", "*"), y=c(13.3, 12.75))+
-  labs(title="Confederate: Speech Rate", y="Speech Rate", caption="***: < 0.001; *: < 0.05")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons=list(c("Sitting", "Heavy"), c("Light", "Heavy")), annotations=c("**", "*"), y=c(13.3, 12.75))+
+  labs(title="Confederate: Speech Rate", y="Speech Rate", caption="**: |t| > 3; *: |t| > 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
-df$Condition <- relevel(df$Condition, ref="Light")
+df$Condition <- relevel(df$Condition, ref="Sitting")
 
 summary(lm(speechRateIPU ~ Condition, df))
 
@@ -73,9 +73,9 @@ dat <- brm %>%
 png(paste0(folderPlot, "conf-breathRate.png"), height=550, width=550)
 ggplot(dat, aes(Condition, breathRate))+
   geom_point(color="#482173FF", size=3)+
-  scale_x_discrete(limits = orderCond)+
-  geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), annotations=c("***", "***"), y=25.5)+
-  labs(title="Confederate: Breathing Rate", y="Breathing Rate", caption="***: < 0.001")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), annotations=c("***", "*"), y=25.5)+
+  labs(title="Confederate: Breathing Rate", y="Breathing Rate", caption="***: |t| > 9; *: |t| ~ 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
@@ -100,16 +100,16 @@ dat <- brm %>%
 png(paste0(folderPlot, "conf-cycleDurations-Condition.png"), height=550, width=550)
 ggplot(dat, aes(Condition, cycleDur))+
   geom_boxplot(fill="#39558CFF")+
-  scale_x_discrete(limits = orderCond)+
-  geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), annotations=c("***", "*"))+
-  labs(title="Confederate: Breath Cycle Durations", y="Breath Cycle Durations", caption="***: < 0.001; *: < 0.05")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), annotations=c("***", "**"))+
+  labs(title="Confederate: Breath Cycle Durations", y="Breath Cycle Durations", caption="***: |t| > 6; *: |t| > 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
 png(paste0(folderPlot, "conf-cycleDurations-breathCycle.png"), height=550, width=550)
 ggplot(dat, aes(breathCycle, cycleDur))+
   geom_point(color="#482173FF")+
-  labs(title="Confederate: Breath Cycle Durations", y="Breath Cycle Durations", x="Breath Cycle")+
+  labs(title="Confederate: Breath Cycle Durations", y="Breath Cycle Durations", x="Breath Cycle", caption="|t| > 3")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
@@ -133,19 +133,21 @@ load(paste0(folder, "DataBreathing.RData"))
 dat <- brm %>%
   filter(Role=="Confederate") %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
-  mutate_at(c("numberIPUs", "Speaker", "Condition"), as.factor) %>%
-  mutate_at(c("numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate_at(c("Speaker", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy")))
 
 png(paste0(folderPlot, "conf-numberIPUs.png"), height=550, width=550)
 ggplot(dat, aes(Condition, numberIPUs))+
-  geom_violin(fill="#39558CFF", trim=TRUE)+
+  geom_violin(fill="#39558CFF")+
   geom_boxplot(width=0.1)+
-  labs(title="Confederate: IPUs per Breath Cycle", y="Number of IPUs")+
+  geom_signif(comparisons=list(c("Light", "Heavy")), annotations=c("*"))+
+  labs(title="Confederate: IPUs per Breath Cycle", y="Number of IPUs", caption="*: |t| > 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
 dat$Condition <- relevel(dat$Condition, ref="Light")
+dat$numberIPUs <- as.factor(dat$numberIPUs)
 
 summary(MASS::polr(numberIPUs ~ Condition * breathCycle, data=dat, Hess=TRUE))
 
@@ -173,9 +175,9 @@ ggplot(df, aes(Condition, f0mean))+
 dev.off()
 
 png(paste0(folderPlot, "part-f0-confGender.png"), height=550, width=550)
-ggplot(df, aes(ConfGenderF, f0mean))+
-  geom_point(color="#482173FF")+
-  labs(title="Participants: f0", y="f0")+
+ggplot(df, aes(as.factor(ConfGenderF), f0mean))+
+  geom_boxplot(color="#482173FF")+
+  labs(title="Participants: f0", y="f0", x="Perception of Confederate's Gender", caption="|t| > 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
@@ -200,21 +202,21 @@ dev.off()
 png(paste0(folderPlot, "part-speechRate-InterEnjoy.png"), height=550, width=550)
 ggplot(df, aes(InterEnjoy, speechRateIPU))+
   geom_point(color="#482173FF")+
-  labs(title="Participants: Speech Rate", y="Speech Rate")+
+  labs(title="Participants: Speech Rate", y="Speech Rate", caption="|t| > 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
 png(paste0(folderPlot, "part-speechRate-Order.png"), height=550, width=550)
 ggplot(df, aes(Order, speechRateIPU))+
   geom_point(color="#482173FF")+
-  labs(title="Participants: Speech Rate", y="Speech Rate")+
+  labs(title="Participants: Speech Rate", y="Speech Rate", caption="|t| > 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
 png(paste0(folderPlot, "part-speechRate-cycleDur.png"), height=550, width=550)
 ggplot(df, aes(breathCycleDur, speechRateIPU))+
   geom_point(color="#482173FF")+
-  labs(title="Participants: Speech Rate", y="Speech Rate")+
+  labs(title="Participants: Speech Rate", y="Speech Rate", caption="|t| > 3")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
@@ -235,7 +237,7 @@ dat <- brm %>%
 png(paste0(folderPlot, "part-acts-breathRate-condition.png"), height=550, width=550)
 ggplot(dat, aes(Condition, breathRate))+
   geom_boxplot(fill="#39558CFF")+
-  labs(title="Participants: Breathing Rate", y="Breathing Rate")+
+  labs(title="Participants: Breathing Rate (not speaking)", y="Breathing Rate")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))+
   scale_x_discrete(limits = order)
 dev.off()
@@ -251,9 +253,9 @@ dev.off()
 png(paste0(folderPlot, "part-acts-breathRate-act.png"), height=550, width=550)
 ggplot(dat, aes(act, breathRate))+
   geom_boxplot(fill="#39558CFF")+
-  labs(title="Participants: Breathing Rate", y="Breathing Rate", caption="*: |t| > 4")+
+  labs(title="Participants: Breathing Rate", y="Breathing Rate", caption="***: |t| > 4")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))+
-  geom_signif(comparisons=list(c("watching", "listening")), annotations=c("*"))
+  geom_signif(comparisons=list(c("watching", "listening")), annotations=c("***"))
 dev.off()
 
 summary(lmer(breathRate ~ act + (1 + act|Speaker), dat))
@@ -284,15 +286,15 @@ dev.off()
 png(paste0(folderPlot, "part-acts-cycleDur-act.png"), height=550, width=550)
 ggplot(dat %>% filter(cycleDur < 8), aes(act, cycleDur))+
   geom_boxplot(fill="#39558CFF")+
-  labs(title="Participants: Breath Cycle Duration", y="Breath Cycle Duration", caption="*: |t| > 5")+
+  labs(title="Participants: Breath Cycle Duration", y="Breath Cycle Duration", caption="***: |t| > 5")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))+
-  geom_signif(comparisons=list(c("watching", "listening")), annotations=c("*"))
+  geom_signif(comparisons=list(c("watching", "listening")), annotations=c("***"))
 dev.off()
 
 png(paste0(folderPlot, "part-acts-cycleDur-actAndCycle.png"), height=550, width=550)
 ggplot(dat, aes(breathCycle, cycleDur))+
   geom_point(color="#482173FF")+
-  labs(title="Participants: Breath Cycle Duration", y="Breath Cycle Duration")+
+  labs(title="Participants: Breath Cycle Duration", y="Breath Cycle Duration", caption="|t| > 2")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))+
   facet_wrap(~act)
 dev.off()
@@ -315,11 +317,10 @@ dat <- brm %>%
 png(paste0(folderPlot, "part-speaking-breathRate-condition.png"), height=550, width=550)
 ggplot(dat, aes(Condition, breathRate))+
   geom_boxplot(fill="#39558CFF")+
-  labs(title="Participants: Breathing Rate", y="Breathing Rate")+
+  labs(title="Participants: Breathing Rate (speaking)", y="Breathing Rate")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))+
   scale_x_discrete(limits = orderWithBase)
 dev.off()
-
 
 summary(lmer(breathRate ~ Condition + (1 | Speaker), dat))
 
@@ -339,12 +340,13 @@ dat <- brm %>%
 png(paste0(folderPlot, "part-speaking-cycleDur-condition.png"), height=550, width=550)
 ggplot(dat, aes(Condition, cycleDur))+
   geom_boxplot(fill="#39558CFF")+
-  labs(title="Participants: Breath Cycle Duration", y="Breath Cycle Duration")+
+  labs(title="Breath Cycle Duration (speaking)", y="Breath Cycle Duration")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))+
   scale_x_discrete(limits = orderWithBase)
 dev.off()
 
-summary(lmer(logCycleDur ~ Condition + (1 + Condition | Speaker), dat))
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+summary(lmer(logCycleDur ~ Condition + (0 + Condition | Speaker), dat))
 
 
 # Participants - number IPUs
@@ -359,23 +361,23 @@ dat <- brm %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))
 
 png(paste0(folderPlot, "part-numberIPUs-breathCycle.png"), height=550, width=550)
-ggplot(dat, aes(breathCycle, numberIPUs))+
-  geom_point(color="#482173FF")+
-  labs(title="Participants: IPUs per Cycle", y="Number of IPUs per Cycle")+
+ggplot(dat, aes(as.factor(breathCycle), as.integer(numberIPUs)))+
+  geom_violin(fill="#39558CFF")+
+  labs(title="Participants: IPUs per Cycle", y="Number of IPUs per Cycle", x="Breath Cycle", caption="|t| > 4")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
-dev.off()
+dev.off() 
 
 png(paste0(folderPlot, "part-numberIPUs-BMI.png"), height=550, width=550)
-ggplot(dat, aes(BMI, numberIPUs))+
-  geom_point(color="#482173FF")+
-  labs(title="Participants: IPUs per Cycle", y="Number of IPUs per Cycle")+
+ggplot(dat, aes(as.factor(BMI), as.integer(numberIPUs)))+
+  geom_violin(fill="#39558CFF")+
+  labs(title="Participants: IPUs per Cycle", y="Number of IPUs per Cycle", x="BMI", caption="|t| > 3")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 
 png(paste0(folderPlot, "part-numberIPUs-InterEnjoy.png"), height=550, width=550)
-ggplot(dat, aes(InterEnjoy, numberIPUs))+
-  geom_point(color="#482173FF")+
-  labs(title="Participants: IPUs per Cycle", y="Number of IPUs per Cycle")+
+ggplot(dat, aes(as.factor(InterEnjoy), as.integer(numberIPUs)))+
+  geom_violin(fill="#39558CFF")+
+  labs(title="Participants: IPUs per Cycle", y="Number of IPUs per Cycle", x="Enjoyment of Interaction", caption="|t| > 4")+
   theme(title = element_text(size=22), axis.title = element_text(size=20), axis.text = element_text(size=18))
 dev.off()
 

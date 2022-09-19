@@ -47,7 +47,7 @@ load(paste0(folder, "DataReadSpeech.RData"))
 # make plot with confederate's f0, sr
 
 dat <- fsm %>% 
-  filter(Speaker=="Confederate", Task=="Free")
+  filter(Speaker=="Confederate", Task%in%c("Free", "ReadJoint"))
 
 change <- 16
 ggplot(dat, aes(Condition, f0raw)) +
@@ -68,9 +68,9 @@ ggplot(dat, aes(Condition, f0raw)) +
               textsize = 13) +
   scale_x_discrete(limits = order, labels=c("Sitting", "Light B.", "Heavy B.")) +
   scale_y_continuous(name="Fundamental Frequency", sec.axis=sec_axis(~ ./change, name=("Speech Rate")),
-                     limits=c(17, 280)) +
+                     limits=c(17, 283)) +
   # ggtitle("F0 & Speech Rate") +
-  labs(title="F0 & Speech Rate", caption = "* |t| > 2; ** |t| > 4; *** |t| > 6") +
+  labs(title="F0 & Speech Rate") +
   theme(
     axis.title.y = element_text(color = "#E31A1C", size=32),
     axis.text.y = element_text(color = "black", size=20),
@@ -84,13 +84,13 @@ ggplot(dat, aes(Condition, f0raw)) +
     panel.grid.major = element_blank(),
     plot.title = element_text(hjust = 0.5)
   )
-ggsave(paste0(folder2, "Conf-Speech.png"))
+ggsave(paste0(folder2, "Conf-Speech.png"), height = 1900, width=2300, units="px")
 
 
 # make plot with confederate's breathing rate and inhalation duration
 
 dat <- brm %>% 
-  filter(Speaker=="Confederate", Task=="Free")
+  filter(Speaker=="Confederate", Task=="ReadJoint")
 
 ggplot(dat %>% filter(!duplicated(file)), aes(Condition, breathRate)) +
   theme_bw() +
@@ -103,25 +103,25 @@ ggplot(dat %>% filter(!duplicated(file)), aes(Condition, breathRate)) +
               y=c(25, 25.5),
               textsize = 13) +
   scale_x_discrete(limits = order, labels=c("Sitting", "Light B.", "Heavy B.")) +
-  # scale_y_continuous(name="Breathing Rate", sec.axis=sec_axis(~ ./change, name=("Inhalation Duration"))) +
-  scale_y_continuous(limits=c(14, 26.7)) +
+  scale_y_continuous(name="Breathing Rate", sec.axis=sec_axis(~ ./change, name=("Inhalation Duration")), limits=c(14, 26.7)) +
+  # scale_y_continuous(limits=c(14, 26.7)) +
   ggtitle("Breathing Rate") +
   ylab("Breathing Rate") +
   theme(
     axis.title.y = element_text(color = "#1F78B4", size=32),
     axis.text.y = element_text(color = "black", size=20),
-    axis.title.y.right = element_text(color = "#A6CEE3", size=32),
-    axis.text.y.right = element_text(color = "black", size=20),
+    axis.title.y.right = element_text(color = "white", size=32),
+    axis.text.y.right = element_text(color = "white", size=20),
     axis.title.x = element_blank(),
     axis.text.x = element_text(color="black", size=30),
     title = element_text(size=26),
     plot.background = element_blank(),
     panel.grid.minor = element_blank(),
     panel.grid.major = element_blank(),
-    plot.title = element_text(hjust = 0.5)
+    plot.title = element_text(hjust = 0.5),
+    axis.ticks.y.right=element_blank()
   )
-ggsave(paste0(folder2, "Conf-Breath.png"))
-
+ggsave(paste0(folder2, "Conf-Breath.png"), height = 1900, width=2300, units="px")
 
 # # make plot with participants' f0 and breathing rate (READ SPEECH)
 # 

@@ -24,14 +24,17 @@ orderconf <- order[-1]
 load(paste0(folder, "DataNoDiff.RData"))
 df <- dat[dat$Task=="Free",]
 
+png("C:/Users/tomof/Documents/1HU/Presentations/Edinburgh event-12.4.22/ParticipantsBreathing.png", width=700, height=550)
 ggplot()+
   geom_boxplot(df %>% filter(Role=="Participant"), mapping=aes(Condition, breathRateSpeech), fill="#2D708EFF")+ # I got this color code from a viridis palette with scales::show_col(viridis_pal(option="D")(12))
   # geom_point(df %>% filter(Role=="Confederate"), mapping=aes(x=Condition, y=breathRateSpeech), color="#7AD151FF", size=5)+
   scale_colour_manual(values=c("Participants"="#2D708EFF", "Confederate"="#7AD151FF"))+
-  ggtitle("breath rate (free speech)")+
+  ggtitle("Breathing Rate (Free Speech)")+
+  ylab("Number of cycles")+
   scale_x_discrete(limits = order)+
   theme(axis.title=element_text(size=20), axis.text=element_text(size=18), title=element_text(size=23))#+
-  # ylim(c(8, 15))
+  # ylim(c(6, 16.5))
+dev.off()
 
 ```
 
@@ -39,8 +42,9 @@ ggplot()+
 
 **Indeed, no difference in regression** (reference value: baseline)
 ```{r, echo=FALSE}
-load(paste0(folder, "DataWithDiff.RData"))
-df <- dat %>% filter(Task=="Free") %>% filter(Condition!="Baseline")
+load(paste0(folder, "DataNoDiff.RData"))
+df <- dat %>% filter(Task=="Free")# %>% filter(Condition!="Baseline")
+df$Condition <- relevel(df$Condition, ref="Sitting")
 summary(lmer(breathRateSpeech ~ Condition + (1 | Speaker), data = df))
 ```
 

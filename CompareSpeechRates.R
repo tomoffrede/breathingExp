@@ -191,21 +191,25 @@ order <- c("baseline", "sitting", "light", "heavy")
 ggplot(com, aes(x=condition, y=praatSR))+
   geom_boxplot() + ggtitle("no pauses - Praat script")+
   scale_x_discrete(limits = order)
-ggplot(com, aes(x=condition, y=praatAR))+
-  geom_boxplot() + ggtitle("pauses - Praat script")+
+ggplot(com, aes(x=condition, y=ampSR))+
+  geom_boxplot() + ggtitle("no pauses - amplitude env")+
   scale_x_discrete(limits = order)
 ggplot(com, aes(x=condition, y=ipuSR))+
   geom_boxplot() + ggtitle("no pauses - IPUs from textgrid")+
   scale_x_discrete(limits = order)
-ggplot(com, aes(x=condition, y=ipuAR))+
-  geom_boxplot() + ggtitle("pauses - IPUs from textgrid")+
-  scale_x_discrete(limits = order)
-ggplot(com, aes(x=condition, y=ampSR))+
-  geom_boxplot() + ggtitle("no pauses - amplitude env")+
+
+
+
+ggplot(com, aes(x=condition, y=praatAR))+
+  geom_boxplot() + ggtitle("pauses - Praat script")+
   scale_x_discrete(limits = order)
 ggplot(com, aes(x=condition, y=ampAR))+
   geom_boxplot() + ggtitle("pauses - amplitude env")+
   scale_x_discrete(limits = order)
+ggplot(com, aes(x=condition, y=ipuAR))+
+  geom_boxplot() + ggtitle("pauses - IPUs from textgrid")+
+  scale_x_discrete(limits = order)
+
 
 com$condition <- relevel(com$condition, ref = "sitting")
 
@@ -217,36 +221,38 @@ summary(lm(ampSR ~ condition, com))
 summary(lm(ampAR ~ condition, com))
 
 
+summary(lm(ampAR ~ praatAR + ipuAR, com))
+
 ######## compare with manually counted data from 2sec snippets
 
-# folder2 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/2secsnippets/"
-# 
-# fl <- list.files(folder2, "ENV")
-# 
-# m <- read.csv(paste0(folder2, "Table.csv"))
-# names(m) <- c("file", "syll", "time")
-# m$manSR <- m$syll/2
-# 
-# ampr <- data.frame(matrix(ncol=2, nrow=0))
-# names(ampr) <- c("file", "autSR")
-# 
-# for(i in fl){
-#   amp <- read.csv(paste0(folder2, i))
-#   
-#   amp$env <- (amp$env - min(amp$env)) / (max(amp$env) - min(amp$env))
-#   p <- findpeaks(amp$env, minpeakdistance = 10, minpeakheight=0.04)
-#   
-#   ampr[nrow(ampr)+1,] <- c(substr(i, 1, 17),
-#                            as.numeric(nrow(p)/2))
-#   
-#   # plot(amp$env, type="l")
-#   # points(p[,2], p[,1], col="red")
-#   # readline(prompt="Press [enter] to continue")
-# }
-# 
-# c <- merge(m, ampr, by= "file")
-# c[,c("manSR", "autSR")] <- lapply(c[,c("manSR", "autSR")], as.numeric)
-# c$diff <- c$manSR - c$autSR
-# 
-# hist(c$diff)
-# plot(c$diff)
+folder2 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/2secsnippets/"
+
+fl <- list.files(folder2, "ENV")
+
+m <- read.csv(paste0(folder2, "Table.csv"))
+names(m) <- c("file", "syll", "time")
+m$manSR <- m$syll/2
+
+ampr <- data.frame(matrix(ncol=2, nrow=0))
+names(ampr) <- c("file", "autSR")
+
+for(i in fl){
+  amp <- read.csv(paste0(folder2, i))
+
+  amp$env <- (amp$env - min(amp$env)) / (max(amp$env) - min(amp$env))
+  p <- findpeaks(amp$env, minpeakdistance = 10, minpeakheight=0.04)
+
+  ampr[nrow(ampr)+1,] <- c(substr(i, 1, 17),
+                           as.numeric(nrow(p)/2))
+
+  plot(amp$env, type="l")
+  points(p[,2], p[,1], col="red")
+  readline(prompt="Press [enter] to continue")
+}
+
+c <- merge(m, ampr, by= "file")
+c[,c("manSR", "autSR")] <- lapply(c[,c("manSR", "autSR")], as.numeric)
+c$diff <- c$manSR - c$autSR
+
+hist(c$diff)
+plot(c$diff)

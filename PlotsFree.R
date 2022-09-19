@@ -49,7 +49,7 @@ dat$Order <- as.integer(dat$Order)
 
 png(paste0(folder2, "ConditionsFreef0.png"), width=700, height=500)
 ggplot() +
-  geom_point(dat %>% filter(Role=="Participant"), mapping = aes(x = Condition, y = f0mean, color = Role), size=4) +
+  geom_boxplot(dat %>% filter(Role=="Participant"), mapping = aes(x = Condition, y = f0mean, color = Role), size=4) +
   geom_point(dat %>% filter(Role == 'Confederate'),
              mapping=aes(x = Condition, y = f0mean, color = Role), size=4)+
   scale_color_viridis_d("Speaker", end=.65)+
@@ -256,7 +256,7 @@ df <- dat[dat$Task=="Free",]
 
 png(paste0(folder2, "ConditionsFreePeaksConf.png"), width=700, height=500)
 ggplot() +
-  geom_point(df %>% filter(Speaker=="Confederate"), mapping=aes(x = Condition, y = breathRateSpeech), size=4)+
+  geom_point(df %>% filter(Speaker=="Confederate"), mapping=aes(x = Condition, y = breathRate), size=4)+
   scale_color_viridis_d()+
   ggtitle("Breath rate - Conf - (free speech)")+
   scale_x_discrete(limits = order)+
@@ -267,7 +267,7 @@ dev.off()
 
 png(paste0(folder2, "ConditionsFreePeaksConfPerTopic.png"), width=700, height=500)
 ggplot() +
-  geom_point(df %>% filter(Speaker=="Confederate"), mapping=aes(x = Condition, y = breathRateSpeech), size=4)+
+  geom_point(df %>% filter(Speaker=="Confederate"), mapping=aes(x = Condition, y = breathRate), size=4)+
   scale_color_viridis_d()+
   ggtitle("Breath rate - Conf - (free speech)")+
   scale_x_discrete(limits = order)+
@@ -283,16 +283,15 @@ df <- dat[dat$Task=="Free",]
 
 png(paste0(folder2, "ConditionsFreePeaks.png"), width=700, height=500)
 ggplot() +
-  geom_boxplot(subset(df, Role=="Participant"), mapping=aes(x = Condition, y = breathRateSpeech))+
+  geom_boxplot(subset(df, Role=="Participant"), mapping=aes(x = Condition, y = breathRate))+
   scale_color_viridis_d()+
-  ggtitle("Breath rate - DATA MISSING - (free speech)")+
+  ggtitle("Breath rate (free speech)")+
   scale_x_discrete(limits = order)+
   # facet_wrap(~Topic)+
   theme(legend.title=element_text(size=18), legend.text=element_text(size=16),
         axis.title=element_text(size=21), axis.text=element_text(size=20),
         plot.title=element_text(size=25))
 dev.off()
-
 
 #### individual f0s across conditions:
 load(paste0(folder, "DataSpeech.RData"))
@@ -925,6 +924,122 @@ ggplot(df, aes(Condition, articRateDiff))+
         strip.text=element_text(size=20))
 dev.off()
 
+
+##################
+
+# Inhalation duration
+
+load(paste0(folder, "DataBreathing.RData"))
+
+# Confederate
+
+png(paste0(folder1, "ConditionsConfInhAmpFreeSpeak.png"), width=1500, height=1200)
+ggplot(brm %>% filter(Role=="Confederate", Task == "Free"), aes(Condition, inhalDur))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation amplitude")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
+
+# Participants
+
+png(paste0(folder1, "ConditionsPartInhDurFreeSpeak.png"), width=1500, height=1200)
+ggplot(brm%>% filter(Role=="Participant", Task == "Free", act == "speaking"), aes(Condition, inhalDur))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation duration")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = order)
+dev.off()
+
+png(paste0(folder1, "ConditionsPartInhDurReadJointSpeak.png"), width=1500, height=1200)
+ggplot(brm%>% filter(Role=="Participant", Task == "ReadJoint"), aes(Condition, inhalDur))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation duration")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
+
+png(paste0(folder1, "ConditionsPartInhDurListen.png"), width=1500, height=1200)
+ggplot(brm%>% filter(Role=="Participant", act == "listening"), aes(Condition, inhalDur))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation duration")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
+
+png(paste0(folder1, "ConditionsPartInhDurWatch.png"), width=1500, height=1200)
+ggplot(brm%>% filter(Role=="Participant", act == "watching"), aes(Condition, inhalDur))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation duration")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
+
+# Inhalation amplitude
+
+# Confederate
+
+png(paste0(folder1, "ConditionsConfInhAmpFreeSpeak.png"), width=1500, height=1200)
+ggplot(brm %>% filter(Role=="Confederate", Task == "Free"), aes(Condition, inhalAmp))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation amplitude")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
+
+# Participants
+
+png(paste0(folder1, "ConditionsPartInhAmpFreeSpeak.png"), width=1500, height=1200)
+ggplot(brm %>% filter(Role=="Participant", Task == "Free"), aes(Condition, inhalAmp))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation amplitude")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = order)
+dev.off()
+
+png(paste0(folder1, "ConditionsPartInhAmpReadJointSpeak.png"), width=1500, height=1200)
+ggplot(brm%>% filter(Role=="Participant", Task == "ReadJoint"), aes(Condition, inhalAmp))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation amplitude")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
+
+png(paste0(folder1, "ConditionsPartInhAmpListen.png"), width=1500, height=1200)
+ggplot(brm%>% filter(Role=="Participant", act == "listening"), aes(Condition, inhalAmp))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation amplitude")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
+
+png(paste0(folder1, "ConditionsPartInhAmpWatch.png"), width=1500, height=1200)
+ggplot(brm%>% filter(Role=="Participant", act == "watching"), aes(Condition, inhalAmp))+
+  geom_boxplot(fill="#2D708EFF")+
+  ggtitle("Inhalation amplitude")+
+  theme(axis.title=element_text(size=20), axis.text=element_text(size=18),
+        title=element_text(size=23),
+        strip.text=element_text(size=20))+
+  scale_x_discrete(limits = orderconf)
+dev.off()
 
 # colors?
   #7AD151FF"
