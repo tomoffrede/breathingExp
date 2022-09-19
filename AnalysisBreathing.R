@@ -3,7 +3,7 @@ library(tidyverse)
 # library(influence.ME)
 # library(MASS)
 
-folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 
 load(paste0(folder, "DataBreathing.RData"))
 
@@ -41,7 +41,7 @@ dat <- brm %>%
          logInhalAmp = log(inhalAmp))
 
 # I calculated inhalation amplitude from the normalized values of the breathing wave form (0 to 1)
-#  so should I still do the analysis based on z scores?
+# so should I still do the analysis based on z scores?
 # and what about inhalation duration? when I look at the z scores, the difference between acts disappears. I'm not 100% sure why and how I should do this analysis
 
 dat$Condition <- relevel(dat$Condition, ref = "Sitting")
@@ -54,7 +54,8 @@ ggplot(dat, aes(Condition, breathRateZ))+
   geom_boxplot()
 
 ggplot(dat, aes(act, breathRate))+
-  geom_boxplot()
+  geom_boxplot()+
+  facet_wrap(~Condition)
 
 ggplot(dat, aes(act, breathRateZ))+
   geom_boxplot()
@@ -74,7 +75,7 @@ anova(m1, m2)
 # act improved the model a lot: listening has higher breath rates than watching
 
 # so is the model better without Condition?
-summary(m2a <- lmer(breathRate ~ act + (1 + act|Speaker), dat))
+summary(m2a <- lmer(breathRateZ ~ act + (1 + act|Speaker), dat))
 anova(m2, m2a)
 # the model is better without condition
 
@@ -239,11 +240,22 @@ ggplot(dat, aes(Condition, inhalAmp))+
   scale_x_discrete(limits = orderCond)+
   facet_wrap(~act)
 
+png(paste0(folder, "inhalationAmplitude_Watching.png"))
+ggplot(dat %>% filter(act=="watching"), aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)+
+  facet_wrap(~act)
+dev.off()
+
+
+summary(lmer(logInhalAmp ~ Condition + (1 + Condition | Speaker), dat %>% filter(act=="watching")))
+
 summary(a1 <- lmer(logInhalAmp ~ act + (1 | Speaker), dat))
 summary(a2 <- lmer(logInhalAmp ~ act + Condition + (1 | Speaker), dat))
 anova(a1, a2) # Condition improved the model
 
 summary(a3 <- lmer(logInhalAmp ~ act * Condition + (1 | Speaker), dat))
+
 anova(a2, a3) # the interaction also improved it
 
 summary(a4 <- lmer(logInhalAmp ~ act * Condition + ConfGenderF +(1 | Speaker), dat))
@@ -258,6 +270,13 @@ plot(fitted(a3), resid(a3))
 
 # they look very normally distributed, but are they homoskedastic?
 # (again, the residuals looked a lot more normally distributed and homoskedastic with the log of the amplitude)
+
+## only watching:
+
+dat <- dat %>% 
+  filter(act=="watching")
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+summary(w1 <- lmer(logInhalAmp ~ Condition + (1 + Condition | Speaker), dat))
 
 #########################
 
@@ -277,17 +296,20 @@ dat <- brm %>%
   mutate(logBreathRate = log(breathRate)) %>% 
   group_by(Speaker) %>% 
   mutate(breathRateZ = (breathRate - mean(breathRate)) / sd(breathRate)) %>% 
-  ungroup
+  ungroup %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
 ggplot(dat, aes(Condition, breathRate))+
   geom_boxplot()
 
 dat$Condition <- relevel(dat$Condition, ref = "Sitting")
 
-summary(b1 <- lmer(logBreathRate ~ Condition + (1 | Speaker), dat))
+summary(b1 <- lmer(breathRateZ ~ Condition + (1 | Speaker), dat))
 # during speaking, a decrease in breathing rate with condition (but the t values are low)
 
-summary(b2 <- lmer(logBreathRate ~ Condition + ConfGenderF + (1 | Speaker), dat))
+summary(b1a <- lmer(breathRateZ ~ Cond2 + (1 | Speaker), dat))
+
+summary(b2 <- lmer(breathRateZ ~ Condition + ConfGenderF + (1 | Speaker), dat))
 anova(b1, b2)
 # didn't improve the model: BMI (using dat %>% filter(!is.na(BMI))), TMF.F, ConfFriendly, InterEnjoy, ConfGenderF
 
@@ -496,15 +518,20 @@ dat <- brm %>%
   mutate(across(act, factor, levels=c("watching","listening"))) %>%
   group_by(Speaker) %>%
   mutate(breathRateZ = (breathRate - mean(breathRate, na.rm=TRUE) / sd(breathRate, na.rm=TRUE))) %>%
-  ungroup()
+  ungroup() %>% 
+  mutate(logBreathRate = log(breathRate),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
-ggplot(dat, aes(Condition, breathRate))+
+ggplot(dat, aes(Condition, logBreathRate))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCondBase)
 
 summary(b1 <- lmer(breathRateZ ~ Condition + (1 | Speaker), dat))
+summary(b1 <- lmer(breathRateZ ~ Cond2 + (1 | Speaker), dat))
+
+
 # Condition isn't a good predictor
 
 hist(resid(b1))
@@ -522,7 +549,8 @@ dat <- brm %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
   mutate(logInhalDur = log(inhalDur),
-         inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur))
+         inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur),
+         Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction")) # Cond2 = Alone vs Interaction)
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 
@@ -530,11 +558,14 @@ ggplot(dat %>% filter(inhalDur < 3), aes(Condition, inhalDur))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCondBase)
 
+ggplot(dat %>% filter(inhalDur <3), aes(Cond2, inhalDur))+
+  geom_boxplot()
+
 ggplot(dat, aes(breathCycle, inhalDur))+
   geom_point()+
   facet_wrap(~Condition)
 
-summary(d1 <- lmer(logInhalDur ~ Condition + (1 | Speaker), dat))
+summary(d1 <- lmer(logInhalDur ~ Condition + (1 + Condition | Speaker), dat))
 summary(d2 <- lmer(logInhalDur ~ Condition + breathCycle + (1 | Speaker), dat))
 anova(d1, d2) # not good: BMI, ConfFriendly, InterEnjoy, ConfGenderF, TMF.F
 # the further into the text, the quicker the inhales

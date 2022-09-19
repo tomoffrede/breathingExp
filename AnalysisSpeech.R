@@ -2,7 +2,7 @@ library(lme4)
 library(tidyverse)
 # library(influence.ME)
 
-folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 
 load(paste0(folder, "DataSpeech.RData"))
 
@@ -51,7 +51,8 @@ df <- fsm %>%
   ungroup() %>% 
   mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE)) %>% 
   filter(abs(f0Zgeneral) < 2) %>% 
-  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
   #%>%
   # mutate(Condition = ifelse(Condition %in% c("Light", "Heavy"), "Biking", ifelse(Condition=="Sitting", "Sitting", "Baseline")),
@@ -74,8 +75,11 @@ ggplot(df, aes(inhalAmp, f0raw))+
 
 plot(df$ConfGenderF, df$f0IPUz)
 
-summary(m1 <- lmer(f0IPUz ~ Condition + (1 | Speaker), df))
-summary(m1a <- lmer(f0IPUz ~ Condition + inhalAmp + (1 | Speaker), df))
+summary(m1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), df)) ####### FINAL MODEL
+
+summary(m1a <- lmer(f0raw ~ Cond2 + (1 + Cond2 | Speaker), df)) ####### FINAL MODEL
+
+summary(m1a <- lmer(f0raw ~ Condition + inhalAmp + (1 | Speaker), df))
 anova(m1, m1a)
 
 summary(m2 <- lmer(f0IPUz ~ Condition + Order + (1 | Speaker), df))
@@ -187,7 +191,8 @@ df <- fsm %>%
   mutate(SRipuZ = (speechRateIPU - mean(speechRateIPU, na.rm=TRUE)) / sd(speechRateIPU, na.rm=TRUE)) %>%
   ungroup() %>% 
   mutate(SRZgeneral = (speechRateIPU - mean(speechRateIPU, na.rm=TRUE)) / sd(speechRateIPU, na.rm=TRUE)) %>% 
-  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
 ggplot(df, aes(Condition, speechRate))+
   geom_boxplot()+
@@ -214,11 +219,15 @@ ggplot(fsm %>% filter(Role == "Confederate"), aes(Condition, speechRateIPU))+
   scale_x_discrete(limits = orderCond)+
   ggtitle("Confederate's articulation rate")
 
+df$Condition <- relevel(df$Condition, ref="Light")
+
 # the confederate's articulation rate (i.e. accounting for pauses) follows a pattern that makes much more sense than speech rate (not accounting for pauses)
 # a regression shows that these differences are significant
 
-summary(s1 <- lmer(SRipuZ ~ Condition + (1 | Speaker), df))
+summary(s1 <- lmer(SRipuZ ~ Condition + (1 | Speaker), df)) #### FINAL MODEL (?)
 # slight but significant difference between conditions! except no diff between sitting and light
+
+summary(s1 <- lmer(SRipuZ ~ Cond2 + (1 | Speaker), df)) #### FINAL MODEL (?)
 
 summary(s2 <- lmer(SRipuZ ~ Condition + BMI + (1 | Speaker),  df %>% filter(!is.na(BMI))))
 # BMI not significant
@@ -624,7 +633,7 @@ ggplot(df, aes(ConfFriendly, f0IPUz))+
   geom_point()
 
 
-df$Condition <- relevel(df$Condition, ref="Sitting")
+df$Condition <- relevel(df$Condition, ref="Light")
 
 summary(f1 <- lmer(f0IPUz ~ Condition + (1 | Speaker), df))
 summary(f2 <- lmer(f0IPUz ~ Condition + ConfFriendly + (1 | Speaker), df))

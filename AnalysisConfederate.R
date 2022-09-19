@@ -5,7 +5,7 @@ folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis
 
 orderCond <- c("Sitting", "Light", "Heavy")
 
-# SPEECH
+# FREE SPEECH
 
 load(paste0(folder, "DataSpeech.RData"))
 
@@ -15,7 +15,7 @@ df <- fsm %>%
   mutate(f0IPUz = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
          f0filez = (f0IPUmean - mean(f0IPUmean, na.rm=TRUE)) / sd(f0IPUmean, na.rm=TRUE))
 
-df$Condition <- relevel(df$Condition, ref="Sitting")
+df$Condition <- relevel(df$Condition, ref="Light")
 
 ### f0
 
@@ -53,7 +53,7 @@ ggplot(df, aes(Condition, speechRateIPU))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)
 
-df$Condition <- relevel(df$Condition, ref="Light")
+df$Condition <- relevel(df$Condition, ref="Sitting")
 
 summary(s1 <- lm(speechRateIPU ~ Condition, df))
 summary(s1a <- lmer(speechRateIPU ~ Condition + (1 | file), df)) # singular!
@@ -75,6 +75,8 @@ load(paste0(folder, "DataBreathing.RData"))
 
 ### breath rate
 
+# brm$Task[brm$Speaker == "Confederate" & grepl("Hirs|Schw|Pfer", brm$file)] <- "ReadJoint"
+
 dat <- brm %>%
   filter(Role=="Confederate", !duplicated(file)) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
@@ -86,7 +88,7 @@ ggplot(dat, aes(Condition, breathRate))+
   geom_point()
 
 
-dat$Condition <- relevel(dat$Condition, ref="Light")
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
 summary(b1 <- lm(breathRate ~ Condition, dat))
 
 ### cycle Durations
@@ -123,6 +125,17 @@ hist(resid(c1))
 qqnorm(resid(c1));qqline(resid(c1))
 plot(fitted(c1), resid(c1))
 
+### inhalation duration
+
+dat <- brm %>%
+  filter(Role=="Confederate") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(logInhalDur = log(inhalDur))
+
+summary(d1 <- lm(logInhalDur ~ Condition, dat))
 
 # shorter cycles with more physical effort (related to increase in breath rate)
 # shorter cycles the further into the speaking period : easier to visualize if you collapse all conditions, but also:
@@ -208,3 +221,44 @@ AIC(n1, n2)
 AIC(n2, n3)
 
 # n3 wins!
+
+
+####
+
+# READ SPEECH
+
+# f0
+
+load(paste0(folder, "DataReadSpeech.RData"))
+
+# frb$Task[frb$Speaker == "Confederate" & grepl("Hirs|Schw|Pfer", frb$file)] <- "ReadJoint"
+
+df <- frb %>%
+  filter(grepl("Read", Task), Speaker == "Confederate") %>%
+  # select(c("file", "Speaker", "IPU", "f0raw", "f0IPUmean", "speechRateIPU", "durSpeech", "durPauses", "speechRate", "articRate", "Condition", "breathCycleDurMean", "breathRate", "breathCycleDur")) %>%
+  mutate(f0IPUz = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE))
+
+df$Condition <- relevel(df$Condition, ref="Sitting")
+
+### f0
+
+ggplot(df, aes(Condition, f0IPUz))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+
+summary(f1 <- lm(f0IPUz ~ Condition, df))
+
+## breathing rate
+
+# brm$Task[brm$Speaker == "Confederate" & grepl("Hirs|Schw|Pfer", brm$file)] <- "ReadJoint"
+
+df <- df %>%
+  filter(!duplicated(file)) %>% 
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy")))
+
+df$Condition <- relevel(df$Condition, ref="Sitting")
+
+ggplot(df, aes(Condition, breathRate))+
+  geom_boxplot()
+
+summary(b1 <- lm(breathRate ~ Condition, df))
