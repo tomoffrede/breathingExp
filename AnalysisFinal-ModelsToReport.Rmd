@@ -1,0 +1,226 @@
+---
+title: "Models to report"
+author: "Tom Offrede"
+date: "2022-09-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Regression models to report in our paper on breathing and speech adaptation
+
+```{r, include = FALSE}
+library(lme4)
+library(tidyverse)
+# library(influence.ME)
+# library(MASS)
+
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+`%!in%` <- Negate(`%in%`)
+
+orderCond <- c("Sitting", "Light", "Heavy")
+orderCondBase <- c("Baseline", "Sitting", "Light", "Heavy")
+orderAct <- c("watching", "listening")
+```
+
+# Breathing data
+
+## Confederate
+
+## Participants
+
+```{r, include=FALSE}
+load(paste0(folder, "DataBreathing.RData"))
+
+dat <- brm %>%
+  filter(Role=="Participant", act %in% c("listening", "watching")) %>%
+  filter(!duplicated(file)) %>% 
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  group_by(Speaker) %>%
+  mutate(inhalDurz = (inhalDur - mean(inhalDur, na.rm=TRUE) / sd(inhalDur, na.rm=TRUE)),
+         inhalAmpz = (inhalAmp - mean(inhalAmp, na.rm=TRUE) / sd(inhalAmp, na.rm=TRUE)),
+         breathRateZ = (breathRate - mean(breathRate, na.rm=TRUE) / sd(breathRate, na.rm=TRUE))) %>%
+  ungroup() %>%
+  mutate(logInhalDur = log(inhalDur),
+         logInhalAmp = log(inhalAmp))
+
+dat$Condition <- relevel(dat$Condition, ref = "Sitting")
+dat$act <- relevel(dat$act, ref = "watching")
+```
+
+## While listening/watching
+
+### Breathing rate
+
+```{r}
+ggplot(dat, aes(act, breathRate))+
+  geom_boxplot()+
+  facet_wrap(~Condition)
+```
+
+The model `breathing rate ~ act` (without `condition`) is the best model, but the graphs seem to visually indicate that there was a trend for an interaction with `condition`.
+
+```{r}
+summary(m2a <- lmer(breathRateZ ~ act + (1 + act|Speaker), dat))
+hist(resid(m2a))
+qqnorm(resid(m2a));qqline(resid(m2a))
+plot(fitted(m2a), resid(m2a))
+```
+
+We also have models about breath cycle durations, but those indicate the same things as breathing rate, since they're closely (negatively) related. So I say we shouldn't include the models about cycle durations.
+
+The one interesting thing, though, was that breath cycles tended to be shorter the further into the recording they were. (Helene also observed this in her data.) I don't think this is relevant for our overall story, but let's keep it in mind.
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", act %in% c("watching", "listening")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  mutate(logCycleDur = log(cycleDur))
+
+d <- dat %>% group_by(breathCycle) %>% mutate(cM = mean(cycleDur))
+```
+
+```{r}
+plot(d$breathCycle, d$cM, ylab="mean of cycle durations", main="Cycle durations throughout the recordings")
+```
+
+### Inhalation duration
+
+```{r, inclu=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", act %in% c("listening", "watching")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  group_by(Speaker)%>%
+  mutate(inhalDurz = (inhalDur - mean(inhalDur, na.rm=TRUE) / sd(inhalDur, na.rm=TRUE)),
+         inhalAmpz = (inhalAmp - mean(inhalAmp, na.rm=TRUE) / sd(inhalAmp, na.rm=TRUE))) %>%
+  ungroup() %>%
+  mutate(logInhalDur = log(inhalDur),
+         logInhalAmp = log(inhalAmp))
+```
+
+```{r}
+ggplot(dat, aes(act, inhalDurz))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderAct)
+```
+
+Although from the graph the difference between watching and listening isn't so clear, in the regression it seems to be (with a small effect size).
+
+```{r}
+summary(d2 <- lmer(logInhalDur ~ act + (1 + act | Speaker), dat))
+
+hist(resid(d2))
+qqnorm(resid(d2));qqline(resid(d2))
+plot(fitted(d2), resid(d2))
+```
+
+### Inhalation amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", act %in% c("listening", "watching")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  mutate(logInhalAmp = log(inhalAmp))
+
+```
+
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)+
+  facet_wrap(~act)
+```
+
+There's a significant interactional effect of act and condition on inhalation amplitude.
+
+Remember that inhalation amplitude is indirectly, negatively related to breathing rate. So we can use this finding to argue that, although we didn't replicate Paccalin & Jeannerod's finding directly, our finding may be related to theirs.
+
+```{r}
+summary(a3 <- lmer(logInhalAmp ~ act * Condition + (1 | Speaker), dat))
+
+hist(resid(a3))
+qqnorm(resid(a3));qqline(resid(a3))
+plot(fitted(a3), resid(a3))
+```
+
+## While speaking
+
+```{r, include=FALSE}
+load(paste0(folder, "DataBreathing.RData"))
+
+dat <- brm %>%
+  filter(Role=="Participant", act=="speaking", Task=="Free") %>%
+  filter(!duplicated(file)) %>% # for some reason if I do `!duplicated()` in the line above, it weirdly deletes a bunch of rows that shouldn't be
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logBreathRate = log(breathRate)) %>% 
+  group_by(Speaker) %>% 
+  mutate(breathRateZ = (breathRate - mean(breathRate)) / sd(breathRate)) %>% 
+  ungroup %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+```
+
+
+# Speech data
+
+## Confederate
+
+### f0
+
+```{r}
+
+```
+
+### Speech Rate
+
+```{r}
+
+```
+
+### Number of IPUs
+
+## Participants
+
+### f0
+
+```{r}
+
+```
+
+### Speech Rate
+
+```{r}
+
+```
+
+### Number of IPUs
+
+```{r}
+
+```
+
+
+
+
