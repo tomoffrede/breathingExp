@@ -942,6 +942,12 @@ fsm <- dat[[1]]
 brm <- dat[[2]]
 frb <- dat[[3]]
 
+# fixing a mistake I found (why doesn't this work????)
+# frb$Task <- as.factor(frb$Task)
+# frb$Task[grepl("Hirs|Schw|Pfer", frb$file)] <- "Read"
+
+# end of fix
+
 brm <- brm %>% mutate_at(c("inhalDur", "inhalAmp"), as.numeric)
 
 fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate, inhalDur, inhalAmp)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")

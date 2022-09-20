@@ -1,7 +1,7 @@
 library(lme4)
 library(tidyverse)
 
-folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 
 orderCond <- c("Sitting", "Light", "Heavy")
 
@@ -135,6 +135,9 @@ dat <- brm %>%
   mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
   mutate(logInhalDur = log(inhalDur))
 
+ggplot(dat, aes(Condition, inhalDur))+
+  geom_boxplot()
+
 summary(d1 <- lm(logInhalDur ~ Condition, dat))
 
 # shorter cycles with more physical effort (related to increase in breath rate)
@@ -144,7 +147,7 @@ summary(d1 <- lm(logInhalDur ~ Condition, dat))
 ### number of IPUs
 
 ggplot(dat, aes(Condition, numberIPUs))+
-  geom_boxplot()
+  geom_violin()
 
 ggplot(dat, aes(breathCycle, numberIPUs))+
   geom_point()+
@@ -234,7 +237,7 @@ load(paste0(folder, "DataReadSpeech.RData"))
 # frb$Task[frb$Speaker == "Confederate" & grepl("Hirs|Schw|Pfer", frb$file)] <- "ReadJoint"
 
 df <- frb %>%
-  filter(grepl("Read", Task), Speaker == "Confederate") %>%
+  filter(grepl("Hirs|Schw|Pfer", file), Speaker == "Confederate") %>%
   # select(c("file", "Speaker", "IPU", "f0raw", "f0IPUmean", "speechRateIPU", "durSpeech", "durPauses", "speechRate", "articRate", "Condition", "breathCycleDurMean", "breathRate", "breathCycleDur")) %>%
   mutate(f0IPUz = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE))
 
