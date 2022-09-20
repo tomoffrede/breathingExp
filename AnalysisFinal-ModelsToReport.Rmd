@@ -163,7 +163,9 @@ qqnorm(resid(a3));qqline(resid(a3))
 plot(fitted(a3), resid(a3))
 ```
 
-## While speaking
+## While speaking: Free speech
+
+### Breathing rate
 
 ```{r, include=FALSE}
 load(paste0(folder, "DataBreathing.RData"))
@@ -182,6 +184,213 @@ dat <- brm %>%
   mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 ```
 
+```{r}
+ggplot(dat, aes(Condition, breathRate))+
+  geom_boxplot()
+```
+
+There is no difference in breathing rate between the conditions, but there is one between baseline (´Alone´) and all the experimental conditions (`Interaction`).
+
+```{r}
+summary(b1a <- lmer(breathRateZ ~ Cond2 + (1 | Speaker), dat))
+
+hist(resid(b1a))
+qqnorm(resid(b1a));qqline(resid(b1a))
+plot(fitted(b1a), resid(b1a))
+```
+
+Same as before for the results on the duration of breath cycles (directly related to breathing rate).
+
+### Inhalation duration
+
+```{r}
+dat <- brm %>%
+  filter(Role=="Participant", act=="speaking", Task=="Free") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalDur = log(inhalDur)) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur)) %>% 
+  ungroup() %>% 
+  mutate(Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction")) # Cond2 = Alone vs Interaction
+```
+
+
+```{r}
+ggplot(dat, aes(Condition, inhalDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat, aes(numberIPUs, inhalDur))+
+  geom_point()
+```
+
+There's an effect of `alone` vs `interaction` on inhalation duration. If you break it down into the different conditions, there's a nonlinear effect that doesn't make sense and is probably just noise. Same for inhalation amplitude below.
+
+The number of IPUs in the subsequent exhalation also induces longer inhalations. This effect was bigger than the condition effect. We can relate this to previous findings on speech planning and breathing.
+
+```{r}
+summary(d4 <- lmer(logInhalDur ~ numberIPUs + Cond2 + (1 | Speaker), dat))
+
+hist(resid(d4))
+qqnorm(resid(d4));qqline(resid(d4))
+plot(fitted(d4), resid(d4))
+```
+
+### Inhalation amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", act=="speaking", Task=="Free") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalAmp = log(inhalAmp)) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp)) %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat, aes(numberIPUs, inhalAmp))+
+  geom_point()
+```
+
+Again, there's a difference between `alone` and `interaction`. (A regression on the different conditions suggests there's a significant difference between `sitting` and `heavy biking` but not between `sitting` and `light biking`, so this is probably just noise.)
+
+Same finding about number of IPUs and inhalation amplitude as for inhalation duration.
+
+Choose inhalation duration or amplitude to report since they have the same results.
+
+```{r}
+summary(a2 <- lmer(logInhalAmp ~ Cond2 + numberIPUs + (1 | Speaker), dat))
+
+hist(resid(a2))
+qqnorm(resid(a2));qqline(resid(a2))
+plot(fitted(a2), resid(a2))
+```
+
+### Number of IPUs per breath cycle
+
+We also have some results on the number of IPUs per cycle, but I'm not sure if it's relevant for us to report. The model is `numberIPUs ~ breathCycle + BMI + InterEnjoy`, where `breathCycle` is how far into the recording it is, `BMI` is body mass index and `InterEnjoy` is the participants' rating of how much they enjoyed the interaction.
+
+## While speaking: Read speech
+
+### Breathing rate
+
+```{r}
+dat <- brm %>%
+  filter(Role=="Participant", grepl("Read", Task)) %>%
+  filter(!duplicated(file)) %>% 
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  group_by(Speaker) %>%
+  mutate(breathRateZ = (breathRate - mean(breathRate, na.rm=TRUE) / sd(breathRate, na.rm=TRUE))) %>%
+  ungroup() %>% 
+  mutate(logBreathRate = log(breathRate),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Cond2, breathRate))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+```
+
+During read speech there's also an `alone` vs `interaction` effect on breathing rate.
+
+The residuals have a few outliers -- do I just remove outlying data points?
+
+```{r}
+summary(b1 <- lmer(breathRateZ ~ Cond2 + (1 | Speaker), dat))
+
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation duration
+
+```{r}
+dat <- brm %>%
+  filter(Role=="Participant", grepl("Read", Task)) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalDur = log(inhalDur),
+         inhalDurz = (inhalDur - mean(inhalDur)) / sd(inhalDur),
+         Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction")) # Cond2 = Alone vs Interaction)
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+
+```{r}
+ggplot(dat %>% filter(inhalDur < 3), aes(Condition, inhalDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+```
+Inhalation duration changes in the opposite direction from expected. It's a small effect.
+
+Inhalations also get shorter the further into the recording they are, like for cycle durations above. If we report the model about inhalation duration, I suggest we only leave the `condition` predictor, unless we want to talk about this change in durations across the task.
+
+```{r}
+summary(d5 <- lmer(logInhalDur ~ Condition + (1 | Speaker), dat))
+
+hist(resid(d5))
+qqnorm(resid(d5));qqline(resid(d5))
+plot(fitted(d5), resid(d5))
+```
+
+### Inhalation amplitude
+
+```{r}
+dat <- brm %>%
+  filter(Role=="Participant", grepl("Read", Task)) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalAmp = log(inhalAmp)) %>% 
+  group_by(Speaker) %>% 
+  mutate(inhalAmpz = (inhalAmp - mean(inhalAmp)) / sd(inhalAmp)) %>% 
+  ungroup() %>% 
+  mutate(Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+
+```{r}
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()
+```
+
+Again the `alone` vs `interaction` effect for inhalation amplitude. Dividing it by condition gave a weird, nonlinear result (probably noise). There was also an effect for `breathCycle` (how further into the recording the inhalation is), as above.
+
+```{r}
+summary(a2 <- lmer(logInhalAmp ~ Cond2 + (1 | Speaker), dat))
+
+hist(resid(a2))
+qqnorm(resid(a2));qqline(resid(a2))
+plot(fitted(a2), resid(a2))
+```
 
 # Speech data
 
