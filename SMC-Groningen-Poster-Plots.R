@@ -7,8 +7,8 @@ library(cowplot)
 library(ggsignif)
 library(ggpubr)
 
-folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
-folder2 <- "C:/Users/tomof/Documents/1HU/Courses, conferences, workshops/SMC-Groningen/PosterFigures/"
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folder2 <- "C:/Users/offredet/Documents/1HU/Courses, conferences, workshops/SMC-Groningen/PosterFigures/"
 
 order <- c("Sitting", "Light", "Heavy")
 orderBase <- c("Baseline", order)
@@ -266,7 +266,7 @@ ggsave(paste0(folder2, "Part-Speech-Free.png"), height = 1900, width=3000, units
 # make plot with participants' breathing rate and inhalation duration (FREE SPEECH)
 
 dat <- brm %>% 
-  filter(Role=="Participant", Task=="Free")
+  filter(Role=="Participant", Task=="Free", act=="speaking")
 
 change <- 50
 ggplot(dat %>% filter(!duplicated(file)), aes(Condition, breathRate)) +
@@ -279,7 +279,7 @@ ggplot(dat %>% filter(!duplicated(file)), aes(Condition, breathRate)) +
               annotations=c("* Alone vs Interaction"),
               textsize=10) +
   scale_x_discrete(limits = orderBase, labels=c("Baseline ", "Sitting", "Light B.", "Heavy B.")) +
-  scale_y_continuous(limits=c(7, 29)) +
+  # scale_y_continuous(limits=c(7, 29)) +
   ggtitle("Breathing Rate") +
   ylab("Breathing Rate") +
   theme(
