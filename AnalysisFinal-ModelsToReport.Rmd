@@ -72,6 +72,8 @@ par(mfrow=c(2, 2))
 hist(resid(m2a))
 qqnorm(resid(m2a));qqline(resid(m2a))
 plot(fitted(m2a), resid(m2a))
+
+summary(m2a <- lmer(breathRateZ ~ Condition + (1 |Speaker), dat %>% filter(act=="watching")))
 ```
 
 We also have models about breath cycle durations, but those indicate the same things as breathing rate, since they're closely (negatively) related. So I say we shouldn't include the models about cycle durations.
@@ -156,6 +158,7 @@ There's a significant interactional effect of act and condition on inhalation am
 Remember that inhalation amplitude is indirectly, negatively related to breathing rate. So we can use this finding (during `watching`) to argue that, although we didn't replicate Paccalin & Jeannerod's finding directly, our finding may be related to theirs.
 
 ```{r}
+dat$act <- relevel(dat$act, ref = "listening")
 summary(a3 <- lmer(logInhalAmp ~ act * Condition + (1 | Speaker), dat))
 
 par(mfrow=c(2, 2))

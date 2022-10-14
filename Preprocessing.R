@@ -98,6 +98,9 @@ sr$syll <- NULL
 
 sr[, c("file", "IPU")] <- lapply(sr[, c("file", "IPU")], as.factor)
 
+# NOTE: speechRateIPU is the speech rate calculated individually for each IPU. each IPU has a different speechRateIPU.
+# articRate is the speech rate calculated over the entire speaking time minus duration of pauses. each file has only one articRate value.
+
 ############# f0 mean, median
 
 # 2
