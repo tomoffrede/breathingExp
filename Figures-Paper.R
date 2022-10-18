@@ -52,8 +52,26 @@ ggplot(df, aes(Condition, speechRateIPU))+
   geom_signif(comparisons = list(c("Sitting", "Light"), c("Light", "Heavy")), annotations = c("*", "***"))+
   labs(title = "Confederate's speech rate (spontaneous speech)", y = "Speech rate")
 
+dbr <- brm %>% filter(Speaker=="Confederate") %>% 
+  mutate(grouping = paste0(Condition, Task, file)) %>% 
+  filter(!duplicated(grouping)) %>%
+  select(-grouping)
 
-# 
+ggplot(dbr %>% filter(Task=="Free"), aes(Condition, breathRate))+
+  geom_boxplot(width=.1)+
+  geom_point(size=2)+
+  scale_x_discrete(limits = order, labels=labels)+
+  geom_signif(comparisons = list(c("Sitting", "Light"), c("Light", "Heavy")), annotations = c("*", "*"))+
+  labs(title = "Confederate's breathing rate (spontaneous speech)", y = "Breathing rate")
+
+ggplot(dbr %>% filter(grepl("Read", Task)), aes(Condition, breathRate))+
+  geom_boxplot(width=.1)+
+  geom_point(size=2)+
+  scale_x_discrete(limits = order, labels=labels)+
+  # geom_signif(comparisons = list(c("Sitting", "Light"), c("Sitting", "Heavy"), c("Light", "Heavy")), annotations = c("*", ".", "**"), y=c(23, 23.4, 23))+
+  labs(title = "Confederate's breathing rate (read speech)", y = "Breathing rate")
+
+ 
 # PARTICIPANTS:
 # breathing rate of listening vs watching
 # inhalation amplitude across conditions during watching

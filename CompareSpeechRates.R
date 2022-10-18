@@ -8,7 +8,7 @@ library(pracma)
 
 ####################################### FROM PRAAT SCRIPT
 
-folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
 `%!in%` <- Negate(`%in%`)
 
 # I made a mistake when extracting the speech rate and articulation rate of the files, so there are three files to join now
@@ -225,7 +225,7 @@ summary(lm(ampAR ~ praatAR + ipuAR, com))
 
 ######## compare with manually counted data from 2sec snippets
 
-folder2 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/2secsnippets/"
+folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/2secsnippets/"
 
 fl <- list.files(folder2, "ENV")
 

@@ -1,8 +1,8 @@
-### Checking if automatically detected speech rate data is good
+### Checking if automatically detected speech rate data is good (detected with a Praat script)
 
 library(ggplot2)
 
-folder <- "C:/Users/tomof/Documents/1.Humboldt-Universität_zu_Berlin/ExperimentBreathing/Data/DataForAnalysis/SpeechRate/"
+folder <- "C:/Users/tomof/Documents/1.Humboldt-Universit?t_zu_Berlin/ExperimentBreathing/Data/DataForAnalysis/SpeechRate/"
 
 ################ SPEECH RATE
 

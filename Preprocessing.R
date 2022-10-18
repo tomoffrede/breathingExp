@@ -21,7 +21,7 @@ library(tidyverse)
 library(sylly.de) # for counting syllables
 library(tuneR) # to read WAV (breathing) file
 
-folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
 `%!in%` <- Negate(`%in%`)
 
 ############# Speech Rate
@@ -356,9 +356,9 @@ fr <- fr %>% mutate(Task = ifelse(substr(file, 1, 1) != "B", "ReadJoint", ifelse
 
 # number of textgrid files == number of wav files: [H,L,S][B, F]
 
-folder2 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/"
+folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/"
 
-# participants: 
+# Participants: 
 
 listBREATHall <- list.files(folder2, pattern="SUM")
 listWAVpf <- listBREATHall[grepl("wav", listBREATHall) & !grepl("TextGrid", listBREATHall) & substr(listBREATHall, 2, 2)=="F" & !grepl("breathL", listBREATHall)]
@@ -411,7 +411,7 @@ table(listREAD0$worked) # make sure all the TXT and Textgrid files are matching 
 
 listCB <- list.files(folder2, pattern="THORAX") # we use the measurement from the thorax only for the confederate
 listCB <- listCB[grepl(".TextGrid", listCB)]
-listCBr <- listCB[grepl("joint", listCB)]
+listCBr <- listCB[grepl("joint|alone", listCB)]
 listCBf <- listCB[grepl("Holidays", listCB)|grepl("Hobbies", listCB)|grepl("Home", listCB)]
 
 listCT <- list.files(folder, pattern="TextGrid")
@@ -421,10 +421,11 @@ listCTf <- listCT[grepl("Holidays", listCT)|grepl("Hobbies", listCT)|grepl("Home
 
 listCW <- list.files(folder2, pattern="THORAX")
 listCW <- listCW[!grepl("TextGrid", listCW)]
-listCWr <- listCW[grepl("joint", listCW)]
+listCWf <- listCW[grepl("Hobbies|Holidays|Home", listCW)]
+listCWr <- listCW[grepl("joint|alone", listCW)]
 
 listCBGf0 <- as.data.frame(cbind(listCBf, listCTf))
-listCBGf <- as.data.frame(cbind(listCBGf0, listCW))
+listCBGf <- as.data.frame(cbind(listCBGf0, listCWf))
 colnames(listCBGf) <- c("breath", "tg", "wav")
 listCBGf$workedTGs[substr(listCBGf$breath, 1, 6)==substr(listCBGf$tg, 1, 6)] <- "worked!"
 listCBGf$workedTGs[substr(listCBGf$breath, 1, 6)!=substr(listCBGf$tg, 1, 6)] <- "NO!!!!!!!!!"
@@ -475,12 +476,17 @@ names(durationsOK) <- c("file", "sameDurations")
 
 # i=23
 
+PVcount <- data.frame(matrix(ncol=3, nrow=0))
+names(PVcount) <- c("file", "peaks", "valleys")
+
 for(i in 1:nrow(listBGf)){
   act <- "speaking"
   breath <- tg.read(paste0(folder2, listBGf$breath[i]))
   tg <- tg.read(paste0(folder, listBGf$tg[i]), encoding=detectEncoding(paste0(folder, listBGf$tg[i])))
   b <- (w <- readWave(paste0(folder2, listBGf$wav[i])))@left
   b <- (b - min(b)) / (max(b) - min(b))
+  
+  PVcount[nrow(PVcount)+1,] <- c(i, tg.getNumberOfPoints(breath, 1), tg.getNumberOfPoints(breath, 2))
   
   ifelse(length(w@left)/w@samp.rate==tg.getTotalDuration(breath), # keep a file to make sure that all durations of wave and textgrid are the same
          durationsOK[nrow(durationsOK)+1,] <- c(substr(listBGf$breath[i], 1, 6), "OK!"),
@@ -583,12 +589,27 @@ for(i in 1:nrow(listBGf)){
   IPUandCycles <- rbind(IPUandCycles, ic)
 }
 
+{
+# PVcount$diff[PVcount$peaks > PVcount$valleys] <- "more PEAKS"
+# PVcount$diff[PVcount$peaks < PVcount$valleys] <- "more VALLEYS"
+# PVcount$diff[PVcount$peaks == PVcount$valleys] <- "same number"
+# table(PVcount$diff)
+# print("SAME") ; print(PVcount$file[PVcount$diff=="same number"])
+# print("MORE PEAKS") ; print(PVcount$file[PVcount$diff=="more PEAKS"])
+# PVcount <- PVcount %>%
+#   mutate(ok = ifelse(valleys == peaks + 1, "ok", "no!!!!!"))
+# table(PVcount$ok, )
+}
+
 table(durationsOK$sameDurations)
 
 IPUandCycles$IPU <- gsub("IPU", "", IPUandCycles$IPU)
 
 pbr2 <- data.frame(matrix(ncol=12, nrow=0))
 colnames(pbr2) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "inhalAmp", "inhalDur")
+
+PVcount <- data.frame(matrix(ncol=3, nrow=0))
+names(PVcount) <- c("file", "peaks", "valleys")
 
 # i=4
 
@@ -602,6 +623,8 @@ for(i in 1:nrow(listBREATHlbw)){ # list with the listening part of the free spec
   breath <- tg.read(paste0(folder2, listBREATHlbw$breath[i]))
   b <- (w <- readWave(paste0(folder2, listBREATHlbw$wav[i])))@left
   b <- (b - min(b)) / (max(b) - min(b))
+  
+  PVcount[nrow(PVcount)+1,] <- c(i, tg.getNumberOfPoints(breath, 1), tg.getNumberOfPoints(breath, 2))
   
   # get time of each point (peaks and valleys)
   PVtimes <- data.frame(matrix(ncol=12, nrow=0))
@@ -635,6 +658,18 @@ for(i in 1:nrow(listBREATHlbw)){ # list with the listening part of the free spec
 
 pbr2$numberIPUs <- NA
 
+{
+# PVcount$diff[PVcount$peaks > PVcount$valleys] <- "more PEAKS"
+# PVcount$diff[PVcount$peaks < PVcount$valleys] <- "more VALLEYS"
+# PVcount$diff[PVcount$peaks == PVcount$valleys] <- "same number"
+# table(PVcount$diff)
+# print("SAME") ; print(PVcount$file[PVcount$diff=="same number"])
+# print("MORE PEAKS") ; print(PVcount$file[PVcount$diff=="more PEAKS"])
+# PVcount <- PVcount %>%
+#   mutate(ok = ifelse(valleys == peaks + 1, "ok", "no!!!!!"))
+# table(PVcount$ok)
+}
+
 br0 <- rbind(pbr1, pbr2)
 
 # save(br, file=paste0(folder, "BreathingData.RData"))
@@ -643,6 +678,9 @@ br0 <- rbind(pbr1, pbr2)
 
 pbr3 <- data.frame(matrix(ncol=12, nrow=0))
 colnames(pbr3) <- c("file", "act", "breathCycle", "onset", "peak", "offset", "cycleDur", "numberBreathCycles", "breathCycleDurMean", "breathRate", "inhalAmp", "inhalDur")
+
+PVcount <- data.frame(matrix(ncol=3, nrow=0))
+names(PVcount) <- c("file", "peaks", "valleys")
 
 for(i in 1:nrow(listREAD)){
   if(grepl("_Hirsch", listREAD$breath[i])){
@@ -653,11 +691,15 @@ for(i in 1:nrow(listREAD)){
     act <- "ReadBaseline-Schwalbe"
   } else if(grepl("joint", listREAD$breath[i])){
     act <- "ReadJoint"
+  } else if(grepl("alone", listREAD$breath[i])){
+    act <- "ReadAlone"
   }
   
   breath <- tg.read(paste0(folder2, listREAD$breath[i]))
   b <- (w <- readWave(paste0(folder2, listREAD$wav[i])))@left
   b <- (b - min(b)) / (max(b) - min(b))
+  
+  PVcount[nrow(PVcount)+1,] <- c(i, tg.getNumberOfPoints(breath, 1), tg.getNumberOfPoints(breath, 2))
   
   # get time of each point (peaks and valleys)
   PVtimes <- data.frame(matrix(ncol=12, nrow=0))
@@ -690,6 +732,19 @@ for(i in 1:nrow(listREAD)){
 }
 
 pbr3$numberIPUs <- NA
+
+{
+# PVcount$diff[PVcount$peaks > PVcount$valleys] <- "more PEAKS"
+# PVcount$diff[PVcount$peaks < PVcount$valleys] <- "more VALLEYS"
+# PVcount$diff[PVcount$peaks == PVcount$valleys] <- "same number"
+# table(PVcount$diff)
+# 
+# print("SAME") ; print(PVcount$file[PVcount$diff=="same number"])
+# print("MORE PEAKS") ; print(PVcount$file[PVcount$diff=="more PEAKS"])
+# PVcount <- PVcount %>%
+#   mutate(ok = ifelse(valleys == peaks + 1, "ok", "no!!!!!"))
+# table(PVcount$ok)
+}
 
 br <- rbind(br0, pbr3)
 
@@ -761,9 +816,10 @@ for(i in 1:length(d)){
   # d[[i]]$Task[substr(d[[i]]$file, 1, 2) == "BR"] <- "ReadAlone" # baseline reading is also alone
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "A"] <- "ReadAlone"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & substr(d[[i]]$file, 2, 2) == "J"] <- "ReadJoint"
-  d[[i]]$Task[d[[i]]$Speaker == "Confederate" & grepl("Hirs|Schw|Pfer", d[[i]]$file)] <- "ReadJoint"
+  # d[[i]]$Task[d[[i]]$Speaker == "Confederate" & grepl("Hirs|Schw|Pfer", d[[i]]$file)] <- "ReadJoint"
   d[[i]]$Task[d[[i]]$Speaker == "Confederate" & grepl("Hobb|Holi|Home", d[[i]]$file)] <- "Free"
   d[[i]]$Task[d[[i]]$act == "ReadJoint"] <- "ReadJoint"
+  d[[i]]$Task[d[[i]]$act == "ReadAlone"] <- "ReadAlone"
   d[[i]]$Task[d[[i]]$act == "ReadBaseline"] <- "ReadBaseline"
   d[[i]]$Task <- as.factor(d[[i]]$Task)
 
@@ -773,7 +829,7 @@ fs <- d[[1]]
 br <- d[[2]]
 frb <- d[[3]]
 
-meta <- read.csv("C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/metadata.csv", fileEncoding="UTF-8-BOM")
+meta <- read.csv("C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/metadata.csv", fileEncoding="UTF-8-BOM")
 names(meta)[names(meta) == "Participant"] <- "Speaker"
 
 fsm <- merge(fs, meta, by="Speaker", all=TRUE)

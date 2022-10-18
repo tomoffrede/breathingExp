@@ -334,6 +334,7 @@ For the confederate, breathing rate increased steadily with physical effort.
 (We obtain the same results with breath cycle durations.)
 
 ```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lm(breathRate ~ Condition, dat))
 
 par(mfrow=c(2, 2))
@@ -499,12 +500,13 @@ plot(fitted(a2), resid(a2))
 ### Breathing rate
 
 ```{r, include=FALSE}
-load(paste0(folder, "DataReadSpeech.RData"))
+load(paste0(folder, "DataBreathing.RData"))
 
-df <- frb %>%
-  filter(grepl("Hirs|Schw|Pfer", file), Speaker == "Confederate") %>%
-  mutate(f0IPUz = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE)) %>% 
-  filter(!duplicated(file)) %>% 
+df <- brm %>%
+  filter(grepl("Read", Task), Speaker == "Confederate") %>%
+  mutate(grouping = paste0(Condition, Task, file)) %>% 
+  filter(!duplicated(grouping)) %>%
+  select(-grouping) %>% 
   mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy")))
 
 df$Condition <- relevel(df$Condition, ref="Sitting")
@@ -512,12 +514,14 @@ df$Condition <- relevel(df$Condition, ref="Sitting")
 
 ```{r}
 ggplot(df, aes(Condition, breathRate))+
-  geom_boxplot()
+  geom_boxplot()+
+  geom_point()
 ```
 
 During read speech, the confederate's breathing rate had this weird nonlinear pattern -- is it just noise? (How) do we even report this?
 
 ```{r}
+df$Condition <- relevel(df$Condition, ref="Sitting")
 summary(b1 <- lm(breathRate ~ Condition, df))
 ```
 
