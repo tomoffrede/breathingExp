@@ -23,12 +23,34 @@ library(dplR)
 #FOR TESTING
 #parentfolder <- (dirname(rstudioapi::getSourceEditorContext()$path))  #what is the current folder
 # parentfolder <- "C:/Users/tomof/Documents/1.Humboldt-Universit?t_zu_Berlin/ExperimentBreathing/Data/DataForAnalysis/AllData/"
-parentfolder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+parentfolder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 #data_to_process <- paste0(dirname(parentfolder), "/DATA_TO_PROCESS/") #This is the folder where your wav's are saved
 #you can set it to parentfolder if you dropped this R code in that folder
 data_to_process = parentfolder
 
-list_wavs <- list.files(data_to_process, pattern = ".wav", recursive=TRUE)      #list of the wav's
+list_wavs <- list.files(data_to_process, pattern = ".wav", recursive=FALSE)      #list of the wav's
+list_wavs <- list_wavs[!grepl("SUM|THORAX", list_wavs)]
+list_wavs <- list_wavs[-c(1:119)]
+R <- list_wavs[substr(list_wavs, 2, 2) == "R"]
+list_wavs <- list_wavs[!(substr(list_wavs, 2, 2) == "R")]
+R <- R[grepl("alone|joint", R)]
+list_wavs <- c(list_wavs, R)
+list_wavs <- list_wavs[substr(list_wavs, 1, 2) == "SR"]
+
+###### to check sampling rate ######
+# sr <- data.frame(matrix(nrow=0, ncol=2))
+# names(sr) <- c("file", "samplingRate")
+# library(tuneR)
+# for(i in list_wavs){
+#   t <- readWave(paste0(parentfolder, i))
+#   sr[nrow(sr)+1,] <- c(i, t@samp.rate)
+# }
+# table(sr$samplingRate)
+# # ok, they're all 22050 Hz!
+# remove(sr)
+# remove(t)
+# remove(i)
+###### end of sampling rate check ######
 
 #####################MAIN FUNCTION TO EXTRACT SMOOTHED ENVELOPE###############################
 amplitude_envelope.extract <- function(locationsound, smoothingHz, resampledHz)
@@ -47,8 +69,8 @@ amplitude_envelope.extract <- function(locationsound, smoothingHz, resampledHz)
 for(wav in list_wavs)
 {
   locsound <- paste0(data_to_process, wav)                    #location of the current sound file in the loop
-  env <-amplitude_envelope.extract(locsound, 7, 100)           #get the amplitude envelope at location, 5Hz Hanning, 100Hz sampling
-  time_ms <- seq(1000/100, length(env)*(1000/100), by = 1000/100)     #make a time vector based on sampling rate (1000/Hz)
+  env <-amplitude_envelope.extract(locsound, 5, 22050)           #get the amplitude envelope at location, 5Hz Hanning, 100Hz sampling
+  time_ms <- seq(220500/22050, length(env)*(220500/22050), by = 220500/22050)     #make a time vector based on sampling rate (1000/Hz)
   ENV <- cbind.data.frame(time_ms, env)                                   #bind into data frame
   write.csv(ENV, file = paste0(paste0(data_to_process, "/", substr(wav, 1, nchar(wav)-4), "_ENV", ".csv")),row.names=FALSE) #save it to a folder
 }

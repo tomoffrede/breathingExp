@@ -65,6 +65,7 @@ ggplot(dbr %>% filter(Task=="Free"), aes(Condition, breathRate))+
   labs(title = "Confederate's breathing rate (spontaneous speech)", y = "Breathing rate")
 
 ggplot(dbr %>% filter(grepl("Read", Task)), aes(Condition, breathRate))+
+  stat_halfeye(adjust = .6,  width = .6, justification = -.2, .width = c(.5, .95))+
   geom_boxplot(width=.1)+
   geom_point(size=2)+
   scale_x_discrete(limits = order, labels=labels)+
