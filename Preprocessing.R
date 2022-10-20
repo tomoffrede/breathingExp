@@ -18,22 +18,76 @@
 
 library(rPraat) # to work with TextGrids
 library(tidyverse)
-library(sylly.de) # for counting syllables
+library(pracma)
 library(tuneR) # to read WAV (breathing) file
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
 `%!in%` <- Negate(`%in%`)
+round_any = function(x, accuracy, f=round){f(x/ accuracy) * accuracy} # taken from the plyr package: https://github.com/hadley/plyr/blob/34188a04f0e33c4115304cbcf40e5b1c7b85fedf/R/round-any.r#L28-L30
+# see https://stackoverflow.com/questions/43627679/round-any-equivalent-for-dplyr/46489816#46489816
 
 ############# Speech Rate
 
-# FROM NUMBER OF SYLLABLES DIVIDED BY TIME OF MANUALLY ANNOTATED IPUs
+# FROM DETECTION OF PEAKS IN AMPLITUDE ENVELOPES
 
 ### IPUs, PAUSES
 
+# free speech files (BF, HF, LF, SF) have transcriptions annotations, so we can determine the speech rate of each IPU
+# read files (BR, HR, LR, SR) don't have the transcriptions: we can only have one speech rate value per file
+# (however, we do have textgrids with silence annotations -- extracted automatically. so we could pretend that those are IPUs)
+
 listTG <- list.files(folder, pattern=".TextGrid")
-listCTG <- listTG[grepl("Holidays", listTG) | grepl("Hobbies", listTG) | grepl("Home", listTG)]
-listPTG <- listTG[substr(listTG, 2, 2)=="F"]
-listTGf <- c(listPTG, listCTG)
+listTG <- listTG[!grepl("VUV", listTG)]
+listCTGf <- listTG[grepl("Holidays|Hobbies|Home", listTG)]
+listCTGr <- listTG[substr(listTG, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe", listTG) & grepl("alone|joint", listTG)]
+listPTGf <- listTG[substr(listTG, 2, 2)=="F"]
+listPTGr0 <- listTG[substr(listTG, 2, 2)=="R"]
+listPTGrb <- listPTGr0[substr(listPTGr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPTGr0)]
+listPTGrnb <- listPTGr0[grepl("joint", listPTGr0)]
+listPTGr <- c(listPTGrb, listPTGrnb)
+listTGf <- c(listPTGf, listCTGf)
+listTGr <- c(listPTGr, listCTGr)
+
+listCSV <- list.files(folder, ".csv")
+listCCSVf <- listCSV[grepl("Holidays|Hobbies|Home", listCSV)]
+listCCSVr <- listCSV[substr(listCSV, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe", listCSV) & grepl("alone|joint", listCSV)]
+listPCSVf <- listCSV[substr(listCSV, 2, 2)=="F"]
+listPCSVr0 <- listCSV[substr(listCSV, 2, 2)=="R"]
+listPCSVrb <- listPCSVr0[substr(listPCSVr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPCSVr0)]
+listPCSVrnb <- listPCSVr0[grepl("joint", listPCSVr0)]
+listPCSVr <- c(listPCSVrb, listPCSVrnb)
+listCSVf <- c(listPCSVf, listCCSVf)
+listCSVr <- c(listPCSVr, listCCSVr)
+
+listF <- data.frame(cbind(listCSVf, listTGf)) %>% 
+  mutate(worked = ifelse(substr(listCSVf, 1, 6) == substr(listTGf, 1, 6), "worked!", "NO!!!!!!!!!!!"))
+table(listF$worked)
+  
+listR <- data.frame(cbind(listCSVr, listTGr)) %>% 
+  mutate(worked = ifelse(substr(listCSVr, 1, 6) == substr(listTGr, 1, 6), "worked!", "NO!!!!!!!!!!!"))
+table(listR$worked)
+
+for(i in listF){
+  amp <- read.csv(paste0(folder, listF$listCSVf[i]))
+  t <- tg.read(paste0(folder, listF$listTGf[i]), encoding=detectEncoding(paste0(folder, listF$listTGf[i])))
+  
+  # start <- round_any(as.numeric(tg.getIntervalStartTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, ceiling) * 1000 # in ms
+  # end <- round_any(as.numeric(tg.getIntervalEndTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, floor) * 1000
+  # dur <- (end-start)/1000 #turn to seconds
+  # durNoPauses <- dur - pauseDur$dur[substr(pauseDur$file, 1, 6) == substr(listF$csv[i], 1, 6)]
+  
+  # amp <- amp[amp$time_ms >= start & amp$time_ms <= end,]
+  
+  amp$env <- (amp$env - min(amp$env)) / (max(amp$env) - min(amp$env))
+  p <- findpeaks(amp$env, minpeakheight = 0.025, minpeakdistance = 22050/15) # minpeakdistance: sampling frequency divided by a very high potential speech rate
+  
+  ampr[nrow(ampr)+1,] <- c(substr(listF$csv[i], 1, 6), # file name
+                           as.numeric(nrow(p)/(dur)), # speech rate (number of peaks divided by entire duration)
+                           as.numeric(nrow(p)/(durNoPauses))) # articulation rate: number of peaks divided by (duration minus duration of pauses)
+}
+
+
+
 
 ld <- data.frame(matrix(ncol=8, nrow=0))
 names(ld) <- c("IPUDur", "IPU", "file", "syll", "speechRateSyll", "durSpeech", "pause", "pauseDurManual")
