@@ -145,23 +145,24 @@ for(i in 1:nrow(list)){
   amp <- read.csv(paste0(folder, list$csv[i]))
   t <- tg.read(paste0(folder, list$listTGf[i]), encoding=detectEncoding(paste0(folder, list$listTGf[i])))
   
-  start <- round_any(as.numeric(tg.getIntervalStartTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, ceiling) * 1000 # in ms
-  end <- round_any(as.numeric(tg.getIntervalEndTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, floor) * 1000
-  dur <- (end-start)/1000 #turn to seconds
-  durNoPauses <- dur - pauseDur$dur[substr(pauseDur$file, 1, 6) == substr(list$csv[i], 1, 6)]
+  # start <- round_any(as.numeric(tg.getIntervalStartTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, ceiling) * 1000 # in ms
+  # end <- round_any(as.numeric(tg.getIntervalEndTime(t, 2, as.numeric(tg.findLabels(t, 2, "task")))), 10, floor) * 1000
+  # dur <- (end-start)/1000 #turn to seconds
+  # durNoPauses <- dur - pauseDur$dur[substr(pauseDur$file, 1, 6) == substr(list$csv[i], 1, 6)]
   
-  amp <- amp[amp$time_ms >= start & amp$time_ms <= end,]
+  # amp <- amp[amp$time_ms >= start & amp$time_ms <= end,]
   
   amp$env <- (amp$env - min(amp$env)) / (max(amp$env) - min(amp$env))
-  p <- findpeaks(amp$env, minpeakdistance = 10, minpeakheight=0.04)
+  p <- findpeaks(amp$env, minpeakheight = 0.025, minpeakdistance = 22050/15) # minpeakdistance: sampling frequency divided by a very high potential speech rate
   
-  ampr[nrow(ampr)+1,] <- c(substr(list$csv[i], 1, 6), # file name
-                           as.numeric(nrow(p)/(dur)), # speech rate (number of peaks divided by entire duration)
-                           as.numeric(nrow(p)/(durNoPauses))) # articulation rate: number of peaks divided by duration minus duration of pauses
+  # ampr[nrow(ampr)+1,] <- c(substr(list$csv[i], 1, 6), # file name
+  #                          as.numeric(nrow(p)/(dur)), # speech rate (number of peaks divided by entire duration)
+  #                          as.numeric(nrow(p)/(durNoPauses))) # articulation rate: number of peaks divided by (duration minus duration of pauses)
   
-  # plot(amp$env, type="l")
-  # points(p[,2], p[,1], col="red")
+  plot(amp$env, type="l")
+  points(p[,2], p[,1], col="red")
   # readline(prompt="Press [enter] to continue")
+  print(nrow(p)/(nrow(amp)/22050)) # see (roughly) speech rate
 }
 
 com <- merge(com0, ampr, by="file", all=TRUE)
@@ -245,9 +246,9 @@ for(i in fl){
   ampr[nrow(ampr)+1,] <- c(substr(i, 1, 17),
                            as.numeric(nrow(p)/2))
 
-  plot(amp$env, type="l")
-  points(p[,2], p[,1], col="red")
-  readline(prompt="Press [enter] to continue")
+  # plot(amp$env, type="l")
+  # points(p[,2], p[,1], col="red")
+  # readline(prompt="Press [enter] to continue")
 }
 
 c <- merge(m, ampr, by= "file")
