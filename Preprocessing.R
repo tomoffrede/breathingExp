@@ -62,6 +62,7 @@ listCSVr <- c(listPCSVr, listCCSVr)
 listF <- data.frame(cbind(listCSVf, listTGf)) %>% 
   mutate(worked = ifelse(substr(listCSVf, 1, 6) == substr(listTGf, 1, 6), "worked!", "NO!!!!!!!!!!!"))
 table(listF$worked)
+
   
 listR <- data.frame(cbind(listCSVr, listTGr)) %>% 
   mutate(worked = ifelse(substr(listCSVr, 1, 6) == substr(listTGr, 1, 6), "worked!", "NO!!!!!!!!!!!"))
@@ -118,6 +119,7 @@ for(i in 1:nrow(listF)){
   srf <- rbind(srf, ipu)
 }
 
+save(srf, file=paste0(folder, "srf.RData"))
 
 # and now for reading files
 
@@ -131,13 +133,15 @@ for(i in 1:nrow(listR)){
   tg <- tg.read(paste0(folder, listR$listTGr[i]), encoding=detectEncoding(paste0(folder, listR$listTGr[i])))
   
   # there are 3 BR files per participant so:
-  if(grepl("Hirsch", listR$listCSVr[i])){
-    file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Hirsch")
-  } else if(grepl("Pferd", listR$listCSVr[i])){
-    file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Pferd")
-  } else if(grepl("Schwalbe", listR$listCSVr[i])){
-    file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Schwalbe")
-  } else {
+  if(grepl("BR", listR$listCSVr[i])){
+    if(grepl("Hirsch", listR$listCSVr[i])){
+      file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Hirsch")
+    } else if(grepl("Pferd", listR$listCSVr[i])){
+      file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Pferd")
+    } else if(grepl("Schwalbe", listR$listCSVr[i])){
+      file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Schwalbe")
+    }
+  } else { # confederate's files
     file <- substr(listR$listCSVr[i], 1, 6)
   }
   
@@ -170,6 +174,8 @@ for(i in 1:nrow(listR)){
     select(-c("onsetRound", "offsetRound"))
   srr <- rbind(srr, ipu)
 }
+
+save(srr, file=paste0(folder, "srr.RData"))
 
 # now we have: `srf`, containing speech rate data for free speech,
 # and `srr`, with speech rate data for read speech
@@ -866,7 +872,10 @@ fs <- full_join(fs0, IPUandCycles, by=c("file", "IPU"), all=TRUE)
 
 frs <- full_join(fr, srr, by=c("file", "IPU"), all=TRUE)
 
-frb <- merge(frs, br %>% select(file, breathRate), by="file")
+########## CONTINUE FROM HERE
+# why does creating `frb` create so many new rows with the same IPU (for a same given file)? fix this
+
+frb <- full_join(frs, br %>% select(file, breathRate), by="file")
 
 frb <- frb %>% 
   mutate(Task = ifelse(grepl("Baseline", Task), "ReadBaseline", Task))

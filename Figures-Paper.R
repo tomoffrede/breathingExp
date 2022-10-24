@@ -16,6 +16,32 @@ load(paste0(folder, "DataSpeech.RData"))
 load(paste0(folder, "DataBreathing.RData"))
 load(paste0(folder, "DataReadSpeech.RData"))
 
+{
+# check new speech rate data
+
+# histogram
+# range
+# sd? exclude?
+# plot per participant
+
+# hist(fsm$speechRateIPU)
+# range(fsm$speechRateIPU, na.rm=TRUE) # 0.43 - 9.27
+# sd(fsm$speechRateIPU, na.rm=TRUE) # 0.92
+# folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/SpeechRatePlots/"
+# for(s in unique(fsm$Speaker)){
+#   png(paste0(folder2, "/free/", s, ".png"))
+#   plot(fsm$speechRateIPU[fsm$Speaker==s], main=s)
+#   dev.off()
+# }
+# for(s in unique(frb$Speaker)){
+#   png(paste0(folder2, "/read/", s, ".png"))
+#   plot(fsm$speechRateIPU[fsm$Speaker==s], main=s)
+#   dev.off()
+# }
+
+}
+
+
 # Plots I want to have:
 # 
 # CONFEDERATE:
