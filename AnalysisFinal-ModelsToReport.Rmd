@@ -598,27 +598,14 @@ ggplot(df, aes(Cond2, speechRateIPU))+
   ggtitle("Participants' articulation rate")
 ```
 
-There seems to be a `alone` vs `interaction` effect, but if we include `order` and `breath cycle duration` in the model (see below), the condition effect disappears (or including only `order`).
-
-(The residuals of this model are crazy though! Not sure why. Is it because the categorical predictor is binary?)
+People **don't** change their articulation rate across conditions. With the new speech rate data, we also did not replicate the *interaction vs. baseline* effect.
 
 ```{r}
-summary(s5a <- lmer(SRipuZ ~ Cond2 + (1 | Speaker),  df))
+summary(s5a <- lmer(SRipuZ ~ Cond2 + (1 + Cond2 | Speaker),  df))
 
 par(mfrow=c(2, 2))
 hist(resid(s5a))
 qqnorm(resid(s5a));qqline(resid(s5a))
-plot(fitted(s5a), resid(s5a))
-```
-
-If we include only `order` and `breath cycle duration` in the model, we see an effect of those. `Order` might be a nice effect to talk about (because it happens over time, and we're talking about convergence over time), but because the effect disappears in the `condition + order` model, I'm not sure how robust these models are.
-
-```{r}
-summary(s5a <- lmer(SRipuZ ~ Order +  breathCycleDur + (1 | Speaker),  df %>% filter(!is.na(breathCycleDur))))
-
-par(mfrow=c(2, 2))
-hist(resid(s5a))
-qqnorm(resid(s5a));qqline(resid(s5a)) # residuals seem ok I think
 plot(fitted(s5a), resid(s5a))
 ```
 
@@ -673,8 +660,6 @@ summary(s1 <- lm(SRipuZ ~ Condition, df))
 
 # Speech data: READ speech
 
-**We only have f0 data (no speech rate) for read speech**
-
 ```{r, include=FALSE}
 load(paste0(folder, "DataReadSpeech.RData"))
 ```
@@ -702,7 +687,7 @@ ggplot(df, aes(Condition, f0IPUz))+
   geom_boxplot()
 ```
 
-During read speech f0 went up as per our hypothesis. When trying to entrain temporally to the confederate, do they also entrain on f0? (Or what other explanations do we have?)
+During read speech f0 went up as per our hypothesis. When trying to entrain temporally to the confederate, do they also entrain on f0? 
 
 ```{r}
 summary(f1 <- lmer(f0IPUz ~ Condition + (1 | Speaker), df))
@@ -713,7 +698,18 @@ summary(f1 <- lmer(f0IPUz ~ Condition + (1 | Speaker), df))
 ```{r}
 ggplot(df, aes(Condition, SRipuZ))+
   geom_boxplot()
+
+ggplot(df, aes(Cond2, SRipuZ))+
+  geom_boxplot()
 ```
+
+*Straightforwardly*, these findings are:
+
+* People spoke slower while trying to read synchronously than when reading alone in the baseline.
+
+* People also tended to speak slower and slower with increase in physical effort (but the only *significant* difference is between sitting and heavy biking.)
+
+*However*, this doesn't mean that they spoke slower per se, but rather that they produced lots of silences and pauses when trying to speak synchronously to the confederate -- and the more physical effort, the harder it was to synchronize because the confederate's speech got less predictable.
 
 ```{r}
 df$Condition <- relevel(df$Condition, ref="Sitting")

@@ -180,6 +180,9 @@ save(srr, file=paste0(folder, "srr.RData"))
 # now we have: `srf`, containing speech rate data for free speech,
 # and `srr`, with speech rate data for read speech
 
+load(paste0(folder, "srf.RData"))
+load(paste0(folder, "srr.RData"))
+
 ############# f0 mean, median
 
 # 2
@@ -870,15 +873,22 @@ fs <- full_join(fs0, IPUandCycles, by=c("file", "IPU"), all=TRUE)
 # }
 }
 
-frs <- full_join(fr, srr, by=c("file", "IPU"), all=TRUE)
+fr <- fr %>% select(-IPU)
+srr <- srr %>% select(-IPU)
 
-########## CONTINUE FROM HERE
-# why does creating `frb` create so many new rows with the same IPU (for a same given file)? fix this
+frs <- full_join(fr, srr, by=c("file", "onset", "offset"), all=TRUE)
 
-frb <- full_join(frs, br %>% select(file, breathRate), by="file")
+frs <- frs %>% 
+  group_by(file) %>% 
+  arrange(onset) %>% 
+  mutate(IPU = 1:n()) %>% 
+  ungroup()
 
-frb <- frb %>% 
-  mutate(Task = ifelse(grepl("Baseline", Task), "ReadBaseline", Task))
+frb <- merge(frs, br %>% select(file, breathRate), by="file") %>% 
+  distinct() # for some reason this merge() is duplicating a bunch of rows, so here we delete the duplicate rows
+
+# frb <- frb %>% 
+#   mutate(Task = ifelse(grepl("Baseline", Task), "ReadBaseline", Task))
 
 conffiles <- c("irs", "obb", "oli", "ome", "fer", "chw")
 
