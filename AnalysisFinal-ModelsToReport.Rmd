@@ -588,7 +588,7 @@ df$Condition <- relevel(df$Condition, ref="Light")
 ```
 
 ```{r}
-ggplot(df, aes(Condition, speechRateIPU))+
+ggplot(df, aes(Condition, SRipuZ))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCondBase)+
   ggtitle("Participants' articulation rate")
@@ -601,7 +601,7 @@ ggplot(df, aes(Cond2, speechRateIPU))+
 People **don't** change their articulation rate across conditions. With the new speech rate data, we also did not replicate the *interaction vs. baseline* effect.
 
 ```{r}
-summary(s5a <- lmer(SRipuZ ~ Cond2 + (1 + Cond2 | Speaker),  df))
+summary(s5a <- lmer(SRipuZ ~ Cond2 + (1 | Speaker),  df))
 
 par(mfrow=c(2, 2))
 hist(resid(s5a))
