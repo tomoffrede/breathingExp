@@ -131,8 +131,7 @@ for(i in 1:nrow(listF)){
            onsetRound = round_any(onset * 220500, 10, ceiling), # turn onset into the corresponding value considering sampling rate (as it's noted in `amp`), and then round it up
            offsetRound = round_any(offset * 220500, 10, floor), # for both these lines: not sure why I have to do sampling rate * 10, but it's what works
            speechRateIPU = NA,
-           durWithoutPauses = IPUDur - pauseDur,
-           syll = (hyphen(ipu$label, hyph.pattern="de")@hyphen)$syll)
+           durWithoutPauses = IPUDur - pauseDur)
   
   for(r in 1:nrow(ipu)){
     ampTemp <- amp %>%
@@ -142,8 +141,6 @@ for(i in 1:nrow(listF)){
     if(is.numeric(nrow(p))){
       ipu$speechRateIPU[r] <- as.numeric(nrow(p) / ipu$IPUDur[r])
       ipu$articRateIPU[r] <- as.numeric(nrow(p) / ipu$durWithoutPauses[r])
-      ipu$syllSpeechRate[r] <- as.numeric(ipu$syll[r] / ipu$IPUDur[r])
-      ipu$syllArticRate[r] <- as.numeric(ipu$syll[r] / ipu$durWithoutPauses[r])
     }
     plot(ampTemp$env, type="l", main=substr(listF$listCSVf[i], 1, 6))
     points(p[,2], p[,1], col="red", pch = 19)
@@ -153,12 +150,16 @@ for(i in 1:nrow(listF)){
   srf <- rbind(srf, ipu)
 }
 
+srf$speechRateIPU[srf$file=="HF-MHU"] <- NA # peak detection worked terribly for the file HF-MHU, so let's delete these speech rate values
+srf$articRateIPU[srf$file=="HF-MHU"] <- NA
+
+
 save(srf, file=paste0(folder, "srf.RData"))
 
 # and now for reading files
 
 srr <- data.frame(matrix(nrow = 0, ncol=6))
-names(srr) <- c("onset", "offset", "IPUDur", "IPU", "file", "speechRateIPU")
+names(srr) <- c("onset", "offset", "IPUDur", "IPU", "file", "articRateIPU")
 
 
 for(i in 1:nrow(listR)){
@@ -194,16 +195,16 @@ for(i in 1:nrow(listR)){
            file = file,
            onsetRound = round_any(onset * 220500, 10, ceiling), # turn onset into the corresponding value considering sampling rate (as it's noted in `amp`), and then round it up
            offsetRound = round_any(offset * 220500, 10, floor), # for both these lines: not sure why I have to do sampling rate * 10, but it's what works
-           speechRateIPU = NA)
+           articRateIPU = NA)
   
   for(r in 1:nrow(ipu)){
     ampTemp <- amp %>%
       filter(time_ms >= ipu$onsetRound[r] & time_ms <= ipu$offsetRound[r])
     p <- findpeaks(ampTemp$env, minpeakheight = 0.025, minpeakdistance = 22050/15) # minpeakdistance: sampling frequency divided by a very high potential speech rate
     if(is.numeric(nrow(p))){
-      ipu$speechRateIPU[r] <- as.numeric(nrow(p) / ipu$IPUDur[r])
+      ipu$articRateIPU[r] <- as.numeric(nrow(p) / ipu$IPUDur[r])
     }
-    plot(ampTemp$env, type="l")
+    plot(ampTemp$env, type="l", main=substr(listR$listCSVr[i], 1, 6))
     points(p[,2], p[,1], col="red")
   }
   ipu <- ipu %>% 
