@@ -316,7 +316,7 @@ load(paste0(folder, "DataBreathing.RData"))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Confederate", !duplicated(file)) %>%
+  filter(Task=="Free", Role=="Confederate", !duplicated(file)) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "Condition"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -351,7 +351,7 @@ plot(fitted(b1), resid(b1))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Confederate") %>%
+  filter(Task=="Free", Role=="Confederate") %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "Condition"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -374,7 +374,32 @@ Inhalation duration is longer during biking (`light` or `heavy`) than `sitting`.
 summary(d1 <- lm(inhalDur ~ Condition, dat))
 ```
 
+### Inhalation amplitude
 
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Task=="Free", Role=="Confederate") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(logInhalDur = log(inhalDur))
+
+dat$numberIPUs <- as.factor(dat$numberIPUs)
+dat$Condition <- relevel(dat$Condition, ref="Light")
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+```
+
+Inhalation amplitude gets larger with physical effort.
+
+```{r}
+summary(d1 <- lm(inhalAmp ~ Condition, dat))
+```
 
 ```{r}
 # ggplot(dat, aes(Condition, as.numeric(numberIPUs)))+
@@ -530,6 +555,33 @@ summary(b1 <- lm(breathRate ~ Condition, df))
 ```
 
 
+### Inhalation duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(grepl("Read", Task), Role=="Confederate") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(logInhalDur = log(inhalDur))
+
+dat$numberIPUs <- as.factor(dat$numberIPUs)
+dat$Condition <- relevel(dat$Condition, ref="Light")
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+```
+
+Inhalation duration is longer during biking (`light` or `heavy`) than `sitting`.
+
+```{r}
+summary(d1 <- lm(inhalDur ~ Condition, dat))
+```
+
 # Speech data: FREE speech
 
 ## Participants
@@ -683,7 +735,7 @@ qqnorm(resid(m1));qqline(resid(m1))
 plot(fitted(m1), resid(m1))
 ```
 
-### Articulation rate
+### Speech rate
 
 ```{r}
 ggplot(df, aes(Condition, speechRateIPU))+
@@ -697,6 +749,20 @@ Articulation rate did not change according to physical effort.
 summary(s1 <- lm(speechRateIPU ~ Condition, df))
 ```
 
+
+### Articulation rate
+
+```{r}
+ggplot(df, aes(Condition, articRateIPU))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+```
+
+Articulation rate did not change according to physical effort.
+
+```{r}
+summary(s1 <- lm(articRateIPU ~ Condition, df))
+```
 
 # Speech data: READ speech
 
