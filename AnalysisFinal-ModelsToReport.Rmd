@@ -77,9 +77,11 @@ qqnorm(resid(m2a));qqline(resid(m2a))
 plot(fitted(m2a), resid(m2a))
 ```
 
-We also have models about breath cycle durations, but those indicate the same things as breathing rate, since they're closely (negatively) related. So I say we shouldn't include the models about cycle durations.
+## Breath cycle duration
 
-The one interesting thing, though, was that breath cycles tended to be shorter the further into the recording they were. (Helene also observed this in her data.) I don't think this is relevant for our overall story, but let's keep it in mind.
+We also have models about breath cycle durations, but those indicate the same things as breathing rate, since they're closely (negatively) related. It may still be worth it to look at effects on cycle duration: there are more data points with cycle duration than with breathing rate, so some more effects can emerge with cycles and not with rate.
+
+One interesting thing was that breath cycles tended to be shorter the further into the recording they were. (Helene also observed this in her data.) I don't think this is relevant for our overall story, but let's keep it in mind.
 
 ```{r, include=FALSE}
 dat <- brm %>%
@@ -96,6 +98,28 @@ d <- dat %>% group_by(breathCycle) %>% mutate(cM = mean(cycleDur))
 
 ```{r}
 plot(d$breathCycle, d$cM, ylab="mean of cycle durations", main="Cycle durations throughout the recordings")
+```
+
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits = orderCond)
+```
+
+Cycle durations are shorter during listening than watching (like for breathing rate). There are no condition effects.
+
+```{r}
+summary(c1 <- lmer(cycleDur ~ act + (1+ act |Speaker), dat))
+
+summary(c1.1 <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat %>% filter(act=="listening"))) # random slope causes the model not to converge
+summary(c1.2 <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat %>% filter(act=="watching"))) # random slope causes the model not to converge
+
+par(mfrow=c(2, 2))
+hist(resid(c1))
+qqnorm(resid(c1));qqline(resid(c1))
+plot(fitted(c1), resid(c1))
 ```
 
 ## Inhalation duration
@@ -219,6 +243,47 @@ par(mfrow=c(2, 2))
 hist(resid(b1))
 qqnorm(resid(b1));qqline(resid(b1))
 plot(fitted(b1), resid(b1))
+```
+
+### Breath cycle duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", grepl("Read", Task)) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(logCycleDur = log(cycleDur),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()
+```
+
+There is **no** effect of condition on breath cycles.
+
+```{r}
+summary(b1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+summary(b1a <- lmer(cycleDur ~ Cond2 + (1 + Cond2 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+
+par(mfrow=c(2, 2))
+hist(resid(b1a))
+qqnorm(resid(b1a));qqline(resid(b1a))
+plot(fitted(b1a), resid(b1a))
 ```
 
 ### Inhalation duration
@@ -365,8 +430,54 @@ During read speech, the confederate's breathing rate had this non-pattern. Maybe
 ```{r}
 df$Condition <- relevel(df$Condition, ref="Sitting")
 summary(b1 <- lm(breathRate ~ Condition, df))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
 ```
 
+
+### Breath cycle duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Confederate", grepl("Read", Task)) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(logCycleDur = log(cycleDur),
+         Cond3 = ifelse(Condition=="Sitting", "Sitting", "Biking"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+
+ggplot(dat, aes(Cond3, cycleDur))+
+  geom_boxplot()
+```
+
+There is **no** effect of condition on breath cycles.
+
+```{r}
+summary(b1 <- lm(cycleDur ~ Condition, dat))
+summary(b1a <- lm(cycleDur ~ Cond3, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+
+par(mfrow=c(2, 2))
+hist(resid(b1a))
+qqnorm(resid(b1a));qqline(resid(b1a))
+plot(fitted(b1a), resid(b1a))
+```
 
 ### Inhalation duration
 
@@ -409,6 +520,16 @@ Inhalation duration is longer during `biking` (`light` or `heavy`) than `sitting
 ```{r}
 summary(d1 <- lm(inhalDur ~ Condition, dat))
 summary(d2 <- lm(inhalDur ~ Cond3, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(d1))
+qqnorm(resid(d1));qqline(resid(d1))
+plot(fitted(d1), resid(d1))
+
+par(mfrow=c(2, 2))
+hist(resid(d2))
+qqnorm(resid(d2));qqline(resid(d2))
+plot(fitted(d1), resid(d2))
 ```
 
 # Speech data: READ speech
@@ -440,6 +561,11 @@ During read speech f0 went up as per our hypothesis. When trying to entrain temp
 
 ```{r}
 summary(f1 <- lmer(f0raw ~ Condition + (1 | Speaker), df))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
 ```
 
 ### Articulation rate
@@ -452,19 +578,29 @@ ggplot(df, aes(Cond2, articRateIPU))+
   geom_boxplot()
 ```
 
-*Straightforwardly*, these findings are:
+**Straightforwardly**, these findings are:
 
 * People spoke slower while trying to read synchronously than when reading alone in the baseline.
 
 * People also tended to speak slower and slower with increase in physical effort (but the only *significant* difference is between sitting and heavy biking.)
 
-*However*, this doesn't mean that they spoke slower per se, but rather that they produced lots of silences and pauses when trying to speak synchronously to the confederate -- and the more physical effort, the harder it was to synchronize because the confederate's speech got less predictable.
+**However**, this doesn't mean that they spoke slower per se, but rather that they produced lots of silences and pauses when trying to speak synchronously to the confederate -- and the more physical effort, the harder it was to synchronize because the confederate's speech got less predictable.
 
 ```{r}
 df$Condition <- relevel(df$Condition, ref="Sitting")
 summary(s1 <- lmer(articRateIPU ~ Condition + (1 | Speaker), df))
 
 summary(s2 <- lmer(articRateIPU ~ Cond2 + (1 | Speaker), df))
+
+par(mfrow=c(2, 2))
+hist(resid(s1))
+qqnorm(resid(s1));qqline(resid(s1))
+plot(fitted(s1), resid(s1))
+
+par(mfrow=c(2, 2))
+hist(resid(s2))
+qqnorm(resid(s2));qqline(resid(s2))
+plot(fitted(s2), resid(s2))
 ```
 
 
@@ -491,6 +627,11 @@ During reading the confederate also increases f0 consistently with physical effo
 
 ```{r}
 summary(f1 <- lm(f0raw ~ Condition, df))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
 ```
 
 ### Articulation rate
@@ -506,6 +647,11 @@ No articulation rate differences during read speech.
 ```{r}
 df$Condition <- relevel(df$Condition, ref="Sitting")
 summary(s1 <- lm(articRateIPU ~ Condition, df))
+
+par(mfrow=c(2, 2))
+hist(resid(s1))
+qqnorm(resid(s1));qqline(resid(s1))
+plot(fitted(s1), resid(s1))
 ```
 
 
@@ -540,19 +686,18 @@ dat$Condition <- relevel(dat$Condition, ref="Sitting")
 ```{r}
 ggplot(dat, aes(Condition, breathRate))+
   geom_boxplot()
-```
 
-```{r}
 ggplot(dat, aes(Cond2, breathRate))+
   geom_boxplot()
 ```
 
 There is no significant difference in breathing rate between the conditions, *including no effect* between the baseline recording (`alone`) and the experimental conditions (`interaction`).
 
-(There was only an effect when we used the z-scored breathing rate, but not the actual values).
+(There was only an effect when we used the z-scored breathing rate, but not with the actual values).
 
 
 ```{r}
+summary(b1 <- lmer(breathRate ~ Condition + (1 | Speaker), dat))
 summary(b1a <- lmer(breathRate ~ Cond2 + (1 | Speaker), dat))
 
 par(mfrow=c(2, 2))
@@ -566,15 +711,50 @@ ggplot(dat, aes(Cond2, cycleDur))+
   geom_boxplot()
 ```
 
-However, if we look at the duration of breath cycles (negatively related to breathing rate), we see longer cycle during `interaction` than during `baseline` (alone). This is the opposite from what we expected.
+
+### Breath cycle duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task=="Free") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(logCycleDur = log(cycleDur),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
 
 ```{r}
-summary(c1a <- lmer(cycleDur ~ Cond2 + (1  | Speaker), dat))
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()
+```
+
+* Cycles are longer during `baseline` (speaking alone) than during the `interaction`.
+
+* Cycles are slightly longer during `heavy` than during `sitting`.
+
+* (Both of these results are in line with our hypothesis.)
+
+```{r}
+summary(b1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+summary(b1a <- lmer(cycleDur ~ Cond2 + (1 + Cond2 | Speaker), dat))
 
 par(mfrow=c(2, 2))
-hist(resid(c1a))
-qqnorm(resid(c1a));qqline(resid(c1a))
-plot(fitted(c1a), resid(c1a))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+
+par(mfrow=c(2, 2))
+hist(resid(b1a))
+qqnorm(resid(b1a));qqline(resid(b1a))
+plot(fitted(b1a), resid(b1a))
 ```
 
 
@@ -691,7 +871,7 @@ ggplot(dat, aes(Condition, breathRate))+
   geom_point(size=2, color="blue")
 ```
 
-For the confederate, breathing rate increased steadily with physical effort.
+For the confederate, breathing rate increased from sitting to biking (but no significant difference between light and heavy biking).
 
 (We obtain the same results with breath cycle durations.)
 
@@ -703,6 +883,48 @@ par(mfrow=c(2, 2))
 hist(resid(b1))
 qqnorm(resid(b1));qqline(resid(b1))
 plot(fitted(b1), resid(b1))
+```
+
+
+### Breath cycle duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Confederate", Task=="Free") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy"))) %>%
+  mutate(logCycleDur = log(cycleDur),
+         Cond3 = ifelse(Condition=="Sitting", "Sitting", "Biking"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+
+ggplot(dat, aes(Cond3, cycleDur))+
+  geom_boxplot()
+```
+
+Breath cycles got shorter and shorter with increase in physical effort.
+
+```{r}
+summary(b1 <- lm(cycleDur ~ Condition, dat))
+summary(b1a <- lm(cycleDur ~ Cond3, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+
+par(mfrow=c(2, 2))
+hist(resid(b1a))
+qqnorm(resid(b1a));qqline(resid(b1a))
+plot(fitted(b1a), resid(b1a))
 ```
 
 ### Inhalation duration
@@ -756,7 +978,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
   scale_x_discrete(limits = orderCond)
 ```
 
-Inhalation amplitude gets larger with physical effort. Why the difference between inhalation duration and amplitude? Maybe different people have different strategies for inhaling when they need more oxygen -- some people may inhale longer while others "stronger"? Or else, the correlation between amplitude and duration may only be true for people sitting (our participants); when doing exercise + speaking and actually needing more oxygen, people may just inhale "stronger" instead of longer. Just speculation...
+Inhalation amplitude gets larger with physical effort. Why the difference between inhalation duration and amplitude? Maybe different people have different strategies for inhaling when they need more oxygen -- some people may inhale longer while others "deeper"? Or else, the correlation between amplitude and duration may only be true for people sitting (our participants); when doing exercise + speaking and actually needing more oxygen, people may just inhale "deeper" instead of longer. Just speculation...
 
 ```{r}
 summary(d1 <- lm(inhalAmp ~ Condition, dat))
@@ -816,43 +1038,6 @@ qqnorm(resid(m1));qqline(resid(m1)) # residuals ok I think
 hist(resid(m1))
 ```
 
-### Speech Rate
-
-```{r, include=FALSE}
-df <- fsm %>%
-  filter(Task == "Free", Role == "Participant") %>%
-  mutate(SRZgeneral = (speechRateIPU - mean(speechRateIPU, na.rm=TRUE)) / sd(speechRateIPU, na.rm=TRUE)) %>% 
-  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
-         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
-
-
-df$Condition <- relevel(df$Condition, ref="Light")
-```
-
-```{r}
-ggplot(df, aes(Condition, speechRateIPU))+
-  geom_boxplot()+
-  scale_x_discrete(limits = orderCondBase)+
-  ggtitle("Participants' speech rate")
-
-ggplot(df, aes(Cond2, speechRateIPU))+
-  geom_boxplot()+
-  ggtitle("Participants' speech rate")
-```
-
-People **don't** change their articulation rate across conditions. With the new speech rate data, we also did not replicate the *interaction vs. baseline* effect.
-
-```{r}
-summary(s5a <- lmer(speechRateIPU ~ Condition + (1 | Speaker),  df))
-summary(s5a <- lmer(speechRateIPU ~ Cond2 + (1 | Speaker),  df))
-
-par(mfrow=c(2, 2))
-hist(resid(s5a))
-qqnorm(resid(s5a));qqline(resid(s5a))
-plot(fitted(s5a), resid(s5a))
-```
-
-
 ### Articulation Rate
 
 ```{r, include=FALSE}
@@ -880,7 +1065,7 @@ ggplot(df, aes(Cond2, articRateIPU))+
 With articulation rate as the dependent variable, people seem to speak slower during the experimental conditions (the interaction with the confederate) as compared to the baseline (speaking by themselves).
 
 ```{r}
-summary(s5a <- lmer(articRateIPU ~ Condition + (1  | Speaker),  df))
+summary(s5 <- lmer(articRateIPU ~ Condition + (1  | Speaker),  df))
 summary(s5a <- lmer(articRateIPU ~ Cond2 + (1 + Cond2 | Speaker),  df))
 
 par(mfrow=c(2, 2))
@@ -922,22 +1107,6 @@ qqnorm(resid(m1));qqline(resid(m1))
 plot(fitted(m1), resid(m1))
 ```
 
-### Speech rate
-
-```{r}
-ggplot(df, aes(Condition, speechRateIPU))+
-  geom_boxplot()+
-  scale_x_discrete(limits = orderCond)
-```
-
-Speech rate was faster during `sitting` than during `biking`.
-
-```{r}
-summary(s1 <- lm(speechRateIPU ~ Condition, df))
-summary(s1 <- lm(speechRateIPU ~ Cond3, df))
-```
-
-
 ### Articulation rate
 
 ```{r}
@@ -950,6 +1119,11 @@ Articulation rate was also faster during `sitting` as compared to `biking`.
 
 ```{r}
 summary(s1 <- lm(articRateIPU ~ Condition, df))
-summary(s1 <- lm(articRateIPU ~ Cond3, df))
+summary(s1a <- lm(articRateIPU ~ Cond3, df))
+
+par(mfrow=c(2, 2))
+hist(resid(s1))
+qqnorm(resid(s1));qqline(resid(s1))
+plot(fitted(s1), resid(s1))
 ```
 
