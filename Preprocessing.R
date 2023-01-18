@@ -44,7 +44,7 @@ listCTGr <- listTG[substr(listTG, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe", 
 listPTGf <- listTG[substr(listTG, 2, 2)=="F"]
 listPTGr0 <- listTG[substr(listTG, 2, 2)=="R"]
 listPTGrb <- listPTGr0[substr(listPTGr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPTGr0)]
-listPTGrnb <- listPTGr0[grepl("joint", listPTGr0)]
+listPTGrnb <- listPTGr0[grepl("joint|alone", listPTGr0)]
 listPTGr <- c(listPTGrb, listPTGrnb)
 listTGf <- c(listPTGf, listCTGf)
 listTGr <- c(listPTGr, listCTGr)
@@ -55,7 +55,7 @@ listCCSVr <- listCSV[substr(listCSV, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe
 listPCSVf <- listCSV[substr(listCSV, 2, 2)=="F"]
 listPCSVr0 <- listCSV[substr(listCSV, 2, 2)=="R"]
 listPCSVrb <- listPCSVr0[substr(listPCSVr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPCSVr0)]
-listPCSVrnb <- listPCSVr0[grepl("joint", listPCSVr0)]
+listPCSVrnb <- listPCSVr0[grepl("joint|alone", listPCSVr0)]
 listPCSVr <- c(listPCSVrb, listPCSVrnb)
 listCSVf <- c(listPCSVf, listCCSVf)
 listCSVr <- c(listPCSVr, listCCSVr)
@@ -158,8 +158,8 @@ save(srf, file=paste0(folder, "srf.RData"))
 
 # and now for reading files
 
-srr <- data.frame(matrix(nrow = 0, ncol=6))
-names(srr) <- c("onset", "offset", "IPUDur", "IPU", "file", "articRateIPU")
+srr <- data.frame(matrix(nrow = 0, ncol=7))
+names(srr) <- c("onset", "offset", "IPUDur", "IPU", "file", "articRateIPU", "Task")
 
 
 for(i in 1:nrow(listR)){
@@ -169,6 +169,7 @@ for(i in 1:nrow(listR)){
   
   # there are 3 BR files per participant so:
   if(grepl("BR", listR$listCSVr[i])){
+    cond <- "ReadBaseline"
     if(grepl("Hirsch", listR$listCSVr[i])){
       file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Hirsch")
     } else if(grepl("Pferd", listR$listCSVr[i])){
@@ -176,9 +177,12 @@ for(i in 1:nrow(listR)){
     } else if(grepl("Schwalbe", listR$listCSVr[i])){
       file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Schwalbe")
     }
-  } else { # confederate's files
-    file <- substr(listR$listCSVr[i], 1, 6)
-  }
+  } else {file <- substr(listR$listCSVr[i], 1, 6)}
+  
+  if(grepl("alone", listR$listCSVr[i])){
+    cond <- "ReadAlone"
+  } else if(grepl("joint", listR$listCSVr[i])){cond <- "ReadJoint"}
+  if(substr(file, 2, 2) == "-"){cond <- "ReadAlone"}
   
   ipu <- data.frame(matrix(ncol=3, nrow=0))
   names(ipu) <- c("onset", "offset", "IPUDur")
@@ -195,7 +199,8 @@ for(i in 1:nrow(listR)){
            file = file,
            onsetRound = round_any(onset * 220500, 10, ceiling), # turn onset into the corresponding value considering sampling rate (as it's noted in `amp`), and then round it up
            offsetRound = round_any(offset * 220500, 10, floor), # for both these lines: not sure why I have to do sampling rate * 10, but it's what works
-           articRateIPU = NA)
+           articRateIPU = NA,
+           Task = cond)
   
   for(r in 1:nrow(ipu)){
     ampTemp <- amp %>%
@@ -220,28 +225,28 @@ save(srr, file=paste0(folder, "srr.RData"))
 load(paste0(folder, "srf.RData"))
 load(paste0(folder, "srr.RData"))
 
-############# f0 mean, median
+############# f0 mean
 
 # 2
 
 listTXT <- list.files(folder, pattern=".txt")
-confF <- listTXT[grepl("Home", listTXT)|grepl("Hobbies", listTXT)|grepl("Holidays", listTXT)]
+confF <- listTXT[grepl("Home|Hobbies|Holidays", listTXT)]
 listTXTf <- listTXT[substr(listTXT, 2, 2)=="F" | listTXT %in% confF]
+confR <- listTXT[grepl("Hirsch|Schwalbe|Pferd", listTXT) & grepl("alone|joint", listTXT) & substr(listTXT, 2, 2) == "-"]
 confRA <- c("H-Hirsch_alone.txt", "H-Pferd_alone.txt", "H-Schwalbe_alone.txt", "L-Hirsch_alone.txt", "L-Pferd_alone.txt", "L-Schwalbe_alone.txt", "S-Hirsch_alone.txt", "S-Pferd_alone.txt", "S-Schwalbe_alone.txt")
 confRJ <- c("H-Hirsch_joint.txt", "H-Pferd_joint.txt", "H-Schwalbe_joint.txt", "L-Hirsch_joint.txt", "L-Pferd_joint.txt", "L-Schwalbe_joint.txt", "S-Hirsch_joint.txt", "S-Pferd_joint.txt", "S-Schwalbe_joint.txt")
 f <- c("BF", "HF", "LF", "SF")
 readB <- listTXT[substr(listTXT, 1, 2) == "BR"]
-readJ <- list.files(folder, pattern="joint.txt")
-readJ <- readJ[substr(readJ, 2, 2) != "-"]
-readA <- list.files(folder, pattern="alone.txt")
-readA <- readA[substr(readA, 2, 2) != "-"]
+partR <- list.files(folder, pattern=".txt")
+partR <- partR[substr(partR, 2, 2) != "-" & grepl("alone|joint", partR)]
 
 listTG <- list.files(folder, pattern=".TextGrid")
 listTG <- listTG[!grepl("_VUV", listTG) & !grepl("HSP", listTG)]
-confFtg <- listTG[grepl("Home", listTG)|grepl("Hobbies", listTG)|grepl("Holidays", listTG)]
+confFtg <- listTG[grepl("Home|Hobbies|Holidays", listTG)]
 listTGf <- listTG[substr(listTG, 2, 2)=="F" | listTG %in% confFtg]
 listTGBsil <- listTG[substr(listTG, 1, 2) == "BR"] # baseline reading
-listTGRsil0 <- listTG[grepl("joint", listTG)] # conditions joint reading, participants
+listTGBsil <- listTGBsil[grepl("Hirsch|Pferd|Schwalbe", listTGBsil)]
+listTGRsil0 <- listTG[grepl("joint|alone", listTG)] # conditions joint and alone reading, participants
 listTGRsil <- listTGRsil0[substr(listTGRsil0, 2, 2) != "-"]
 listCRsil <- listTGRsil0[substr(listTGRsil0, 2, 2) == "-"]
 
@@ -258,14 +263,14 @@ listReadBase$worked[substr(listReadBase$txt, 1, 20)==substr(listReadBase$sil, 1,
 listReadBase$worked[substr(listReadBase$txt, 1, 20)!=substr(listReadBase$sil, 1, 20)] <- "NO!!!!!!!!!"}
 table(listReadBase$worked)
 
-{listReadC <- data.frame(cbind(confRJ, listCRsil))
+{listReadC <- data.frame(cbind(confR, listCRsil))
 names(listReadC) <- c("txt", "sil")
 ifelse(substr(listReadC$txt, 1, 6) == substr(listReadC$sil, 1, 6),
        listReadC$worked <- "worked!",
        listReadC$worked <- "NO!!!!!!!!")}
 table(listReadC$worked)
 
-{listReadCond0 <- data.frame(cbind(readJ, listTGRsil))
+{listReadCond0 <- data.frame(cbind(partR, listTGRsil))
 names(listReadCond0) <- c("txt", "sil")
 ifelse(substr(listReadCond0$txt, 1, 6) == substr(listReadCond0$sil, 1, 6),
        listReadCond0$worked <- "worked!",
@@ -339,8 +344,8 @@ ff <- ff %>% select(file, IPU, f0raw, f0IPUmean, label)
 #   readline("Continue")
 # }
 
-{fr <- data.frame(matrix(ncol=3, nrow=0))
-colnames(fr) <- c("IPU", "f0raw", "file")}
+{fr <- data.frame(matrix(ncol=4, nrow=0))
+colnames(fr) <- c("IPU", "f0raw", "file", "Task")}
  
 {# not working when trying to remove boundaries of adjacent intervals with same label: rows 5:7, 10, 12, 16, 20 (from listReadBase)
 
@@ -397,6 +402,7 @@ for(i in 1:nrow(listReadBase)){
     filter(!duplicated(IPU)) %>%
     mutate(IPU = 1:nrow(f0),
            file = paste0(substr(listReadBase$txt[i], 1, 6), text),
+           Task = "ReadBaseline",
            f0z = (f0raw - mean(f0raw))/sd(f0raw)) %>%
     filter(abs(f0z) < 2) %>% 
     select(-f0z)
@@ -407,6 +413,14 @@ for(i in 1:nrow(listReadBase)){
 for(i in 1:nrow(listReadCond)){
   txt <- read.table(paste0(folder, listReadCond$txt[i]), header=TRUE, na.strings = "--undefined--")
   sil <- tg.read(paste0(folder, listReadCond$sil[i]), encoding=detectEncoding(paste0(folder, listReadCond$sil[i])))
+  
+  if(grepl("alone", listReadCond$txt[i])){
+    task <- "ReadAlone"
+  } else{task <- "ReadJoint"}
+  
+  if(substr(listReadCond$txt[i], 2, 2) == "-"){ # the confederate only does ReadAlone
+    task <- "ReadAlone"
+  }
   
   # get mean f0 for each non-silent period ("IPU")
   f0 <- data.frame(matrix(ncol=4, nrow=0))
@@ -432,6 +446,7 @@ for(i in 1:nrow(listReadCond)){
       filter(!duplicated(IPU)) %>%
       mutate(IPU = 1:nrow(f0),
              file = substr(listReadCond$txt[i], 1, 6),
+             Task = task,
              f0z = (f0raw - mean(f0raw))/sd(f0raw)) %>%
       filter(abs(f0z) < 2) %>% 
       select(-f0z)
