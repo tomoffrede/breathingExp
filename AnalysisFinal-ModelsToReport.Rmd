@@ -27,6 +27,11 @@ folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnaly
 orderCond <- c("Sitting", "Light", "Heavy")
 orderCondBase <- c("Baseline", "Sitting", "Light", "Heavy")
 orderAct <- c("watching", "listening")
+orderCond3 <- c("Sitting", "Biking")
+
+load(paste0(folder, "DataBreathing.RData"))
+load(paste0(folder, "DataReadSpeech.RData"))
+load(paste0(folder, "DataSpeech.RData"))
 ```
 
 # Breathing data while listening/watching (participants)
@@ -113,7 +118,7 @@ Cycle durations are shorter during listening than watching (like for breathing r
 ```{r}
 summary(c1 <- lmer(cycleDur ~ act + (1+ act |Speaker), dat))
 
-summary(c1.1 <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat %>% filter(act=="listening"))) # random slope causes the model not to converge
+summary(c1.1a <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat %>% filter(act=="listening"))) # random slope causes the model not to converge
 summary(c1.2 <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat %>% filter(act=="watching"))) # random slope causes the model not to converge
 
 par(mfrow=c(2, 2))
@@ -185,7 +190,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
 * Condition differences: none (when we include the random slopes for condition)
 
 ```{r}
-dat$act <- relevel(dat$act, ref = "listening")
+dat$act <- relevel(dat$act, ref = "watching")
 dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(a3 <- lmer(inhalAmp ~ act + (1 + act | Speaker), dat))
 summary(a4 <- lmer(inhalAmp ~ Condition + (1 + Condition| Speaker), dat %>% filter(act=="watching")))
@@ -197,7 +202,7 @@ qqnorm(resid(a3));qqline(resid(a3))
 plot(fitted(a3), resid(a3))
 ```
 
-# Breathing data during READ speech
+# Breathing data during SYNCHRONOUS READ speech
 
 ## Participants
 
@@ -205,7 +210,7 @@ plot(fitted(a3), resid(a3))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Participant", grepl("Read", Task)) %>%
+  filter(Role=="Participant", Task%in%c("ReadJoint", "ReadBaseline")) %>%
   filter(!duplicated(file)) %>% 
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
@@ -249,7 +254,7 @@ plot(fitted(b1), resid(b1))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Participant", grepl("Read", Task)) %>%
+  filter(Role=="Participant", Task%in%c("ReadJoint", "ReadBaseline")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -290,7 +295,7 @@ plot(fitted(b1a), resid(b1a))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Participant", grepl("Read", Task)) %>%
+  filter(Role=="Participant", Task%in%c("ReadJoint", "ReadBaseline")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -352,7 +357,7 @@ plot(fitted(d5), resid(d5))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Participant", grepl("Read", Task)) %>%
+  filter(Role=="Participant", Task%in%c("ReadJoint", "ReadBaseline")) %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -532,7 +537,46 @@ qqnorm(resid(d2));qqline(resid(d2))
 plot(fitted(d1), resid(d2))
 ```
 
-# Speech data: READ speech
+
+### Inhalation amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(grepl("Read", Task), Role=="Confederate") %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Sitting","Light","Heavy")),
+         logInhalAmp = log(inhalAmp),
+         numberIPUsC = numberIPUs - mean(numberIPUs, na.rm=TRUE),
+         Cond3 = ifelse(Condition=="Sitting", "Sitting", "Biking"))
+
+dat$numberIPUs <- as.factor(dat$numberIPUs)
+dat$Condition <- relevel(dat$Condition, ref="Light")
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)
+
+ggplot(dat, aes(Cond3, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = c("Sitting", "Biking"))
+```
+
+Inhalation amplitude increases with physical effort.
+
+```{r}
+summary(d1 <- lm(inhalAmp ~ Condition, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(d1))
+qqnorm(resid(d1));qqline(resid(d1))
+plot(fitted(d1), resid(d1))
+```
+
+# Speech data: SYNCHRONOUS READ speech
 
 ```{r, include=FALSE}
 load(paste0(folder, "DataReadSpeech.RData"))
@@ -544,7 +588,7 @@ load(paste0(folder, "DataReadSpeech.RData"))
 
 ```{r, include=FALSE}
 df <- frb %>% 
-  filter(Role == "Participant", grepl("Read", Task)) %>% 
+  filter(Role == "Participant", Task%in%c("ReadJoint", "ReadBaseline")) %>% 
   mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
          Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
   filter(abs(f0Zgeneral) < 2) %>% 
@@ -604,7 +648,6 @@ plot(fitted(s2), resid(s2))
 ```
 
 
-
 ## Confederate
 
 ### f0
@@ -654,7 +697,529 @@ qqnorm(resid(s1));qqline(resid(s1))
 plot(fitted(s1), resid(s1))
 ```
 
+# Breathing data during LONE READ speech
 
+## Participants
+
+### Breathing rate
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline")) %>%
+  filter(!duplicated(file)) %>% 
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  group_by(Speaker) %>%
+  mutate(numberIPUsC = numberIPUs - mean(numberIPUs, na.rm=TRUE)) %>%
+  ungroup() %>% 
+  mutate(logBreathRate = log(breathRate),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Condition, breathRate))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat, aes(Cond2, breathRate))+
+  geom_boxplot()
+```
+
+* Breathing rate doesn't change across conditions (also not in baseline vs interaction).
+
+```{r}
+summary(b1 <- lmer(breathRate ~ Cond2 + (1 + Cond2 | Speaker), dat))
+summary(b1 <- lmer(breathRate ~ Condition + (1 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Breath cycle duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(logCycleDur = log(cycleDur),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()
+```
+
+There is **no** effect of condition on breath cycles.
+
+```{r}
+summary(b1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+summary(b1a <- lmer(cycleDur ~ Cond2 + (1 + Cond2 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+
+par(mfrow=c(2, 2))
+hist(resid(b1a))
+qqnorm(resid(b1a));qqline(resid(b1a))
+plot(fitted(b1a), resid(b1a))
+```
+
+### Inhalation duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalDur = log(inhalDur),
+         numberIPUsC = numberIPUs - mean(numberIPUs, na.rm=TRUE),
+         Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction"), # Cond2 = Alone vs Interaction)
+         Cond3 = ifelse(Condition%in%c("Light", "Heavy"), "Biking", ifelse(Condition=="Baseline", "Baseline", "Sitting"))) %>% 
+  mutate_at(c("Cond2", "Cond3"), as.factor)
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat %>% filter(inhalDur < 3), aes(Condition, inhalDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat %>% filter(inhalDur < 3), aes(Cond2, inhalDur))+
+  geom_boxplot()
+
+ggplot(dat %>% filter(inhalDur < 3), aes(Cond3, inhalDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits = c("Baseline", "Sitting", "Biking"))
+```
+
+Inhalation duration doesn't change across conditions (nor Cond2 or Cond3).
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+dat$Cond3 <- relevel(dat$Cond3, ref="Baseline")
+summary(d5 <- lmer(inhalDur ~ Condition + (1 | Speaker), dat))
+summary(d5a <- lmer(inhalDur ~ Cond2 + (1 + Cond2 | Speaker), dat))
+summary(d5b <- lmer(inhalDur ~ Cond3 + (1| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(d5))
+qqnorm(resid(d5));qqline(resid(d5))
+plot(fitted(d5), resid(d5))
+```
+
+### Inhalation amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalAmp = log(inhalAmp)) %>% 
+  group_by(Speaker) %>% 
+  mutate(numberIPUsC = numberIPUs - mean(numberIPUs, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction"),
+         Cond3 = ifelse(Condition%in%c("Light", "Heavy"), "Biking", ifelse(Condition=="Baseline", "Baseline", "Sitting"))) %>% 
+  mutate_at(c("Cond2", "Cond3"), as.factor)
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCondBase)
+
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()
+
+ggplot(dat, aes(Cond3, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = c("Baseline", "Sitting", "Biking"))
+```
+
+Inhalation amplitude did not change across conditions either (nor Cond2 or Cond3).
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Baseline")
+dat$Cond3 <- relevel(dat$Cond3, ref="Sitting")
+
+summary(a1 <- lmer(inhalAmp ~ Condition + (1 + Condition | Speaker), dat))
+summary(a2 <- lmer(inhalAmp ~ Cond2 + (1 + Cond2 | Speaker), dat))
+summary(a3 <- lmer(inhalAmp ~ Cond3 + (1 + Cond3 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(a2))
+qqnorm(resid(a2));qqline(resid(a2))
+plot(fitted(a2), resid(a2))
+```
+
+# Speech data: LONE READ speech
+
+```{r, include=FALSE}
+load(paste0(folder, "DataReadSpeech.RData"))
+```
+
+## Participants
+
+### f0
+
+```{r, include=FALSE}
+df <- frb %>% 
+  filter(Role == "Participant", Task%in%c("ReadAlone", "ReadBaseline")) %>% 
+  mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
+  filter(abs(f0Zgeneral) < 2) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))
+```
+
+
+```{r}
+ggplot(df, aes(Condition, f0raw))+
+  geom_boxplot()
+
+ggplot(df, aes(Cond2, f0raw))+
+  geom_boxplot()
+```
+
+The only f0 difference is between Baseline and Light (so I think this is noise?). Interaction vs. Alone is almost significant but not quite.
+
+
+```{r}
+df$Condition <- relevel(df$Condition, ref="Light")
+summary(f1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), df))
+summary(f1a <- lmer(f0raw ~ Cond2 + (1 + Cond2 | Speaker), df))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+```
+
+### Articulation rate
+
+```{r}
+ggplot(df, aes(Condition, articRateIPU))+
+  geom_boxplot()
+
+ggplot(df, aes(Cond2, articRateIPU))+
+  geom_boxplot()
+```
+
+Articulation rate didn't change across conditions.
+
+```{r}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(s1 <- lmer(articRateIPU ~ Condition + (1 | Speaker), df))
+
+summary(s2 <- lmer(articRateIPU ~ Cond2 + (1+Cond2 | Speaker), df))
+
+par(mfrow=c(2, 2))
+hist(resid(s1))
+qqnorm(resid(s1));qqline(resid(s1))
+plot(fitted(s1), resid(s1))
+
+par(mfrow=c(2, 2))
+hist(resid(s2))
+qqnorm(resid(s2));qqline(resid(s2))
+plot(fitted(s2), resid(s2))
+```
+
+# Breathing data: LONE vs SYNCHRONOUS READ SPEECH
+
+## Participants
+
+### Breathing rate
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadJoint")) %>%
+  filter(!duplicated(file)) %>% 
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(across(act, factor, levels=c("watching","listening"))) %>%
+  group_by(Speaker) %>%
+  mutate(numberIPUsC = numberIPUs - mean(numberIPUs, na.rm=TRUE)) %>%
+  ungroup() %>% 
+  mutate(logBreathRate = log(breathRate),
+         Cond3 = ifelse(Condition == "Sitting", "Sitting", "Biking"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Task, breathRate))+
+  geom_boxplot()
+
+ggplot(dat, aes(Condition, breathRate))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+ggplot(dat, aes(Cond3, breathRate))+
+  geom_boxplot()+
+  facet_wrap(~Task)+
+  scale_x_discrete(limits = orderCond3)
+```
+
+* Breathing rate doesn't change across Tasks (nor in interaction with condition).
+
+```{r}
+summary(b1 <- lmer(breathRate ~ Task + (1 | Speaker), dat))
+summary(b1a <- lmer(breathRate ~ Task:Cond3 + (1 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Breath cycle duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadJoint")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(logCycleDur = log(cycleDur),
+         Cond3 = ifelse(Condition == "Sitting", "Sitting", "Biking"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat, aes(Task, cycleDur))+
+  geom_boxplot()
+
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+ggplot(dat, aes(Cond3, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Task)+
+  scale_x_discrete(limits = orderCond3)
+```
+
+There is **no** effect of condition on breath cycles.
+
+```{r}
+summary(b1 <- lmer(cycleDur ~ Task + (1 +Task| Speaker), dat))
+summary(b1a <- lmer(cycleDur ~ Task:Condition + (1 +Task| Speaker), dat))
+summary(b1b <- lmer(cycleDur ~ Task:Cond3 + (1 +Task| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+
+par(mfrow=c(2, 2))
+hist(resid(b1a))
+qqnorm(resid(b1a));qqline(resid(b1a))
+plot(fitted(b1a), resid(b1a))
+```
+
+### Inhalation duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadJoint")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalDur = log(inhalDur),
+         numberIPUsC = numberIPUs - mean(numberIPUs, na.rm=TRUE),
+         Cond3 = ifelse(Condition%in%c("Light", "Heavy"), "Biking", ifelse(Condition=="Baseline", "Baseline", "Sitting"))) %>% 
+  mutate_at(c("Cond3"), as.factor)
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r}
+ggplot(dat %>% filter(inhalDur < 3), aes(Task, inhalDur))+
+  geom_boxplot()
+
+ggplot(dat %>% filter(inhalDur < 3), aes(Condition, inhalDur))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+ggplot(dat %>% filter(inhalDur < 3), aes(Cond3, inhalDur))+
+  geom_boxplot()+
+  facet_wrap(~Task)+
+  scale_x_discrete(limits = orderCond3)
+```
+
+Inhalation duration doesn't change across tasks.There are condition effects, which you can see in the separate sections above.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+dat$Cond3 <- relevel(dat$Cond3, ref="Sitting")
+summary(d5 <- lmer(inhalDur ~ Task + (1+Task | Speaker), dat))
+summary(d5a <- lmer(inhalDur ~ Task:Condition + (1+Task | Speaker), dat))
+summary(d5b <- lmer(inhalDur ~ Task:Cond3 + (1+Task | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(d5))
+qqnorm(resid(d5));qqline(resid(d5))
+plot(fitted(d5), resid(d5))
+```
+
+### Inhalation amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadJoint")) %>%
+  mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
+  mutate_at(c("Speaker", "act", "Condition", "Task", "Role"), as.factor) %>%
+  mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))%>%
+  mutate(logInhalAmp = log(inhalAmp)) %>% 
+  group_by(Speaker) %>% 
+  mutate(numberIPUsC = numberIPUs - mean(numberIPUs, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(Cond3 = ifelse(Condition%in%c("Light", "Heavy"), "Biking", ifelse(Condition=="Baseline", "Baseline", "Sitting"))) %>% 
+  mutate_at(c("Cond3"), as.factor)
+```
+
+```{r}
+ggplot(dat, aes(Task, inhalAmp))+
+  geom_boxplot()
+
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond)+
+  facet_wrap(~Task)
+
+ggplot(dat, aes(Cond3, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits = orderCond3)+
+  facet_wrap(~Task)
+
+```
+
+Inhalation amplitude is lower during Read Joint as compared to Read Alone.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Baseline")
+dat$Cond3 <- relevel(dat$Cond3, ref="Sitting")
+
+summary(a1 <- lmer(inhalAmp ~ Task + (1 + Task | Speaker), dat))
+summary(a1a <- lmer(inhalAmp ~ Task:Condition + (1 + Task | Speaker), dat))
+summary(a1b <- lmer(inhalAmp ~ Task:Cond3 + (1 + Task | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(a2))
+qqnorm(resid(a2));qqline(resid(a2))
+plot(fitted(a2), resid(a2))
+```
+
+# Speech data: LONE vs SYNCHRONOUS READ SPEECH
+
+```{r, include=FALSE}
+load(paste0(folder, "DataReadSpeech.RData"))
+```
+
+## Participants
+
+### f0
+
+```{r, include=FALSE}
+df <- frb %>% 
+  filter(Role == "Participant", Task%in%c("ReadAlone", "ReadJoint")) %>% 
+  mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
+  filter(abs(f0Zgeneral) < 2) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
+         Cond3 = ifelse(Condition == "Sitting", "Sitting", "Biking"))
+```
+
+
+```{r}
+ggplot(df, aes(Task, f0raw))+
+  geom_boxplot()
+
+ggplot(df, aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+ggplot(df, aes(Cond3, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Task)+
+  scale_x_discrete(limits = orderCond3)
+```
+
+F0 isn't different across tasks (only when we consider the different conditions, since Read Joint has a condition difference and Read Alone doesn't).
+
+
+```{r}
+df$Condition <- relevel(df$Condition, ref="Light")
+summary(f1 <- lmer(f0raw ~ Task + (1 + Task | Speaker), df))
+summary(f1a <- lmer(f0raw ~ Task:Condition + (1 + Task | Speaker), df))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+```
+
+### Articulation rate
+
+```{r}
+ggplot(df, aes(Task, articRateIPU))+
+  geom_boxplot()
+
+ggplot(df, aes(Condition, articRateIPU))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+ggplot(df, aes(Cond3, articRateIPU))+
+  geom_boxplot()+
+  facet_wrap(~Task)+
+  scale_x_discrete(limits = orderCond3)
+```
+
+Articulation rate didn't change across reading tasks.
+
+```{r}
+df$Condition <- relevel(df$Condition, ref="Sitting")
+summary(s1 <- lmer(articRateIPU ~ Task + (1+Task | Speaker), df))
+summary(s1a <- lmer(articRateIPU ~ Task:Condition + (1+Task | Speaker), df))
+summary(s1b <- lmer(articRateIPU ~ Task:Cond3 + (1+Task | Speaker), df))
+
+par(mfrow=c(2, 2))
+hist(resid(s1))
+qqnorm(resid(s1));qqline(resid(s1))
+plot(fitted(s1), resid(s1))
+
+par(mfrow=c(2, 2))
+hist(resid(s2))
+qqnorm(resid(s2));qqline(resid(s2))
+plot(fitted(s2), resid(s2))
+```
 
 # Breathing data during FREE speech
 
@@ -704,11 +1269,6 @@ par(mfrow=c(2, 2))
 hist(resid(b1a))
 qqnorm(resid(b1a));qqline(resid(b1a))
 plot(fitted(b1a), resid(b1a))
-```
-
-```{r}
-ggplot(dat, aes(Cond2, cycleDur))+
-  geom_boxplot()
 ```
 
 
@@ -821,17 +1381,19 @@ ggplot(dat, aes(Condition, inhalAmp))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCondBase)
 
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()
+
 ggplot(dat, aes(as.factor(numberIPUs), inhalAmp))+
   geom_boxplot()
 ```
 
-Again, there's a difference between `alone` and `interaction`. (A regression on the different conditions suggests there's a significant difference between `sitting` and `heavy biking` but not between `sitting` and `light biking`, so this is probably just noise.)
-
-Almost same finding about number of IPUs and inhalation amplitude as for inhalation duration. Except that here, the condition effect doesn't reach significance.
+No condition effect for inhalation amplitude.
 
 
 ```{r}
-summary(a2 <- lmer(inhalAmp ~ Cond2 + numberIPUsC + (1 + Cond2| Speaker), dat))
+summary(a2 <- lmer(inhalAmp ~ Condition + (1 + Condition| Speaker), dat))
+summary(a2 <- lmer(inhalAmp ~ Cond2 + (1 + Cond2| Speaker), dat))
 
 par(mfrow=c(2, 2))
 hist(resid(a2))
@@ -913,6 +1475,7 @@ ggplot(dat, aes(Cond3, cycleDur))+
 Breath cycles got shorter and shorter with increase in physical effort.
 
 ```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lm(cycleDur ~ Condition, dat))
 summary(b1a <- lm(cycleDur ~ Cond3, dat))
 
@@ -1109,10 +1672,14 @@ plot(fitted(m1), resid(m1))
 
 ### Articulation rate
 
+
 ```{r}
 ggplot(df, aes(Condition, articRateIPU))+
   geom_boxplot()+
   scale_x_discrete(limits = orderCond)
+
+ggplot(df, aes(Cond3, articRateIPU))+
+  geom_boxplot()
 ```
 
 Articulation rate was also faster during `sitting` as compared to `biking`.
@@ -1125,5 +1692,10 @@ par(mfrow=c(2, 2))
 hist(resid(s1))
 qqnorm(resid(s1));qqline(resid(s1))
 plot(fitted(s1), resid(s1))
+
+par(mfrow=c(2, 2))
+hist(resid(s1a))
+qqnorm(resid(s1a));qqline(resid(s1a))
+plot(fitted(s1a), resid(s1a))
 ```
 
