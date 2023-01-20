@@ -4,9 +4,11 @@
 library(tidyverse)
 library(ggsignif)
 library(ggdist)
+library(tuneR)
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/FiguresForPaper/"
+folder3 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/"
 
 order <- c("Sitting", "Light", "Heavy")
 orderBase <- c("Baseline", order)
@@ -44,10 +46,46 @@ load(paste0(folder, "DataReadSpeech.RData"))
 
 # Plots I want to have:
 # 
+# Figure of breath waves
+# 
 # CONFEDERATE:
 # f0 across conditions, maybe one for read and one for free speech (but one plot)
 # speech rate across conditions (free speech)
 # breathing rate across conditions (free speech)
+
+
+b <- readWave(paste0(folder3, "BF-ATN003_SUM_200_breath_100.wav"))
+bw <- data.frame(w = b@left[(37.75*b@samp.rate):(46.65*b@samp.rate)],
+                 time = seq(0, 8.91, length.out=891)) # 891 is the number of rows of b@left[...]
+ggplot(bw, aes(time, w))+
+  geom_line(size=1)+
+  geom_vline(aes(xintercept=0.04004494), color="purple")+
+  geom_vline(aes(xintercept=2.232506), color="purple")+
+  geom_vline(aes(xintercept=6.647461), color="purple")+
+  geom_vline(aes(xintercept=8.869955), color="purple")+
+  geom_point(aes(x=0.59066292, y=-640), color="red", size=4)+
+  geom_point(aes(x=2.953315, y=847), color="red", size=4)+
+  geom_point(aes(x=6.997854, y=-391), color="red", size=4)+
+  geom_segment(x = 2.272506, y = 1200, xend = 6.607461, yend = 1200,
+               arrow = arrow(length = unit(0.03, "npc"), ends = "both"))+
+  geom_text(aes(x=4.439984, y=1300, label="Breath Cycle"), size=6.5, color="black")+
+  geom_segment(x = 2.272506, y = 847, xend = 2.913315, yend = 847,
+               arrow = arrow(length = unit(0.02, "npc"), ends = "both"))+
+  geom_text(aes(x=2.85, y=1000, label="Inhalation"), size=6.5, color="black")+
+  labs(title="Example of Annotated Breathing Waves",
+       x="Time (s)",
+       y="")+
+  theme(legend.position="none",
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.ticks.x=element_blank(),
+        plot.title=element_text(size=20),
+        axis.title = element_text(size=16))+
+  ylim(-2450, 1400)
+
+ggsave(paste0(folder2, "BreathWave.png"))
+
+
 
 df <- fsm %>% 
   filter(Speaker=="Confederate")
