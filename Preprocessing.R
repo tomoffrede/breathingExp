@@ -454,7 +454,8 @@ for(i in 1:nrow(listReadCond)){
   fr <- rbind(fr, f0)
 }
 
-fr <- fr %>% mutate(Task = ifelse(substr(file, 1, 1) != "B", "ReadJoint", ifelse(grepl("Schwalbe", file), "ReadBaseline-Schwalbe", ifelse(grepl("Hirsch", file), "ReadBaseline-Hirsch", "ReadBaseline-Pferd"))))
+# fr <- fr %>%
+#   mutate(Task = ifelse(substr(file, 1, 1) != "B", "ReadJoint", ifelse(grepl("Schwalbe", file), "ReadBaseline-Schwalbe", ifelse(grepl("Hirsch", file), "ReadBaseline-Hirsch", "ReadBaseline-Pferd"))))
 
  
 # for (i in listTXTr){
@@ -498,7 +499,7 @@ listBREATHall <- list.files(folder2, pattern="SUM")
 listWAVpf <- listBREATHall[grepl("wav", listBREATHall) & !grepl("TextGrid", listBREATHall) & substr(listBREATHall, 2, 2)=="F" & !grepl("breathL", listBREATHall)]
 listBREATH <- listBREATHall[grepl("TextGrid", listBREATHall)]
 listBREATHr <- listBREATH[substr(listBREATH, 2, 2)=="R"]
-listBREATHrj <- listBREATHr[grepl("joint", listBREATHr) | substr(listBREATHr, 1, 2) == "BR"] # read joint AND baseline reading
+listBREATHrj <- listBREATHr[grepl("joint|alone", listBREATHr) | substr(listBREATHr, 1, 2) == "BR"] # read joint AND baseline reading
 listBREATHf <- listBREATH[substr(listBREATH, 2, 2)=="F" & !grepl("breathL", listBREATH)]
 listBREATHl <- listBREATH[grepl("breathL", listBREATH)] # breathing during listening
 listBREATHb <- listBREATH[substr(listBREATH, 2, 2) == "B"] # breathing during baseline period (i.e. just watching the confedearate sitting/biking in silence)
@@ -507,7 +508,7 @@ listBREATHlb <- listBREATHlb[grepl("TextGrid", listBREATHlb)]
 listWAVlb <- listBREATHall[(grepl("breathL", listBREATHall) & !grepl("TextGrid", listBREATHall)) | (substr(listBREATHall, 2, 2) == "B" & !grepl("TextGrid", listBREATHall))]
 listWAVlb <- listWAVlb[substr(listWAVlb, 1, 6) %in% substr(listBREATHlb, 1, 6)]
 listBREATHlb <- listBREATHlb[substr(listBREATHlb, 1, 6) %in% substr(listWAVlb, 1, 6)]
-listWAVrj0 <- listBREATHall[grepl("joint", listBREATHall) & !grepl("TextGrid", listBREATHall)]
+listWAVrj0 <- listBREATHall[grepl("joint|alone", listBREATHall) & !grepl("TextGrid", listBREATHall)]
 listWAVbr0 <- listBREATHall[grepl("wav", listBREATHall) & !grepl("TextGrid", listBREATHall) & substr(listBREATHall, 1, 2) == "BR"]
 listWAVbr <- listWAVbr0[grepl("Schwalbe", listWAVbr0) | grepl("Hirsch", listWAVbr0) | grepl("Pferd", listWAVbr0)]
 listWAVrj <- c(listWAVbr, listWAVrj0)
@@ -1146,7 +1147,9 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
 
 fsm <- dat[[1]]
 brm <- dat[[2]]
-frb <- dat[[3]]
+frb <- dat[[3]] %>% 
+  mutate(Task = Task.y) %>% 
+  select(-c("Task.x", "Task.y"))
 
 # fixing a mistake I found (why doesn't this work????)
 # frb$Task <- as.factor(frb$Task)
