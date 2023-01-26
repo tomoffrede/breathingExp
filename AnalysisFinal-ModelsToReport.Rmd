@@ -21,6 +21,7 @@ library(ggsignif)
 # library(MASS)
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folderInd <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/IndividualEffects/" # to save plots with individual effects
 
 `%!in%` <- Negate(`%in%`)
 
@@ -101,6 +102,28 @@ dat <- brm %>%
 d <- dat %>% group_by(breathCycle) %>% mutate(cM = mean(cycleDur))
 ```
 
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(act, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Listen vs Watch - Cycle Duration")
+ggsave(paste0(folderInd, "ListenWatch-CycleDur.png"), width = 3000, height=3000, units="px")
+
+ggplot(dat %>% filter(act == "listening"), aes(Condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Listen - Cycle Duration")
+ggsave(paste0(folderInd, "Listen-CycleDur.png"), width = 3000, height=3000, units="px")
+
+ggplot(dat %>% filter(act == "watching"), aes(Condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Watch - Cycle Duration")
+ggsave(paste0(folderInd, "Watch-CycleDur.png"), width = 3000, height=3000, units="px")
+```
+
 ```{r}
 plot(d$breathCycle, d$cM, ylab="mean of cycle durations", main="Cycle durations throughout the recordings")
 ```
@@ -178,6 +201,27 @@ dat <- brm %>%
 
 ```
 
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(act, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Listen vs Watch - Inhalation Amplitude")
+ggsave(paste0(folderInd, "ListenWatch-InhalAmp.png"), width = 3000, height=3000, units="px")
+
+ggplot(dat %>% filter(act == "listening"), aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Listen - Inhalation Amplitude")
+ggsave(paste0(folderInd, "Listen-InhalAmp.png"), width = 3000, height=3000, units="px")
+
+ggplot(dat %>% filter(act == "watching"), aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Watch - Inhalation Amplitude")
+ggsave(paste0(folderInd, "Watch-InhalAmp.png"), width = 3000, height=3000, units="px")
+```
 ```{r}
 ggplot(dat, aes(Condition, inhalAmp))+
   geom_boxplot()+
@@ -263,6 +307,16 @@ dat <- brm %>%
          Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Synchronous Speech - Cycle Duration")
+ggsave(paste0(folderInd, "Sync-CycleDur.png"), width = 3000, height=3000, units="px")
 ```
 
 ```{r}
@@ -369,6 +423,16 @@ dat <- brm %>%
   mutate(Cond2 = ifelse(Condition=="Baseline", "Alone", "Interaction"),
          Cond3 = ifelse(Condition%in%c("Light", "Heavy"), "Biking", ifelse(Condition=="Baseline", "Baseline", "Sitting"))) %>% 
   mutate_at(c("Cond2", "Cond3"), as.factor)
+```
+
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Synchronous Speech - Inhalation amplitude")
+ggsave(paste0(folderInd, "Sync-InhalAmp.png"), width = 3000, height=3000, units="px")
 ```
 
 ```{r}
@@ -589,12 +653,19 @@ load(paste0(folder, "DataReadSpeech.RData"))
 ```{r, include=FALSE}
 df <- frb %>% 
   filter(Role == "Participant", Task%in%c("ReadJoint", "ReadBaseline")) %>% 
-  mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
-         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
-  filter(abs(f0Zgeneral) < 2) %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>%
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))
 ```
 
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(df, aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Synchronous Speech - f0")
+ggsave(paste0(folderInd, "Sync-f0.png"), width = 3000, height=3000, units="px")
+```
 
 ```{r}
 ggplot(df, aes(Condition, f0raw))+
@@ -614,6 +685,16 @@ plot(fitted(f1), resid(f1))
 
 ### Articulation rate
 
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(df, aes(Cond2, articRateIPU))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Synchronous Speech - Articulation rate")
+ggsave(paste0(folderInd, "Sync-ArticRate.png"), width = 3000, height=3000, units="px")
+```
+
 ```{r}
 ggplot(df, aes(Condition, articRateIPU))+
   geom_boxplot()
@@ -622,19 +703,13 @@ ggplot(df, aes(Cond2, articRateIPU))+
   geom_boxplot()
 ```
 
-**Straightforwardly**, these findings are:
-
-* People spoke slower while trying to read synchronously than when reading alone in the baseline.
-
-* People also tended to speak slower and slower with increase in physical effort (but the only *significant* difference is between sitting and heavy biking.)
-
-**However**, this doesn't mean that they spoke slower per se, but rather that they produced lots of silences and pauses when trying to speak synchronously to the confederate -- and the more physical effort, the harder it was to synchronize because the confederate's speech got less predictable.
+No effect on articulation rate.
 
 ```{r}
 df$Condition <- relevel(df$Condition, ref="Sitting")
-summary(s1 <- lmer(articRateIPU ~ Condition + (1 | Speaker), df))
+summary(s1 <- lmer(articRateIPU ~ Condition + (1 +Condition | Speaker), df))
 
-summary(s2 <- lmer(articRateIPU ~ Cond2 + (1 | Speaker), df))
+summary(s2 <- lmer(articRateIPU ~ Cond2 + (1 +Cond2 | Speaker), df))
 
 par(mfrow=c(2, 2))
 hist(resid(s1))
@@ -697,7 +772,7 @@ qqnorm(resid(s1));qqline(resid(s1))
 plot(fitted(s1), resid(s1))
 ```
 
-# Breathing data during LONE READ speech
+# Breathing data during SOLO READ speech
 
 ## Participants
 
@@ -757,6 +832,16 @@ dat <- brm %>%
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
 ```
 
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Lone read Speech - Cycle duration")
+ggsave(paste0(folderInd, "LoneRead-CycleDur.png"), width = 3000, height=3000, units="px")
+```
+
 ```{r}
 ggplot(dat, aes(Condition, cycleDur))+
   geom_boxplot()+
@@ -769,7 +854,7 @@ ggplot(dat, aes(Cond2, cycleDur))+
 There is **no** effect of condition on breath cycles.
 
 ```{r}
-summary(b1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+summary(b1 <- lmer(cycleDur ~ Condition + (1| Speaker), dat))
 summary(b1a <- lmer(cycleDur ~ Cond2 + (1 + Cond2 | Speaker), dat))
 
 par(mfrow=c(2, 2))
@@ -846,6 +931,16 @@ dat <- brm %>%
   mutate_at(c("Cond2", "Cond3"), as.factor)
 ```
 
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Lone read Speech - Inhalation amplitude")
+ggsave(paste0(folderInd, "LoneRead-InhalAmp.png"), width = 3000, height=3000, units="px")
+```
+
 ```{r}
 ggplot(dat, aes(Condition, inhalAmp))+
   geom_boxplot()+
@@ -875,7 +970,7 @@ qqnorm(resid(a2));qqline(resid(a2))
 plot(fitted(a2), resid(a2))
 ```
 
-# Speech data: LONE READ speech
+# Speech data: SOLO READ speech
 
 ```{r, include=FALSE}
 load(paste0(folder, "DataReadSpeech.RData"))
@@ -888,12 +983,19 @@ load(paste0(folder, "DataReadSpeech.RData"))
 ```{r, include=FALSE}
 df <- frb %>% 
   filter(Role == "Participant", Task%in%c("ReadAlone", "ReadBaseline")) %>% 
-  mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
-         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
-  filter(abs(f0Zgeneral) < 2) %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")))
 ```
 
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(df, aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Lone read Speech - f0")
+ggsave(paste0(folderInd, "LoneRead-f0.png"), width = 3000, height=3000, units="px")
+```
 
 ```{r}
 ggplot(df, aes(Condition, f0raw))+
@@ -918,6 +1020,16 @@ plot(fitted(f1), resid(f1))
 ```
 
 ### Articulation rate
+
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(df, aes(Cond2, articRateIPU))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Lone read Speech - Articulation rate")
+ggsave(paste0(folderInd, "LoneRead-ArticRate.png"), width = 3000, height=3000, units="px")
+```
 
 ```{r}
 ggplot(df, aes(Condition, articRateIPU))+
@@ -946,7 +1058,7 @@ qqnorm(resid(s2));qqline(resid(s2))
 plot(fitted(s2), resid(s2))
 ```
 
-# Breathing data: LONE vs SYNCHRONOUS READ SPEECH
+# Breathing data: SOLO vs SYNCHRONOUS READ SPEECH
 
 ## Participants
 
@@ -1137,7 +1249,7 @@ qqnorm(resid(a2));qqline(resid(a2))
 plot(fitted(a2), resid(a2))
 ```
 
-# Speech data: LONE vs SYNCHRONOUS READ SPEECH
+# Speech data: SOLO vs SYNCHRONOUS READ SPEECH
 
 ```{r, include=FALSE}
 load(paste0(folder, "DataReadSpeech.RData"))
@@ -1150,9 +1262,7 @@ load(paste0(folder, "DataReadSpeech.RData"))
 ```{r, include=FALSE}
 df <- frb %>% 
   filter(Role == "Participant", Task%in%c("ReadAlone", "ReadJoint")) %>% 
-  mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE),
-         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
-  filter(abs(f0Zgeneral) < 2) %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction")) %>% 
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
          Cond3 = ifelse(Condition == "Sitting", "Sitting", "Biking"))
 ```
@@ -1276,7 +1386,7 @@ plot(fitted(b1a), resid(b1a))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Participant", Task=="Free") %>%
+  filter(Role=="Participant", Task=="Free", act=="speaking") %>%
   mutate(breathCycle = gsub("cycle", "", breathCycle)) %>%
   mutate_at(c("Speaker", "act", "Task", "Role", "Condition"), as.factor) %>%
   mutate_at(c("numberIPUs", "numberBreathCycles", "breathCycle"), as.integer) %>%
@@ -1285,6 +1395,16 @@ dat <- brm %>%
          Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Free Speech - Cycle duration")
+ggsave(paste0(folderInd, "Free-CycleDur.png"), width = 3000, height=3000, units="px")
 ```
 
 ```{r}
@@ -1303,7 +1423,7 @@ ggplot(dat, aes(Cond2, cycleDur))+
 * (Both of these results are in line with our hypothesis.)
 
 ```{r}
-summary(b1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+summary(b1 <- lmer(cycleDur ~ Condition + (1| Speaker), dat))
 summary(b1a <- lmer(cycleDur ~ Cond2 + (1 + Cond2 | Speaker), dat))
 
 par(mfrow=c(2, 2))
@@ -1374,6 +1494,16 @@ dat <- brm %>%
   mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
 dat$Condition <- relevel(dat$Condition, ref="Sitting")
+```
+
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Free Speech - Inhalation amplitude")
+ggsave(paste0(folderInd, "Free-InhalAmp.png"), width = 3000, height=3000, units="px")
 ```
 
 ```{r}
@@ -1575,12 +1705,20 @@ load(paste0(folder, "DataSpeech.RData"))
 ```{r, include=FALSE}
 df <- fsm %>%
   filter(Task == "Free", Role == "Participant") %>%
-  mutate(f0Zgeneral = (f0raw - mean(f0raw, na.rm=TRUE)) / sd(f0raw, na.rm=TRUE)) %>% 
-  filter(abs(f0Zgeneral) < 2) %>% 
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
          Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
 
 df$Condition <- relevel(df$Condition, ref="Sitting")
+```
+
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(df, aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Free Speech - f0")
+ggsave(paste0(folderInd, "Free-f0.png"), width = 3000, height=3000, units="px")
 ```
 
 ```{r}
@@ -1594,6 +1732,7 @@ f0 didn't change with condition.
 
 ```{r}
 summary(m1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), df))
+summary(m1 <- lmer(f0raw ~ Cond2 + (1 + Cond2 | Speaker), df))
 
 par(mfrow=c(2, 2))
 plot(fitted(m1), residuals(m1))
@@ -1602,6 +1741,16 @@ hist(resid(m1))
 ```
 
 ### Articulation Rate
+
+```{r, include=FALSE}
+# Individual effects
+
+ggplot(df, aes(Cond2, articRateIPU))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Free Speech - Articulation rate")
+ggsave(paste0(folderInd, "Free-ArticRate.png"), width = 3000, height=3000, units="px")
+```
 
 ```{r, include=FALSE}
 df <- fsm %>%
@@ -1697,5 +1846,28 @@ par(mfrow=c(2, 2))
 hist(resid(s1a))
 qqnorm(resid(s1a));qqline(resid(s1a))
 plot(fitted(s1a), resid(s1a))
+```
+
+# Breathing across all tasks
+
+```{r}
+dat <- brm %>% 
+  filter(Role=="Participant", Task=="Free") %>% 
+  mutate(Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+dat <- brm %>%
+  filter(Role=="Participant", Task=="Free") %>%
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy"))) %>%
+  mutate(logCycleDur = log(cycleDur),
+         Cond2 = ifelse(Condition == "Baseline", "Alone", "Interaction"))
+
+ggplot(dat, aes(act, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Condition)
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()
+
+summary(a1 <- lmer(cycleDur ~ act + (1+act|Speaker), dat))
 ```
 
