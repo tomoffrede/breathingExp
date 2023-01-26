@@ -20,7 +20,6 @@ library(rPraat) # to work with TextGrids
 library(tidyverse)
 library(pracma)
 library(tuneR) # to read WAV (breathing) file
-library(sylly.de) # for counting syllables
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/" # folder with all needed files
 `%!in%` <- Negate(`%in%`)
@@ -33,197 +32,206 @@ round_any = function(x, accuracy, f=round){f(x/ accuracy) * accuracy} # taken fr
 
 ### IPUs, PAUSES
 
+################################################################################################################
+############# start of articulation rate chunk (excluded from analysis)
+################################################################################################################
+
 # free speech files (BF, HF, LF, SF) have transcriptions annotations, so we can determine the speech rate of each IPU
 # read files (BR, HR, LR, SR) don't have the transcriptions: we can only have one speech rate value per file
 # (however, we do have textgrids with silence annotations -- extracted automatically. so we could pretend that those are IPUs)
 
-listTG <- list.files(folder, pattern=".TextGrid")
-listTG <- listTG[!grepl("VUV", listTG)]
-listCTGf <- listTG[grepl("Holidays|Hobbies|Home", listTG)]
-listCTGr <- listTG[substr(listTG, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe", listTG) & grepl("alone|joint", listTG)]
-listPTGf <- listTG[substr(listTG, 2, 2)=="F"]
-listPTGr0 <- listTG[substr(listTG, 2, 2)=="R"]
-listPTGrb <- listPTGr0[substr(listPTGr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPTGr0)]
-listPTGrnb <- listPTGr0[grepl("joint|alone", listPTGr0)]
-listPTGr <- c(listPTGrb, listPTGrnb)
-listTGf <- c(listPTGf, listCTGf)
-listTGr <- c(listPTGr, listCTGr)
+# listTG <- list.files(folder, pattern=".TextGrid")
+# listTG <- listTG[!grepl("VUV", listTG)]
+# listCTGf <- listTG[grepl("Holidays|Hobbies|Home", listTG)]
+# listCTGr <- listTG[substr(listTG, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe", listTG) & grepl("alone|joint", listTG)]
+# listPTGf <- listTG[substr(listTG, 2, 2)=="F"]
+# listPTGr0 <- listTG[substr(listTG, 2, 2)=="R"]
+# listPTGrb <- listPTGr0[substr(listPTGr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPTGr0)]
+# listPTGrnb <- listPTGr0[grepl("joint|alone", listPTGr0)]
+# listPTGr <- c(listPTGrb, listPTGrnb)
+# listTGf <- c(listPTGf, listCTGf)
+# listTGr <- c(listPTGr, listCTGr)
+# 
+# listCSV <- list.files(folder, ".csv")
+# listCCSVf <- listCSV[grepl("Holidays|Hobbies|Home", listCSV)]
+# listCCSVr <- listCSV[substr(listCSV, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe", listCSV) & grepl("alone|joint", listCSV)]
+# listPCSVf <- listCSV[substr(listCSV, 2, 2)=="F"]
+# listPCSVr0 <- listCSV[substr(listCSV, 2, 2)=="R"]
+# listPCSVrb <- listPCSVr0[substr(listPCSVr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPCSVr0)]
+# listPCSVrnb <- listPCSVr0[grepl("joint|alone", listPCSVr0)]
+# listPCSVr <- c(listPCSVrb, listPCSVrnb)
+# listCSVf <- c(listPCSVf, listCCSVf)
+# listCSVr <- c(listPCSVr, listCCSVr)
+# 
+# folderSIL <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Silences-FreeSpeech/"
+# listSIL0 <- list.files(folderSIL) # need to make the confederate files be at the end of the list, so they match the other lists (CSV and TG)
+# listSILp <- listSIL0[substr(listSIL0, 2, 2) != "-"]
+# listSILc <- listSIL0[substr(listSIL0, 2, 2) == "-"]
+# listSIL <- c(listSILp, listSILc)
+# 
+# listF0 <- data.frame(cbind(listCSVf, listTGf))
+# listF <- data.frame(cbind(listF0, listSIL)) %>% 
+#   mutate(worked1 = ifelse(substr(listCSVf, 1, 6) == substr(listTGf, 1, 6), "worked!", "NO!!!!!!!!!!!"),
+#          worked2 = ifelse(substr(listCSVf, 1, 6) == substr(listSIL, 1, 6), "worked!", "NO!!!!!!!!!!!"))
+# table(listF$worked1)
+# table(listF$worked2)
+# 
+# listR <- data.frame(cbind(listCSVr, listTGr)) %>% 
+#   mutate(worked = ifelse(substr(listCSVr, 1, 6) == substr(listTGr, 1, 6), "worked!", "NO!!!!!!!!!!!"))
+# table(listR$worked)
+# 
+# srf <- data.frame(matrix(nrow = 0, ncol=6))
+# names(srf) <- c("onset", "offset", "IPUDur", "IPU", "file", "speechRateIPU")
+# 
+# for(i in 1:nrow(listF)){
+#   amp <- read.csv(paste0(folder, listF$listCSVf[i]))
+#   tg <- tg.read(paste0(folder, listF$listTGf[i]), encoding=detectEncoding(paste0(folder, listF$listTGf[i])))
+#   sil <- tg.read(paste0(folderSIL, listF$listSIL[i]), encoding=detectEncoding(paste0(folderSIL, listF$listSIL[i])))
+#   
+#   inter <- data.frame(matrix(ncol=5, nrow=0))
+#   names(inter) <- c("label", "onset", "offset", "duration", "pauseDur")
+#   for(n in 1:tg.getNumberOfIntervals(tg, 1)){
+#     pauseDur <- 0
+#     if(substr(listF$listCSVf[i], 2, 2) == "F"){ # if this file is a participant (and not confederate) file
+#       if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))) & tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))){
+#         for(s in 1:tg.getNumberOfIntervals(sil, 1)){
+#           if(tg.getIntervalStartTime(sil, 1, s) >= tg.getIntervalStartTime(tg, 1, n) & tg.getIntervalEndTime(sil, 1, s) <= tg.getIntervalEndTime(tg, 1, n)){
+#             if(tg.getLabel(sil, 1, s) == "xxx"){ # silent interval
+#               pauseDur <- as.numeric(pauseDur + as.numeric(tg.getIntervalDuration(sil, 1, s)))
+#             } else{pauseDur <- pauseDur}
+#           }
+#         }
+#         inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n),
+#                                    as.numeric(tg.getIntervalStartTime(tg, 1, n)),
+#                                    as.numeric(tg.getIntervalEndTime(tg, 1, n)),
+#                                    as.numeric(tg.getIntervalDuration(tg, 1, n)),
+#                                    pauseDur) # transform into seconds?
+#       }
+#     } else if(substr(listF$listCSVf[i], 2, 2) == "-"){ # the confederate files are already cut to the right time, so I don't have to select the IPU timings
+#       for(s in 1:tg.getNumberOfIntervals(sil, 1)){
+#         if(tg.getIntervalStartTime(sil, 1, s) >= tg.getIntervalStartTime(tg, 1, n) & tg.getIntervalEndTime(sil, 1, s) <= tg.getIntervalEndTime(tg, 1, n)){
+#           if(tg.getLabel(sil, 1, s) == "xxx"){ # silent interval
+#             pauseDur <- as.numeric(pauseDur + as.numeric(tg.getIntervalDuration(sil, 1, s)))
+#           }
+#         }
+#       }
+#       inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n),
+#                                  as.numeric(tg.getIntervalStartTime(tg, 1, n)),
+#                                  as.numeric(tg.getIntervalEndTime(tg, 1, n)),
+#                                  as.numeric(tg.getIntervalDuration(tg, 1, n)),
+#                                  as.numeric(pauseDur))
+#     }
+#   }
+#   inter$label[inter$label %in% c(" ", "  ", "   ", "    ", "\t")] <- ""
+#   ipu <- inter %>% filter(label != "")
+#   ipu <- ipu %>%
+#     filter(label != "<usb>") %>%
+#     rename("IPUDur"="duration")
+#   ipu <- ipu %>% 
+#     mutate_at(c("onset", "offset", "IPUDur", "pauseDur"), as.numeric) %>% 
+#     mutate(IPU = 1:nrow(ipu),
+#            file = substr(listF$listCSVf[i], 1, 6),
+#            onsetRound = round_any(onset * 220500, 10, ceiling), # turn onset into the corresponding value considering sampling rate (as it's noted in `amp`), and then round it up
+#            offsetRound = round_any(offset * 220500, 10, floor), # for both these lines: not sure why I have to do sampling rate * 10, but it's what works
+#            speechRateIPU = NA,
+#            durWithoutPauses = IPUDur - pauseDur)
+#   
+#   for(r in 1:nrow(ipu)){
+#     ampTemp <- amp %>%
+#       filter(time_ms >= ipu$onsetRound[r] & time_ms <= ipu$offsetRound[r]) %>% 
+#       mutate(env = (env - min(env)) / (max(env) - min(env)))
+#     p <- findpeaks(ampTemp$env, minpeakheight = 0.025, minpeakdistance = 22050/15) # minpeakdistance: sampling frequency divided by a very high potential speech rate
+#     if(is.numeric(nrow(p))){
+#       ipu$speechRateIPU[r] <- as.numeric(nrow(p) / ipu$IPUDur[r])
+#       ipu$articRateIPU[r] <- as.numeric(nrow(p) / ipu$durWithoutPauses[r])
+#     }
+#     plot(ampTemp$env, type="l", main=substr(listF$listCSVf[i], 1, 6))
+#     points(p[,2], p[,1], col="red", pch = 19)
+#   }
+#   ipu <- ipu %>% 
+#     select(-c("label", "onsetRound", "offsetRound"))
+#   srf <- rbind(srf, ipu)
+# }
+# 
+# srf$speechRateIPU[srf$file=="HF-MHU"] <- NA # peak detection worked terribly for the file HF-MHU, so let's delete these speech rate values
+# srf$articRateIPU[srf$file=="HF-MHU"] <- NA
+# 
+# 
+# save(srf, file=paste0(folder, "srf.RData"))
+# 
+# # and now for reading files
+# 
+# srr <- data.frame(matrix(nrow = 0, ncol=7))
+# names(srr) <- c("onset", "offset", "IPUDur", "IPU", "file", "articRateIPU", "Task")
+# 
+# 
+# for(i in 1:nrow(listR)){
+#   amp <- read.csv(paste0(folder, listR$listCSVr[i])) %>% 
+#     mutate(env = (env - min(env)) / (max(env) - min(env)))
+#   tg <- tg.read(paste0(folder, listR$listTGr[i]), encoding=detectEncoding(paste0(folder, listR$listTGr[i])))
+#   
+#   # there are 3 BR files per participant so:
+#   if(grepl("BR", listR$listCSVr[i])){
+#     cond <- "ReadBaseline"
+#     if(grepl("Hirsch", listR$listCSVr[i])){
+#       file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Hirsch")
+#     } else if(grepl("Pferd", listR$listCSVr[i])){
+#       file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Pferd")
+#     } else if(grepl("Schwalbe", listR$listCSVr[i])){
+#       file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Schwalbe")
+#     }
+#   } else {file <- substr(listR$listCSVr[i], 1, 6)}
+#   
+#   if(grepl("alone", listR$listCSVr[i])){
+#     cond <- "ReadAlone"
+#   } else if(grepl("joint", listR$listCSVr[i])){cond <- "ReadJoint"}
+#   if(substr(file, 2, 2) == "-"){cond <- "ReadAlone"}
+#   
+#   ipu <- data.frame(matrix(ncol=3, nrow=0))
+#   names(ipu) <- c("onset", "offset", "IPUDur")
+#   for(n in 1:tg.getNumberOfIntervals(tg, 1)){
+#     if(tg.getLabel(tg, 1, n) == ""){
+#       ipu[nrow(ipu)+1,] <- c(as.numeric(tg.getIntervalStartTime(tg, 1, n)),
+#                              as.numeric(tg.getIntervalEndTime(tg, 1, n)),
+#                              as.numeric(tg.getIntervalDuration(tg, 1, n)))
+#     }
+#   }
+#   ipu <- ipu %>% 
+#     mutate_at(c("onset", "offset", "IPUDur"), as.numeric) %>% 
+#     mutate(IPU = 1:nrow(ipu),
+#            file = file,
+#            onsetRound = round_any(onset * 220500, 10, ceiling), # turn onset into the corresponding value considering sampling rate (as it's noted in `amp`), and then round it up
+#            offsetRound = round_any(offset * 220500, 10, floor), # for both these lines: not sure why I have to do sampling rate * 10, but it's what works
+#            articRateIPU = NA,
+#            Task = cond)
+#   
+#   for(r in 1:nrow(ipu)){
+#     ampTemp <- amp %>%
+#       filter(time_ms >= ipu$onsetRound[r] & time_ms <= ipu$offsetRound[r])
+#     p <- findpeaks(ampTemp$env, minpeakheight = 0.025, minpeakdistance = 22050/15) # minpeakdistance: sampling frequency divided by a very high potential speech rate
+#     if(is.numeric(nrow(p))){
+#       ipu$articRateIPU[r] <- as.numeric(nrow(p) / ipu$IPUDur[r])
+#     }
+#     plot(ampTemp$env, type="l", main=substr(listR$listCSVr[i], 1, 6))
+#     points(p[,2], p[,1], col="red")
+#   }
+#   ipu <- ipu %>% 
+#     select(-c("onsetRound", "offsetRound"))
+#   srr <- rbind(srr, ipu)
+# }
+# 
+# save(srr, file=paste0(folder, "srr.RData"))
+# 
+# # now we have: `srf`, containing speech rate data for free speech,
+# # and `srr`, with speech rate data for read speech
+# 
+# load(paste0(folder, "srf.RData"))
+# load(paste0(folder, "srr.RData"))
 
-listCSV <- list.files(folder, ".csv")
-listCCSVf <- listCSV[grepl("Holidays|Hobbies|Home", listCSV)]
-listCCSVr <- listCSV[substr(listCSV, 2, 2) == "-" & grepl("Hirsch|Pferd|Schwalbe", listCSV) & grepl("alone|joint", listCSV)]
-listPCSVf <- listCSV[substr(listCSV, 2, 2)=="F"]
-listPCSVr0 <- listCSV[substr(listCSV, 2, 2)=="R"]
-listPCSVrb <- listPCSVr0[substr(listPCSVr0, 1, 1)=="B" & grepl("Hirsch|Pferd|Schwalbe", listPCSVr0)]
-listPCSVrnb <- listPCSVr0[grepl("joint|alone", listPCSVr0)]
-listPCSVr <- c(listPCSVrb, listPCSVrnb)
-listCSVf <- c(listPCSVf, listCCSVf)
-listCSVr <- c(listPCSVr, listCCSVr)
+################################################################################################################
+############# end of articulation rate chunk (excluded from analysis)
+################################################################################################################
 
-folderSIL <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Silences-FreeSpeech/"
-listSIL0 <- list.files(folderSIL) # need to make the confederate files be at the end of the list, so they match the other lists (CSV and TG)
-listSILp <- listSIL0[substr(listSIL0, 2, 2) != "-"]
-listSILc <- listSIL0[substr(listSIL0, 2, 2) == "-"]
-listSIL <- c(listSILp, listSILc)
-
-listF0 <- data.frame(cbind(listCSVf, listTGf))
-listF <- data.frame(cbind(listF0, listSIL)) %>% 
-  mutate(worked1 = ifelse(substr(listCSVf, 1, 6) == substr(listTGf, 1, 6), "worked!", "NO!!!!!!!!!!!"),
-         worked2 = ifelse(substr(listCSVf, 1, 6) == substr(listSIL, 1, 6), "worked!", "NO!!!!!!!!!!!"))
-table(listF$worked1)
-table(listF$worked2)
-
-listR <- data.frame(cbind(listCSVr, listTGr)) %>% 
-  mutate(worked = ifelse(substr(listCSVr, 1, 6) == substr(listTGr, 1, 6), "worked!", "NO!!!!!!!!!!!"))
-table(listR$worked)
-
-srf <- data.frame(matrix(nrow = 0, ncol=6))
-names(srf) <- c("onset", "offset", "IPUDur", "IPU", "file", "speechRateIPU")
-
-for(i in 1:nrow(listF)){
-  amp <- read.csv(paste0(folder, listF$listCSVf[i]))
-  tg <- tg.read(paste0(folder, listF$listTGf[i]), encoding=detectEncoding(paste0(folder, listF$listTGf[i])))
-  sil <- tg.read(paste0(folderSIL, listF$listSIL[i]), encoding=detectEncoding(paste0(folderSIL, listF$listSIL[i])))
-  
-  inter <- data.frame(matrix(ncol=5, nrow=0))
-  names(inter) <- c("label", "onset", "offset", "duration", "pauseDur")
-  for(n in 1:tg.getNumberOfIntervals(tg, 1)){
-    pauseDur <- 0
-    if(substr(listF$listCSVf[i], 2, 2) == "F"){ # if this file is a participant (and not confederate) file
-      if(tg.getIntervalStartTime(tg, 1, n) >= tg.getIntervalStartTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task"))) & tg.getIntervalEndTime(tg, 1, n) <= tg.getIntervalEndTime(tg, 2, as.numeric(tg.findLabels(tg, 2, "task")))){
-        for(s in 1:tg.getNumberOfIntervals(sil, 1)){
-          if(tg.getIntervalStartTime(sil, 1, s) >= tg.getIntervalStartTime(tg, 1, n) & tg.getIntervalEndTime(sil, 1, s) <= tg.getIntervalEndTime(tg, 1, n)){
-            if(tg.getLabel(sil, 1, s) == "xxx"){ # silent interval
-              pauseDur <- as.numeric(pauseDur + as.numeric(tg.getIntervalDuration(sil, 1, s)))
-            } else{pauseDur <- pauseDur}
-          }
-        }
-        inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n),
-                                   as.numeric(tg.getIntervalStartTime(tg, 1, n)),
-                                   as.numeric(tg.getIntervalEndTime(tg, 1, n)),
-                                   as.numeric(tg.getIntervalDuration(tg, 1, n)),
-                                   pauseDur) # transform into seconds?
-      }
-    } else if(substr(listF$listCSVf[i], 2, 2) == "-"){ # the confederate files are already cut to the right time, so I don't have to select the IPU timings
-      for(s in 1:tg.getNumberOfIntervals(sil, 1)){
-        if(tg.getIntervalStartTime(sil, 1, s) >= tg.getIntervalStartTime(tg, 1, n) & tg.getIntervalEndTime(sil, 1, s) <= tg.getIntervalEndTime(tg, 1, n)){
-          if(tg.getLabel(sil, 1, s) == "xxx"){ # silent interval
-            pauseDur <- as.numeric(pauseDur + as.numeric(tg.getIntervalDuration(sil, 1, s)))
-          }
-        }
-      }
-      inter[nrow(inter)+1,] <- c(tg.getLabel(tg, 1, n),
-                                 as.numeric(tg.getIntervalStartTime(tg, 1, n)),
-                                 as.numeric(tg.getIntervalEndTime(tg, 1, n)),
-                                 as.numeric(tg.getIntervalDuration(tg, 1, n)),
-                                 as.numeric(pauseDur))
-    }
-  }
-  inter$label[inter$label %in% c(" ", "  ", "   ", "    ", "\t")] <- ""
-  ipu <- inter %>% filter(label != "")
-  ipu <- ipu %>%
-    filter(label != "<usb>") %>%
-    rename("IPUDur"="duration")
-  ipu <- ipu %>% 
-    mutate_at(c("onset", "offset", "IPUDur", "pauseDur"), as.numeric) %>% 
-    mutate(IPU = 1:nrow(ipu),
-           file = substr(listF$listCSVf[i], 1, 6),
-           onsetRound = round_any(onset * 220500, 10, ceiling), # turn onset into the corresponding value considering sampling rate (as it's noted in `amp`), and then round it up
-           offsetRound = round_any(offset * 220500, 10, floor), # for both these lines: not sure why I have to do sampling rate * 10, but it's what works
-           speechRateIPU = NA,
-           durWithoutPauses = IPUDur - pauseDur)
-  
-  for(r in 1:nrow(ipu)){
-    ampTemp <- amp %>%
-      filter(time_ms >= ipu$onsetRound[r] & time_ms <= ipu$offsetRound[r]) %>% 
-      mutate(env = (env - min(env)) / (max(env) - min(env)))
-    p <- findpeaks(ampTemp$env, minpeakheight = 0.025, minpeakdistance = 22050/15) # minpeakdistance: sampling frequency divided by a very high potential speech rate
-    if(is.numeric(nrow(p))){
-      ipu$speechRateIPU[r] <- as.numeric(nrow(p) / ipu$IPUDur[r])
-      ipu$articRateIPU[r] <- as.numeric(nrow(p) / ipu$durWithoutPauses[r])
-    }
-    plot(ampTemp$env, type="l", main=substr(listF$listCSVf[i], 1, 6))
-    points(p[,2], p[,1], col="red", pch = 19)
-  }
-  ipu <- ipu %>% 
-    select(-c("label", "onsetRound", "offsetRound"))
-  srf <- rbind(srf, ipu)
-}
-
-srf$speechRateIPU[srf$file=="HF-MHU"] <- NA # peak detection worked terribly for the file HF-MHU, so let's delete these speech rate values
-srf$articRateIPU[srf$file=="HF-MHU"] <- NA
-
-
-save(srf, file=paste0(folder, "srf.RData"))
-
-# and now for reading files
-
-srr <- data.frame(matrix(nrow = 0, ncol=7))
-names(srr) <- c("onset", "offset", "IPUDur", "IPU", "file", "articRateIPU", "Task")
-
-
-for(i in 1:nrow(listR)){
-  amp <- read.csv(paste0(folder, listR$listCSVr[i])) %>% 
-    mutate(env = (env - min(env)) / (max(env) - min(env)))
-  tg <- tg.read(paste0(folder, listR$listTGr[i]), encoding=detectEncoding(paste0(folder, listR$listTGr[i])))
-  
-  # there are 3 BR files per participant so:
-  if(grepl("BR", listR$listCSVr[i])){
-    cond <- "ReadBaseline"
-    if(grepl("Hirsch", listR$listCSVr[i])){
-      file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Hirsch")
-    } else if(grepl("Pferd", listR$listCSVr[i])){
-      file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Pferd")
-    } else if(grepl("Schwalbe", listR$listCSVr[i])){
-      file <- paste0(substr(listR$listCSVr[i], 1, 6), "-Schwalbe")
-    }
-  } else {file <- substr(listR$listCSVr[i], 1, 6)}
-  
-  if(grepl("alone", listR$listCSVr[i])){
-    cond <- "ReadAlone"
-  } else if(grepl("joint", listR$listCSVr[i])){cond <- "ReadJoint"}
-  if(substr(file, 2, 2) == "-"){cond <- "ReadAlone"}
-  
-  ipu <- data.frame(matrix(ncol=3, nrow=0))
-  names(ipu) <- c("onset", "offset", "IPUDur")
-  for(n in 1:tg.getNumberOfIntervals(tg, 1)){
-    if(tg.getLabel(tg, 1, n) == ""){
-      ipu[nrow(ipu)+1,] <- c(as.numeric(tg.getIntervalStartTime(tg, 1, n)),
-                             as.numeric(tg.getIntervalEndTime(tg, 1, n)),
-                             as.numeric(tg.getIntervalDuration(tg, 1, n)))
-    }
-  }
-  ipu <- ipu %>% 
-    mutate_at(c("onset", "offset", "IPUDur"), as.numeric) %>% 
-    mutate(IPU = 1:nrow(ipu),
-           file = file,
-           onsetRound = round_any(onset * 220500, 10, ceiling), # turn onset into the corresponding value considering sampling rate (as it's noted in `amp`), and then round it up
-           offsetRound = round_any(offset * 220500, 10, floor), # for both these lines: not sure why I have to do sampling rate * 10, but it's what works
-           articRateIPU = NA,
-           Task = cond)
-  
-  for(r in 1:nrow(ipu)){
-    ampTemp <- amp %>%
-      filter(time_ms >= ipu$onsetRound[r] & time_ms <= ipu$offsetRound[r])
-    p <- findpeaks(ampTemp$env, minpeakheight = 0.025, minpeakdistance = 22050/15) # minpeakdistance: sampling frequency divided by a very high potential speech rate
-    if(is.numeric(nrow(p))){
-      ipu$articRateIPU[r] <- as.numeric(nrow(p) / ipu$IPUDur[r])
-    }
-    plot(ampTemp$env, type="l", main=substr(listR$listCSVr[i], 1, 6))
-    points(p[,2], p[,1], col="red")
-  }
-  ipu <- ipu %>% 
-    select(-c("onsetRound", "offsetRound"))
-  srr <- rbind(srr, ipu)
-}
-
-save(srr, file=paste0(folder, "srr.RData"))
-
-# now we have: `srf`, containing speech rate data for free speech,
-# and `srr`, with speech rate data for read speech
-
-load(paste0(folder, "srf.RData"))
-load(paste0(folder, "srr.RData"))
 
 ############# f0 mean
 
@@ -283,8 +291,10 @@ ff <- data.frame(matrix(ncol=4, nrow=0))
 colnames(ff) <- c("IPU", "f0raw", "file", "label")
 
 for(i in 1:nrow(listTxg)){
-  txt <- read.table(paste0(folder, listTxg$txt[i]), header=TRUE, na.strings = "--undefined--") # load file with f0 means
-  txt$f0mean <- as.numeric(txt$f0mean)
+  txt <- read.table(paste0(folder, listTxg$txt[i]), header=TRUE, na.strings = "--undefined--") %>%  # load file with f0 means
+    mutate_at("f0mean", as.numeric) %>% 
+    mutate(f0z = (f0mean - mean(f0mean, na.rm=TRUE))/sd(f0mean, na.rm=TRUE),
+           f0mean = ifelse(abs(f0z) > 2.5, NA, f0mean))
   tg <- tg.read(paste0(folder, listTxg$tg[i]), encoding=detectEncoding(paste0(folder, listTxg$tg[i]))) # load textgrid with defined IPUs
   
   # create object with the index of each IPU and its onset and offset time
@@ -328,16 +338,12 @@ for(i in 1:nrow(listTxg)){
   f0perIPU <- aggregate(f0$f0raw, list(f0$IPU), FUN=mean)
   colnames(f0perIPU) <- c("IPU", "f0raw")
   f0perIPU <- f0perIPU %>%
-    mutate(file = substr(listTxg$txt[i], 1, 6),
-           f0z = (f0raw - mean(f0raw))/sd(f0raw)) %>%
-    mutate(f0raw = ifelse(abs(f0z) > 2, NA, f0raw)) %>% # I don't want to use the IPUs with outlier f0raw, but I don't want to completely delete those IPUs from the dataset because they'll still be joined with the speech rate information. So just turn them into NA here.
-    mutate(f0IPUmean = mean(f0raw, na.rm=TRUE)) %>% 
-    select(-f0z)
+    mutate(file = substr(listTxg$txt[i], 1, 6))
   f <- merge(f0perIPU, IPUtimes %>% select(IPU, label), by="IPU")
   ff <- rbind(ff, f)
 }
 
-ff <- ff %>% select(file, IPU, f0raw, f0IPUmean, label)
+ff <- ff %>% select(file, IPU, f0raw, label)
 
 # for(i in unique(ff$file)){
 #   plot(ff$f0raw[ff$file==i])
@@ -367,7 +373,10 @@ colnames(fr) <- c("IPU", "f0raw", "file", "Task")}
 # i=5
 
 for(i in 1:nrow(listReadBase)){
-  txt <- read.table(paste0(folder, listReadBase$txt[i]), header=TRUE, na.strings = "--undefined--")
+  txt <- read.table(paste0(folder, listReadBase$txt[i]), header=TRUE, na.strings = "--undefined--") %>% 
+    mutate_at("f0mean", as.numeric) %>% 
+    mutate(f0z = (f0mean - mean(f0mean, na.rm=TRUE))/sd(f0mean, na.rm=TRUE),
+           f0mean = ifelse(abs(f0z) > 2.5, NA, f0mean))
   sil <- tg.read(paste0(folder, listReadBase$sil[i]), encoding=detectEncoding(paste0(folder, listReadBase$sil[i])))
   
   if(grepl("Hirsch", listReadBase$txt[i])){
@@ -402,16 +411,16 @@ for(i in 1:nrow(listReadBase)){
     filter(!duplicated(IPU)) %>%
     mutate(IPU = 1:nrow(f0),
            file = paste0(substr(listReadBase$txt[i], 1, 6), text),
-           Task = "ReadBaseline",
-           f0z = (f0raw - mean(f0raw))/sd(f0raw)) %>%
-    filter(abs(f0z) < 2) %>% 
-    select(-f0z)
+           Task = "ReadBaseline")
   
   fr <- rbind(fr, f0)
 }
 
 for(i in 1:nrow(listReadCond)){
-  txt <- read.table(paste0(folder, listReadCond$txt[i]), header=TRUE, na.strings = "--undefined--")
+  txt <- read.table(paste0(folder, listReadCond$txt[i]), header=TRUE, na.strings = "--undefined--") %>% 
+    mutate_at("f0mean", as.numeric) %>% 
+    mutate(f0z = (f0mean - mean(f0mean, na.rm=TRUE))/sd(f0mean, na.rm=TRUE),
+           f0mean = ifelse(abs(f0z) > 2.5, NA, f0mean))
   sil <- tg.read(paste0(folder, listReadCond$sil[i]), encoding=detectEncoding(paste0(folder, listReadCond$sil[i])))
   
   if(grepl("alone", listReadCond$txt[i])){
@@ -446,10 +455,7 @@ for(i in 1:nrow(listReadCond)){
       filter(!duplicated(IPU)) %>%
       mutate(IPU = 1:nrow(f0),
              file = substr(listReadCond$txt[i], 1, 6),
-             Task = task,
-             f0z = (f0raw - mean(f0raw))/sd(f0raw)) %>%
-      filter(abs(f0z) < 2) %>% 
-      select(-f0z)
+             Task = task)
   
   fr <- rbind(fr, f0)
 }
@@ -724,18 +730,6 @@ for(i in 1:nrow(listBGf)){
   IPUandCycles <- rbind(IPUandCycles, ic)
 }
 
-{
-# PVcount$diff[PVcount$peaks > PVcount$valleys] <- "more PEAKS"
-# PVcount$diff[PVcount$peaks < PVcount$valleys] <- "more VALLEYS"
-# PVcount$diff[PVcount$peaks == PVcount$valleys] <- "same number"
-# table(PVcount$diff)
-# print("SAME") ; print(PVcount$file[PVcount$diff=="same number"])
-# print("MORE PEAKS") ; print(PVcount$file[PVcount$diff=="more PEAKS"])
-# PVcount <- PVcount %>%
-#   mutate(ok = ifelse(valleys == peaks + 1, "ok", "no!!!!!"))
-# table(PVcount$ok, )
-}
-
 table(durationsOK$sameDurations)
 
 IPUandCycles$IPU <- gsub("IPU", "", IPUandCycles$IPU)
@@ -793,17 +787,6 @@ for(i in 1:nrow(listBREATHlbw)){ # list with the listening part of the free spec
 
 pbr2$numberIPUs <- NA
 
-{
-# PVcount$diff[PVcount$peaks > PVcount$valleys] <- "more PEAKS"
-# PVcount$diff[PVcount$peaks < PVcount$valleys] <- "more VALLEYS"
-# PVcount$diff[PVcount$peaks == PVcount$valleys] <- "same number"
-# table(PVcount$diff)
-# print("SAME") ; print(PVcount$file[PVcount$diff=="same number"])
-# print("MORE PEAKS") ; print(PVcount$file[PVcount$diff=="more PEAKS"])
-# PVcount <- PVcount %>%
-#   mutate(ok = ifelse(valleys == peaks + 1, "ok", "no!!!!!"))
-# table(PVcount$ok)
-}
 
 br0 <- rbind(pbr1, pbr2)
 
@@ -868,19 +851,6 @@ for(i in 1:nrow(listREAD)){
 
 pbr3$numberIPUs <- NA
 
-{
-# PVcount$diff[PVcount$peaks > PVcount$valleys] <- "more PEAKS"
-# PVcount$diff[PVcount$peaks < PVcount$valleys] <- "more VALLEYS"
-# PVcount$diff[PVcount$peaks == PVcount$valleys] <- "same number"
-# table(PVcount$diff)
-# 
-# print("SAME") ; print(PVcount$file[PVcount$diff=="same number"])
-# print("MORE PEAKS") ; print(PVcount$file[PVcount$diff=="more PEAKS"])
-# PVcount <- PVcount %>%
-#   mutate(ok = ifelse(valleys == peaks + 1, "ok", "no!!!!!"))
-# table(PVcount$ok)
-}
-
 br <- rbind(br0, pbr3)
 
 br <- br %>%
@@ -906,11 +876,11 @@ br <- br %>%
 # 3
 
 ff$IPU <- as.factor(ff$IPU)
-srf$IPU <- as.factor(srf$IPU)
+# srf$IPU <- as.factor(srf$IPU)
 
-fs0 <- full_join(ff, srf, by=c("file", "IPU"), all=TRUE)
+# fs0 <- full_join(ff, srf, by=c("file", "IPU"), all=TRUE)
 
-fs <- full_join(fs0, IPUandCycles, by=c("file", "IPU"), all=TRUE)
+fs <- full_join(ff, IPUandCycles, by=c("file", "IPU"), all=TRUE)
 
 {# # I wanted to include the number of "IPUs" per breath cycle, but the code below takes _really_ long, and I don't think it works right.
 # # Now that I think of it, maybe this metric doesn't even make sense.
@@ -926,10 +896,10 @@ fs <- full_join(fs0, IPUandCycles, by=c("file", "IPU"), all=TRUE)
 # }
 }
 
-fr <- fr %>% select(-IPU)
-srr <- srr %>% select(-IPU)
+frs <- fr %>% select(-IPU)
+# srr <- srr %>% select(-IPU)
 
-frs <- full_join(fr, srr, by=c("file", "onset", "offset"), all=TRUE)
+# frs <- full_join(fr, srr, by=c("file", "onset", "offset"), all=TRUE)
 
 frs <- frs %>% 
   group_by(file) %>% 
@@ -1147,9 +1117,7 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
 
 fsm <- dat[[1]]
 brm <- dat[[2]]
-frb <- dat[[3]] %>% 
-  mutate(Task = Task.y) %>% 
-  select(-c("Task.x", "Task.y"))
+frb <- dat[[3]]
 
 # fixing a mistake I found (why doesn't this work????)
 # frb$Task <- as.factor(frb$Task)
@@ -1157,19 +1125,14 @@ frb <- dat[[3]] %>%
 
 # end of fix
 
-brm <- brm %>% mutate_at(c("inhalDur", "inhalAmp"), as.numeric)
+brm <- brm %>%
+  mutate_at(c("inhalDur", "inhalAmp"), as.numeric)
 
 fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate, inhalDur, inhalAmp)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
 
-# for(i in 1:nrow(fsm)){
-#   if(is.na(fsm$breathCycleDur[i])){
-#     fsm$breathCycleDur[i] <- fsm$breathCycleDur[as.numeric(fsm$IPU[i])-1 & fsm$file[i]]
-#   }
-# } # didn't work
-
-# in SF-WJH f0IPUmean is NA, so fix that:
-unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
-fsm$f0IPUmean[fsm$file=="SF-WJH"] <- unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
+# # in SF-WJH f0IPUmean is NA, so fix that:
+# unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
+# fsm$f0IPUmean[fsm$file=="SF-WJH"] <- unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
 
 save(fsm, file=paste0(folder, "DataSpeech.RData"))
 save(brm, file=paste0(folder, "DataBreathing.RData"))
@@ -1192,11 +1155,11 @@ save(frb, file=paste0(folder, "DataReadSpeech.RData"))
 
 dat <- fsm %>%
   filter(!duplicated(file)) %>%
-  select(-c(IPU, f0raw, label, speechRateIPU))
+  select(-c(IPU, f0raw, label))
 
 conf <- dat %>%
   filter(Speaker == "Confederate") %>%
-  select(c("f0IPUmean", "Condition", "Task", "Topic", "breathCycleDurMean", "breathRate"))
+  select(c("Condition", "Task", "Topic", "breathCycleDurMean", "breathRate"))
 colnames(conf) <- sub("^","C", colnames(conf))
 dat2 <-dat[dat$Speaker!="Confederate",]
 dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
@@ -1214,7 +1177,6 @@ dat4$CTopic <- as.factor(dat4$CTopic)
 
 # calculate differences
 
-dat4$f0rawDiff <- dat4$f0IPUmean - dat4$Cf0IPUmean
 dat4$breathCycleDurDiff <- dat4$breathCycleDurMean - dat4$CbreathCycleDurMean
 dat4$breathRateDiff <- dat4$breathRate - dat4$CbreathRate
 
