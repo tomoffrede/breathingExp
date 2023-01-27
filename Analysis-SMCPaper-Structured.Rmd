@@ -1,0 +1,754 @@
+---
+title: "Analysis - SMC Paper Structured"
+author: "Tom Offrede"
+date: "2023-01-27"
+output:
+  html_document:
+    toc: true
+    toc_float: 
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(lme4)
+library(tidyverse)
+library(broom)
+
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+
+orderCond <- c("Sitting", "Light", "Heavy")
+orderCondBase <- c("Baseline", "Sitting", "Light", "Heavy")
+orderAct <- c("watching", "listening")
+
+load(paste0(folder, "DataBreathing.RData"))
+load(paste0(folder, "DataReadSpeech.RData"))
+load(paste0(folder, "DataSpeech.RData"))
+
+brm <- brm %>% 
+  mutate_at(c("Task", "act", "Condition", "Speaker"), as.factor) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
+         across(act, factor, levels=c("watching","listening", "speaking")),
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+
+frb <- frb %>% 
+  mutate_at(c("Task", "Condition", "Speaker"), as.factor) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+
+fsm <- fsm %>% 
+  mutate_at(c("Task", "Condition", "Speaker"), as.factor) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+```
+
+# Confederate
+
+## Read Speech
+
+### Cycle Durations
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Confederate", grepl("Read", Task))
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()
+```
+
+* Difference only between Light and the other conditions, but no difference between Sitting and Heavy. So there is probably noise in the data and we can consider that there was no effect of condition on breathing cycle duration.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(b1 <- lm(cycleDur ~ Condition, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+```{r}
+# Plot with estimates
+
+# c <- tidy(b1) %>% 
+#   mutate(term = ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy Biking", "Light Biking")))
+# c$est <- c$estimate + c$estimate[1]
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Confederate", grepl("Read", Task))
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()
+```
+
+* Inhalation amplitude got higher with physical effort.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(d1 <- lm(inhalAmp ~ Condition, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(d1))
+qqnorm(resid(d1));qqline(resid(d1))
+plot(fitted(d1), resid(d1))
+```
+
+### F0
+
+```{r, include=FALSE}
+dat <- frb %>%
+  filter(grepl("Read", Task), Speaker == "Confederate")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+* F0 got higher with physical effort.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(f1 <- lm(f0raw ~ Condition, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+```
+
+
+## Free Speech
+
+### Cycle Durations
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Confederate", Task=="Free")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()
+```
+
+* Cycles are shorter during biking than during sitting. There's a trend of Heavy being shorter than Light, but it doesn't reach significance.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(b1 <- lm(cycleDur ~ Condition, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Confederate", Task=="Free")
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()
+```
+
+* Inhalation amplitude gets larger with physical effort.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(d1 <- lm(inhalAmp ~ Condition, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(d1))
+qqnorm(resid(d1));qqline(resid(d1))
+plot(fitted(d1), resid(d1))
+```
+
+### F0
+
+```{r, include=FALSE}
+dat <- fsm %>%
+  filter(Task == "Free", Speaker == "Confederate")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+* F0 increased with physical effort.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(m1 <- lm(f0raw ~ Condition, dat))
+
+par(mfrow=c(2, 2))
+hist(resid(m1))
+qqnorm(resid(m1));qqline(resid(m1))
+plot(fitted(m1), resid(m1))
+```
+
+# Participants
+
+# 1 - Breathing. Is there a difference in respiratory behavior when people talk alone or in an interaction?
+
+## Solo read speech
+
+### Cycle Duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline"))
+```
+
+```{r}
+ggplot(dat %>% filter(Condition %in% c("Baseline", "Sitting")), aes(Condition, cycleDur))+
+  geom_boxplot()
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()
+```
+
+* Cycle duration doesn't change between Baseline and Sitting or Baseline and Interaction during solo read speech.
+
+```{r}
+summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat %>% filter(Condition %in% c("Baseline", "Sitting"))))
+
+summary(b1 <- lmer(cycleDur ~ Cond2 + (1+Cond2| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline"))
+```
+
+```{r}
+ggplot(dat %>% filter(Condition %in% c("Baseline", "Sitting")), aes(Condition, inhalAmp))+
+  geom_boxplot()
+
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()
+```
+
+* Inhalation amplitude doesn't change between Baseline and Sitting or Baseline and Interaction during solo read speech.
+
+```{r}
+summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat %>% filter(Condition %in% c("Baseline", "Sitting"))))
+
+summary(b1 <- lmer(inhalAmp ~ Cond2 + (1+Cond2| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+## Solo spontaneous speech
+
+### Cycle Duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task=="Free", act=="speaking")
+```
+
+```{r}
+ggplot(dat %>% filter(Condition %in% c("Baseline", "Sitting")), aes(Condition, cycleDur))+
+  geom_boxplot()
+
+ggplot(dat, aes(Cond2, cycleDur))+
+  geom_boxplot()
+```
+
+* Cycle duration doesn't change between Baseline and Sitting or Baseline and Interaction during solo spontaneous speech.
+
+```{r}
+summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat %>% filter(Condition %in% c("Baseline", "Sitting"))))
+
+summary(b1a <- lmer(cycleDur ~ Cond2 + (1+Cond2| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task=="Free", act=="speaking")
+```
+
+```{r}
+ggplot(dat %>% filter(Condition %in% c("Baseline", "Sitting")), aes(Condition, inhalAmp))+
+  geom_boxplot()
+
+ggplot(dat, aes(Cond2, inhalAmp))+
+  geom_boxplot()
+```
+
+* Inhalation amplitude doesn't change between Baseline and Sitting or Baseline and Interaction during solo spontaneous speech.
+
+```{r}
+summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat %>% filter(Condition %in% c("Baseline", "Sitting"))))
+
+summary(b1 <- lmer(inhalAmp ~ Cond2 + (1+Cond2| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+# 1 - Speech. Is there a difference in speech behavior (f0) when people talk alone or in an interaction?
+
+## Solo read speech
+
+```{r, include=FALSE}
+dat <- frb %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline"))
+```
+
+```{r}
+ggplot(dat %>% filter(Condition %in% c("Baseline", "Sitting")), aes(Condition, f0raw))+
+  geom_boxplot()
+
+ggplot(dat, aes(Cond2, f0raw))+
+  geom_boxplot()
+```
+
+* F0 was higher during interaction than during baseline. (This is considering baseline vs. sitting AND baseline vs. interaction)
+
+```{r}
+summary(f1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat %>% filter(Condition %in% c("Baseline", "Sitting"))))
+summary(f1a <- lmer(f0raw ~ Cond2 + (1 + Cond2 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+
+par(mfrow=c(2, 2))
+hist(resid(f1a))
+qqnorm(resid(f1a));qqline(resid(f1a))
+plot(fitted(f1a), resid(f1a))
+```
+
+## Solo spontaneous speech
+
+```{r, include=FALSE}
+dat <- fsm %>%
+  filter(Role=="Participant", Task=="Free")
+```
+
+```{r}
+ggplot(dat %>% filter(Condition %in% c("Baseline", "Sitting")), aes(Condition, f0raw))+
+  geom_boxplot()
+
+ggplot(dat, aes(Cond2, f0raw))+
+  geom_boxplot()
+```
+
+* F0 didn't change from Baseline to Interaction OR from Baseline to Sitting.
+
+```{r}
+summary(f1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat %>% filter(Condition %in% c("Baseline", "Sitting"))))
+summary(f1a <- lmer(f0raw ~ Cond2 + (1 + Cond2 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+
+par(mfrow=c(2, 2))
+hist(resid(f1a))
+qqnorm(resid(f1a));qqline(resid(f1a))
+plot(fitted(f1a), resid(f1a))
+```
+
+# 2 - Breathing without overlapping speech
+
+# 2.1 Do speakers adapt their speech breathing to an interlocutor who moves with different physical effort?
+
+## Solo read speech
+
+### Cycle Duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline"), Condition!="Baseline")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()
+```
+
+* There is no effect of condition on cycle duration during solo read speech.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task%in%c("ReadAlone", "ReadBaseline"), Condition!="Baseline")
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()
+```
+
+* There is no effect of condition on inhalation amplitude during solo read speech.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+## Solo spontaneous speech
+
+### Cycle Duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task=="Free", act=="speaking", Condition!="Baseline")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()
+```
+
+* There is no effect of condition on cycle duration during solo spontaneous speech.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task=="Free", act=="speaking", Condition!="Baseline")
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()
+```
+
+* There is no effect of condition on inhalation amplitude during solo spontaneous speech.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+# 2.2  Do speakers adapt their breathing while listening to an interlocutor who moves and talks with different physical effort?
+
+### Cycle Duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", act == "listening")
+```
+
+```{r}
+ggplot(dat %>% filter(cycleDur < 7), aes(Condition, cycleDur))+
+  geom_boxplot()
+```
+
+* Cycle duration doesn't change across conditions during listening.
+
+```{r}
+summary(c1 <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(c1))
+qqnorm(resid(c1));qqline(resid(c1))
+plot(fitted(c1), resid(c1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", act == "listening")
+```
+
+```{r}
+ggplot(dat %>% filter(cycleDur < 7), aes(Condition, inhalAmp))+
+  geom_boxplot()
+```
+
+* Inhalation amplitude doesn't change across conditions during listening.
+
+```{r}
+summary(c1 <- lmer(inhalAmp ~ Condition + (1 + Condition |Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(c1))
+qqnorm(resid(c1));qqline(resid(c1))
+plot(fitted(c1), resid(c1))
+```
+
+# 2 - Speech without overlap
+
+# 2.1 Do speakers adapt their speech (f0) to an interlocutor who moves with different physical effort?
+
+## Solo read speech
+
+```{r, include=FALSE}
+dat <- frb %>%
+  filter(Role=="Participant", Task=="ReadAlone")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+* F0 didn't change across conditions during solo read speech.
+
+```{r}
+summary(f1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+```
+
+## Solo spontaneous speech
+
+```{r, include=FALSE}
+dat <- fsm %>%
+  filter(Role=="Participant", Task=="Free", Condition!="Baseline")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+* F0 didn't change across conditions during solo free speech.
+
+```{r}
+summary(f1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+```
+
+# 3 - Breathing during synchronous speech
+
+# 3.1  Do speakers adapt their breathing while reading synchronously with an interlocutor in comparison to an interaction with no overlap?
+
+### Cycle Duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+```
+
+* There is no effect of task (solo vs. synchronous) on cycle duration. And apparently no interaction with condition.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+
+summary(b1 <- lmer(cycleDur ~ Task + (1+Task | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+```
+
+* Inhalation amplitude was lower while reading synchronously than while reading solo.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+
+summary(b1 <- lmer(inhalAmp ~ Task + (1+Task | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+# 3.2 Do speakers adapt their breathing while reading synchronously with an interlocutor who moves and talks under different physical effort?
+
+### Cycle Duration
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task=="ReadJoint")
+```
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()
+```
+
+* Cycle durations didn't change across conditions during synchronous read speech.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+
+summary(b1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+### Inhalation Amplitude
+
+```{r, include=FALSE}
+dat <- brm %>%
+  filter(Role=="Participant", Task=="ReadJoint")
+```
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()
+```
+
+* Inhalation amplitude didn't change across conditions during synchronous read speech.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+
+summary(b1 <- lmer(cycleDur ~ Condition + (1 | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+# 3 - Synchronous speech
+
+# 3.1  Do speakers adapt their speech (f0) while reading synchronously with an interlocutor in comparison to an interaction with no overlap?
+
+```{r, include=FALSE}
+dat <- frb %>%
+  filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+```
+
+* There is no effect of task (solo vs. synchronous) on f0. And apparently no interaction with condition.
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+
+summary(b1 <- lmer(f0raw ~ Task + (1+Task | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+# 3.2 Do speakers adapt their speech (f0) while reading synchronously with an interlocutor who moves and talks under different physical effort?
+
+```{r, include=FALSE}
+dat <- frb %>%
+  filter(Role=="Participant", Task=="ReadJoint")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+* F0 is higher during Heavy Biking than Sitting or Light Biking.
+* There is no significant difference between Light and Sitting, but a tendency for Light to have higher f0 (following the pattern).
+
+```{r}
+dat$Condition <- relevel(dat$Condition, ref="Light")
+
+summary(b1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
