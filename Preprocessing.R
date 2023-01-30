@@ -812,6 +812,9 @@ for(i in 1:nrow(listREAD)){
   } else if(grepl("alone", listREAD$breath[i])){
     act <- "ReadAlone"
   }
+  if(substr(listREAD$breath[i], 2, 2) == "-"){
+    act <- "ReadAlone"
+  }
   
   breath <- tg.read(paste0(folder2, listREAD$breath[i]))
   b <- (w <- readWave(paste0(folder2, listREAD$wav[i])))@left
@@ -1115,18 +1118,20 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
   dat[[i]]$Role <- as.factor(dat[[i]]$Role)
 }
 
-fsm <- dat[[1]]
-brm <- dat[[2]]
-frb <- dat[[3]]
-
-# fixing a mistake I found (why doesn't this work????)
-# frb$Task <- as.factor(frb$Task)
-# frb$Task[grepl("Hirs|Schw|Pfer", frb$file)] <- "Read"
-
-# end of fix
-
-brm <- brm %>%
-  mutate_at(c("inhalDur", "inhalAmp"), as.numeric)
+fsm <- dat[[1]] %>% 
+  mutate_at(c("Task", "Condition", "Speaker"), as.factor) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+brm <- dat[[2]] %>% 
+  mutate_at(c("Task", "act", "Condition", "Speaker"), as.factor) %>% 
+  mutate_at(c("inhalDur", "inhalAmp"), as.numeric) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
+         across(act, factor, levels=c("watching","listening", "speaking")),
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+frb <- dat[[3]] %>% 
+  mutate_at(c("Task", "Condition", "Speaker"), as.factor) %>% 
+  mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
 
 fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate, inhalDur, inhalAmp)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
 
