@@ -5,12 +5,14 @@ library(tidyverse)
 library(ggsignif)
 library(ggdist)
 library(tuneR)
+library(broom)
+library(ggpubr)
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/FiguresForPaper/"
 folder3 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/"
 
-order <- c("Sitting", "Light", "Heavy")
+order <- c("Sitting", "Light Biking", "Heavy Biking")
 orderBase <- c("Baseline", order)
 labels <- c("Sitting"="Sitting", "Light"="Light B.", "Heavy"="Heavy B.")
 
@@ -18,41 +20,10 @@ load(paste0(folder, "DataSpeech.RData"))
 load(paste0(folder, "DataBreathing.RData"))
 load(paste0(folder, "DataReadSpeech.RData"))
 
-{
-# check new speech rate data
 
-# histogram
-# range
-# sd? exclude?
-# plot per participant
-
-# hist(fsm$speechRateIPU)
-# range(fsm$speechRateIPU, na.rm=TRUE) # 0.43 - 9.27
-# sd(fsm$speechRateIPU, na.rm=TRUE) # 0.92
-# folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/SpeechRatePlots/"
-# for(s in unique(fsm$Speaker)){
-#   png(paste0(folder2, "/free/", s, ".png"))
-#   plot(fsm$speechRateIPU[fsm$Speaker==s], main=s)
-#   dev.off()
-# }
-# for(s in unique(frb$Speaker)){
-#   png(paste0(folder2, "/read/", s, ".png"))
-#   plot(fsm$speechRateIPU[fsm$Speaker==s], main=s)
-#   dev.off()
-# }
-
-}
-
-
-# Plots I want to have:
-# 
 # Figure of breath waves
-# 
-# CONFEDERATE:
-# f0 across conditions, maybe one for read and one for free speech (but one plot)
-# speech rate across conditions (free speech)
-# breathing rate across conditions (free speech)
 
+theme_set(theme_bw())
 
 b <- readWave(paste0(folder3, "BF-ATN003_SUM_200_breath_100.wav"))
 bw <- data.frame(w = b@left[(37.75*b@samp.rate):(46.65*b@samp.rate)],
@@ -66,12 +37,16 @@ ggplot(bw, aes(time, w))+
   geom_point(aes(x=0.59066292, y=-640), color="red", size=4)+
   geom_point(aes(x=2.953315, y=847), color="red", size=4)+
   geom_point(aes(x=6.997854, y=-391), color="red", size=4)+
+  geom_point(aes(x=0.04004494, y=-2428), fill="blue", shape=25, size=3)+
+  geom_point(aes(x=2.232506, y=-2037), fill="blue", shape=25, size=3)+
+  geom_point(aes(x=6.647461, y=-1420), fill="blue", shape=25, size=3)+
+  geom_point(aes(x=8.869955, y=-1216), fill="blue", shape=25, size=3)+
   geom_segment(x = 2.272506, y = 1200, xend = 6.607461, yend = 1200,
                arrow = arrow(length = unit(0.03, "npc"), ends = "both"))+
-  geom_text(aes(x=4.439984, y=1300, label="Breath Cycle"), size=6.5, color="black")+
-  geom_segment(x = 2.272506, y = 847, xend = 2.913315, yend = 847,
-               arrow = arrow(length = unit(0.02, "npc"), ends = "both"))+
-  geom_text(aes(x=2.85, y=1000, label="Inhalation"), size=6.5, color="black")+
+  geom_text(aes(x=4.439984, y=1300, label="Breath cycle"), size=6.5, color="black")+
+  geom_segment(x = 2.29, y = -2000, xend = 2.29, yend = 847,
+               arrow = arrow(length = unit(0.04, "npc"), ends = "both"))+
+  geom_text(aes(x=2, y=-500, label="Inhalation amplitude"), size=6.5, color="black", angle=90)+
   labs(title="Example of Annotated Breathing Waves",
        x="Time (s)",
        y="")+
@@ -80,63 +55,180 @@ ggplot(bw, aes(time, w))+
         axis.ticks.y=element_blank(),
         axis.ticks.x=element_blank(),
         plot.title=element_text(size=20),
-        axis.title = element_text(size=16))+
+        axis.title = element_text(size=16),
+        panel.border = element_blank())+
   ylim(-2450, 1400)
 
-ggsave(paste0(folder2, "BreathWave.png"))
+ggsave(paste0(folder2, "BreathWave.png"), width = 2500, height=2000, units="px")
+
+# CONFEDERATE:
+
+## Read speech - Cycle duration
+dat <- brm %>% 
+  filter(Role=="Confederate", Task=="ReadAlone")
+
+summary(b1 <- lm(cycleDur ~ Condition, dat))
+
+c <- tidy(b1) %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+crd <- ggplot(c, aes(Condition, Estimate))+
+  geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.1, color="purple")+
+  geom_point(shape=21, color="purple", stroke=1, size=3, fill="white")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
+              annotations = c("***", "***"))+
+  ggtitle("CRD")
+
+##############################
+
+## Read speech - Inhalation amplitude
+dat <- brm %>% 
+  filter(Role=="Confederate", Task=="ReadAlone")
+
+summary(b1 <- lm(inhalAmp ~ Condition, dat))
+
+c <- tidy(b1) %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+cri <- ggplot(c, aes(Condition, Estimate))+
+  geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.1, color="purple")+
+  geom_point(shape=21, color="purple", stroke=1, size=3, fill="white")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
+              annotations = c("***", "***"))+
+  ggtitle("CRI")
+
+
+##############################
+
+## Read speech - F0
+dat <- frb %>% 
+  filter(Role=="Confederate", Task=="ReadAlone")
+
+summary(b1 <- lm(f0raw ~ Condition, dat))
+
+c <- tidy(b1) %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+crf <- ggplot(c, aes(Condition, Estimate))+
+  geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.1, color="purple")+
+  geom_point(shape=21, color="purple", stroke=1, size=3, fill="white")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
+              annotations = c("***", "***"))+
+  ggtitle("CRF")
+
+############################################################
+############################################################
+
+## Free speech - Cycle duration
+dat <- brm %>% 
+  filter(Role=="Confederate", Task=="Free")
+
+summary(b1 <- lm(cycleDur ~ Condition, dat))
+
+c <- tidy(b1) %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+cfd <- ggplot(c, aes(Condition, Estimate))+
+  geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.1, color="purple")+
+  geom_point(shape=21, color="purple", stroke=1, size=3, fill="white")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Sitting", "Heavy Biking")),
+              annotations = c("***", "***"),
+              y=c(4.175, 4.275))+
+  ggtitle("CFD")
+
+##############################
+
+## Free speech - Inhalation amplitude
+dat <- brm %>% 
+  filter(Role=="Confederate", Task=="Free")
+
+summary(b1 <- lm(inhalAmp ~ Condition, dat))
+
+c <- tidy(b1) %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+cfi <- ggplot(c, aes(Condition, Estimate))+
+  geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.1, color="purple")+
+  geom_point(shape=21, color="purple", stroke=1, size=3, fill="white")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
+              annotations = c("***", "***"))+
+  ggtitle("CFI")
+
+##############################
+
+## Free speech - F0
+dat <- fsm %>% 
+  filter(Role=="Confederate", Task=="Free")
+
+summary(b1 <- lm(f0raw ~ Condition, dat))
+
+c <- tidy(b1) %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+cff <- ggplot(c, aes(Condition, Estimate))+
+  geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.1, color="purple")+
+  geom_point(shape=21, color="purple", stroke=1, size=3, fill="white")+
+  scale_x_discrete(limits = order)+
+  geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
+              annotations = c("***", "***"))+
+  ggtitle("CFF")
+
+############################################################
+############################################################
+
+# arrange confederate's plots
+
+conf <- ggarrange(crd, cfd, cri, cfi, crf, cff,
+               ncol=2, nrow=3)
+annotate_figure(conf, top="example")
 
 
 
-df <- fsm %>% 
-  filter(Speaker=="Confederate")
-dr <- frb %>% 
-  filter(Speaker=="Confederate")
-df <- df[!duplicated(df),] %>% 
-  select(f0raw, Condition)
-dr <- dr[!duplicated(dr),] %>% 
-  select(f0raw, Condition)
 
-dfr <- rbind(df, dr)
-ggplot(dfr, aes(Condition, f0raw))+
-  stat_halfeye(adjust = .6,  width = .6, justification = -.2, .width = c(.5, .95))+
-  geom_boxplot(width=.1)+
-  scale_x_discrete(limits = order, labels=labels)+
-  geom_signif(comparisons = list(c("Sitting", "Light"), c("Light", "Heavy")), annotations = c("***", "***"))+
-  labs(title = "Confederate's f0 (read and spontaneous speech)", y = "Fundamental frequency")
 
-df <- fsm %>% 
-  filter(Speaker=="Confederate")
-df <- df[!duplicated(df),] %>% 
-  select(articRate, speechRateIPU, Condition)
 
-ggplot(df, aes(Condition, speechRateIPU))+
-  stat_halfeye(adjust = .6,  width = .6, justification = -.2, .width = c(.5, .95))+
-  geom_boxplot(width=.1)+
-  scale_x_discrete(limits = order, labels=labels)+
-  geom_signif(comparisons = list(c("Sitting", "Light"), c("Light", "Heavy")), annotations = c("*", "***"))+
-  labs(title = "Confederate's speech rate (spontaneous speech)", y = "Speech rate")
 
-dbr <- brm %>% filter(Speaker=="Confederate") %>% 
-  mutate(grouping = paste0(Condition, Task, file)) %>% 
-  filter(!duplicated(grouping)) %>%
-  select(-grouping)
-
-ggplot(dbr %>% filter(Task=="Free"), aes(Condition, breathRate))+
-  geom_boxplot(width=.1)+
-  geom_point(size=2)+
-  scale_x_discrete(limits = order, labels=labels)+
-  geom_signif(comparisons = list(c("Sitting", "Light"), c("Light", "Heavy")), annotations = c("*", "*"))+
-  labs(title = "Confederate's breathing rate (spontaneous speech)", y = "Breathing rate")
-
-ggplot(dbr %>% filter(grepl("Read", Task)), aes(Condition, breathRate))+
-  stat_halfeye(adjust = .6,  width = .6, justification = -.2, .width = c(.5, .95))+
-  geom_boxplot(width=.1)+
-  geom_point(size=2)+
-  scale_x_discrete(limits = order, labels=labels)+
-  # geom_signif(comparisons = list(c("Sitting", "Light"), c("Sitting", "Heavy"), c("Light", "Heavy")), annotations = c("*", ".", "**"), y=c(23, 23.4, 23))+
-  labs(title = "Confederate's breathing rate (read speech)", y = "Breathing rate")
-
- 
 # PARTICIPANTS:
 # breathing rate of listening vs watching
 # inhalation amplitude across conditions during watching
