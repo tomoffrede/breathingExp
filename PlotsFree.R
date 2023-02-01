@@ -2,10 +2,11 @@ library(tidyverse)
 library(viridis)
 library(cowplot)
 
-folder <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
-folder1 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Plots/new/"
-folder2 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Plots/FreeSpeech/new/"
-folder3 <- "C:/Users/tomof/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Plots/FreeSpeech/Differences/new/"
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folder1 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Plots/new/"
+folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Plots/Feb2023Update/Free/"
+# folder3 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Plots/FreeSpeech/Differences/new/"
+folder3 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/Plots/Feb2023Update/SoloRead/"
 
 order <- c("Baseline", "Sitting", "Light", "Heavy")
 orderconf <- order[-1]
@@ -295,15 +296,12 @@ dev.off()
 
 #### individual f0s across conditions:
 load(paste0(folder, "DataSpeech.RData"))
-dat <- fsm
-df <- dat[dat$Task=="Free",]
 
-# turn Confederate's values into their mean
-for(c in df$Condition){
-  df$f0mean[df$Speaker=="Confederate" & df$Condition==c] <- mean(df$f0mean[df$Speaker=="Confederate" & df$Condition==c])
-}
-
-df <- df %>% distinct(f0mean, Speaker, Condition, .keep_all=TRUE)
+# turn participants' (and confederate's) f0 values into their mean
+df <- fsm %>% 
+  group_by(Speaker, Condition) %>% 
+  summarize(f0mean = mean(f0raw, na.rm=TRUE)) %>% 
+  ungroup()
 
 participants <- unique(df$Speaker[df$Speaker!="Confederate"])
 
@@ -315,7 +313,7 @@ for(i in participants){
   if(i %in% abc){
     duo <- c(i, "Confederate")
     dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=f0IPUmean, group=Speaker))+
+    p <- ggplot(data=dp, aes(x=Condition, y=f0mean, group=Speaker))+
       geom_line(aes(color=Speaker), size=3)+
       geom_point(aes(color=Speaker), size=7)+
       theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -326,7 +324,7 @@ for(i in participants){
   } else if (i %!in% abc){
     duo <- c(i, "Confederate")
     dp <- df[df$Speaker %in% duo,]
-    p <- ggplot(data=dp, aes(x=Condition, y=f0IPUmean, group=Speaker))+
+    p <- ggplot(data=dp, aes(x=Condition, y=f0mean, group=Speaker))+
       geom_line(aes(color=Speaker), size=3)+
       geom_point(aes(color=Speaker), size=7)+
       theme(legend.title=element_text(size=26), legend.text=element_text(size=24),
@@ -336,7 +334,6 @@ for(i in participants){
     plots[[i]] <- p
   }
 }
-
 
 plotgrid <- plot_grid(plotlist=plots)
 
