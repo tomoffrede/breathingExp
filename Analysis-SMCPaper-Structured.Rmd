@@ -386,6 +386,19 @@ qqnorm(resid(f1a));qqline(resid(f1a))
 plot(fitted(f1a), resid(f1a))
 ```
 
+```{r}
+dat <- frb %>% 
+  filter(Task %in% c("ReadAlone", "ReadBaseline"), Condition %in% c("Baseline", "Sitting")) %>% 
+  group_by(Speaker, Condition) %>% 
+  mutate(f0mean = mean(f0raw, na.rm=TRUE)) %>% 
+  ungroup()
+
+ggplot(dat, aes(Condition, f0mean))+
+  geom_point()+
+  geom_line()+
+  facet_wrap(~Speaker)
+```
+
 ## Solo spontaneous speech
 
 ```{r}
