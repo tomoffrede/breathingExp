@@ -15,6 +15,7 @@ folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/FiguresForPaper/
 folder3 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/"
 
 order <- c("Sitting", "Light Biking", "Heavy Biking")
+order2 <- c("Sitting", "Light", "Heavy")
 orderBase <- c("Baseline", order)
 labels <- c("Sitting"="Sitting", "Light"="Light B.", "Heavy"="Heavy B.")
 
@@ -24,14 +25,13 @@ theme_set(theme_bw()+
                   plot.background = element_blank(),
                   panel.grid.major = element_blank(),
                   panel.grid.minor = element_blank(),
-                  plot.title = element_text(hjust = 0.5)))
+                  plot.title = element_text(hjust = 0.5),
+                  strip.background = element_blank()))
+
 
 load(paste0(folder, "DataSpeech.RData"))
 load(paste0(folder, "DataBreathing.RData"))
 load(paste0(folder, "DataReadSpeech.RData"))
-
-##########
-# Colors
 
 # scales::show_col(viridis_pal(option="D")(30))
 
@@ -109,7 +109,7 @@ c <- c %>%
     scale_x_discrete(limits = order)+
     geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
                 annotations = c("***", "***"),
-                y = 3.3)+
+                y = 3.5)+
     labs(title="Confederate",
          y = "Breath Cycle Duration",
          x = "")+
@@ -198,7 +198,7 @@ c <- c %>%
     scale_x_discrete(limits = order)+
     geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Sitting", "Heavy Biking")),
                 annotations = c("***", "***"),
-                y=c(4.45, 4.6))+
+                y=c(4.5, 4.9))+
     labs(title="Confederate",
          y = "Breath Cycle Duration",
          x = "")+
@@ -741,10 +741,12 @@ c <- c %>%
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
     geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
     geom_signif(comparisons = list(c("Read Solo", "Read Synchronous")),
-                annotations = c("*"))+
+                annotations = c("*"),
+                y=0.425)+
     labs(title="",
          y = "Inhalation Amplitude",
-         x = ""))
+         x = "")+
+    ylim(c(0.374, 0.43)))
 
 ##############################
 
@@ -881,3 +883,97 @@ ggsave(paste0(folder2, "SyncRead.png"), width = 1400, height=2750, units="px")
 ############################################################
 ############################################################
 
+# Individual differences - Listening breathing - Inhalation amplitude
+
+dat <- brm %>%
+  filter(Speaker%in% c("PER", "CBE", "JPW", "BND"), act == "listening") %>% 
+  mutate(across(Speaker, factor, levels=c("PER", "CBE", "JPW", "BND")),
+         Speaker = ifelse(Speaker=="PER", "A", ifelse(Speaker=="CBE", "B", ifelse(Speaker=="JPW", "C", "D"))))
+
+annotation <- data.frame(speaker = c("A", "B", "C", "D"),
+                         comp1 = c("Sitting", "Light"),
+                         comp2 = c("Light", "Heavy"),
+                         y = 0.96,
+                         label = "***")
+
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot(color=blue)+
+  facet_wrap(~Speaker)+
+  theme(axis.title = element_text(size=16))+
+  labs(title="Breathing while Listening",
+       y = "Inhalation Amplitude",
+       x = "Condition")+
+  geom_signif(data = annotation,
+              aes(xmin = comp1, xmax = comp2,
+                  y_position=y,
+                  annotations=label),
+              manual = TRUE)+
+  scale_x_discrete(limits = order2, labels=c("Sitting", "Light Biking", "Heavy Biking"))+
+  ylim(c(0, 1))
+
+ggsave(paste0(folder2, "IndivDiff-Listening.png"), width = 2000, height=2000, units="px")
+
+############################################################
+
+# Individual differences - Baseline vs. Interaction - F0
+
+dat <- fsm %>%
+  filter(Speaker%in% c("TKJ", "QRC"), Task == "Free", Condition %in% c("Baseline", "Sitting")) %>% 
+  mutate(across(Speaker, factor, levels=c("TKJ", "QRC")),
+         Speaker = ifelse(Speaker=="TKJ", "A", "B"))
+
+# summary(lm(f0raw ~ Condition, dat %>% filter(Speaker=="B")))
+
+annotation <- data.frame(Speaker = c("A", "B"),
+                          comp1 = c("Baseline", "Sitting"),
+                          comp2 = c("Sitting", "Baseline"),
+                          y = c(235, 300),
+                          label = "***")
+
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot(color=blue)+
+  facet_wrap(~Speaker)+
+  theme(axis.title = element_text(size=16))+
+  labs(title="Spontaneous Speech",
+       y = "F0",
+       x = "Condition")+
+  geom_signif(data = annotation,
+              aes(xmin = comp1, xmax = comp2,
+                  y_position=y,
+                  annotations=label),
+              manual = TRUE)+
+    ylim(c(95, 300))
+
+ggsave(paste0(folder2, "IndivDiff-BaselineInteraction.png"), width = 2000, height=1500, units="px")
+
+############################################################
+
+# Individual differences - Conditions - Inhalation Amplitude
+
+dat <- brm %>%
+  filter(Speaker%in% c("QRC", "RZU", "WJH", "YRI"), act == "speaking", Task=="Free", Condition!="Baseline") %>% 
+  mutate(across(Speaker, factor, levels=c("QRC", "RZU", "WJH", "YRI")),
+         Speaker = ifelse(Speaker=="QRC", "A", ifelse(Speaker=="RZU", "B", ifelse(Speaker=="WJH", "C", "D"))))
+
+annotation <- data.frame(speaker = c("A", "B", "C", "D"),
+                         comp1 = c("Sitting", "Light"),
+                         comp2 = c("Light", "Heavy"),
+                         y = 0.95,
+                         label = "***")
+
+ggplot(dat %>% filter(inhalAmp<0.9), aes(Condition, inhalAmp))+
+  geom_boxplot(color=blue)+
+  facet_wrap(~Speaker)+
+  theme(axis.title = element_text(size=16))+
+  labs(title="Spontaneous Speech",
+       y = "Inhalation Amplitude",
+       x = "Condition")+
+  geom_signif(data = annotation,
+              aes(xmin = comp1, xmax = comp2,
+                  y_position=y,
+                  annotations=label),
+              manual = TRUE)+
+  scale_x_discrete(limits = order2, labels=c("Sitting", "Light Biking", "Heavy Biking"))+
+  ylim(c(0, 1))
+
+ggsave(paste0(folder2, "IndivDiff-Spontaneous.png"), width = 2000, height=2000, units="px")
