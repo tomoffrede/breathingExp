@@ -14,7 +14,7 @@ folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnaly
 folder2 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/FiguresForPaper/"
 folder3 <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/"
 
-order <- c("Sitting", "Light Biking", "Heavy Biking")
+order <- c("Sitting", "Light B.", "Heavy B.")
 order2 <- c("Sitting", "Light", "Heavy")
 orderBase <- c("Baseline", order)
 labels <- c("Sitting"="Sitting", "Light"="Light B.", "Heavy"="Heavy B.")
@@ -22,11 +22,14 @@ labels <- c("Sitting"="Sitting", "Light"="Light B.", "Heavy"="Heavy B.")
 theme_set(theme_bw()+
             theme(axis.ticks.y=element_blank(),
                   axis.ticks.x=element_blank(),
+                  axis.title = element_text(size=14),
+                  axis.text.x = element_text(color="black", size=12),
                   plot.background = element_blank(),
                   panel.grid.major = element_blank(),
                   panel.grid.minor = element_blank(),
                   plot.title = element_text(hjust = 0.5),
                   strip.background = element_blank()))
+shape <- 16
 
 
 load(paste0(folder, "DataSpeech.RData"))
@@ -38,14 +41,13 @@ load(paste0(folder, "DataReadSpeech.RData"))
 blue <- "#33628DFF"
 purple <- "470E61FF"
 yellow <- "#E8E419FF"
-green <- "#75D054FF"
+green <- "#4FC46AFF"
 
 ##########
 
 # Figure of breath waves
 
-## commenting out to save a few seconds when I want to run the entire script
-
+## commenting out to save a few seconds when I want to run the entire scriptz
 # b <- readWave(paste0(folder3, "BF-ATN003_SUM_200_breath_100.wav"))
 # bw <- data.frame(w = b@left[(37.75*b@samp.rate):(46.65*b@samp.rate)],
 #                  time = seq(0, 8.91, length.out=891)) # 891 is the number of rows of b@left[...]
@@ -95,7 +97,7 @@ dat <- brm %>%
 summary(b1 <- lm(cycleDur ~ Condition, dat))
 
 c <- tidy(b1) %>%
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -105,14 +107,16 @@ c <- c %>%
 
 (crd <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=green)+
-    geom_point(shape=21, color=green, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=green, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=green)+
     scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
-                annotations = c("***", "***"),
+    geom_signif(comparisons = list(c("Sitting", "Light B."), c("Light B.", "Heavy B.")),
+                annotations = c("***", "***"), textsize=6,
                 y = 3.5)+
-    labs(title="Confederate",
+    labs(title="Confederate (Solo)",
          y = "Breath Cycle Duration",
          x = "")+
+    theme(axis.title = element_text(size=18))+
     ylim(c(2.63, 5.27)))
 
 ##############################
@@ -124,7 +128,7 @@ dat <- brm %>%
 summary(b1 <- lm(inhalAmp ~ Condition, dat))
 
 c <- tidy(b1) %>%
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -134,15 +138,17 @@ c <- c %>%
 
 (cri <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=green)+
-    geom_point(shape=21, color=green, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=green, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=green)+
     scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
-                annotations = c("***", "***"),
+    geom_signif(comparisons = list(c("Sitting", "Light B."), c("Light B.", "Heavy B.")),
+                annotations = c("***", "***"), textsize=6,
                 y = 0.64)+
     labs(title="",
          y = "Inhalation Amplitude",
          x = "")+
-    ylim(c(0.27, 0.67)))
+    theme(axis.title = element_text(size=18))+
+    ylim(c(0.27, 0.69)))
 
 
 ##############################
@@ -154,7 +160,7 @@ dat <- frb %>%
 summary(b1 <- lm(f0raw ~ Condition, dat))
 
 c <- tidy(b1) %>%
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -164,15 +170,17 @@ c <- c %>%
 
 (crf <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=green)+
-    geom_point(shape=21, color=green, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=green, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=green)+
     scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
-                annotations = c("***", "***"),
+    geom_signif(comparisons = list(c("Sitting", "Light B."), c("Light B.", "Heavy B.")),
+                annotations = c("***", "***"), textsize=6,
                 y = 223)+
     labs(title="",
          y = "F0",
          x = "Condition")+
-    ylim(c(200, 225)))
+    theme(axis.title = element_text(size=18))+
+    ylim(c(200, 227)))
 
 ############################################################
 ############################################################
@@ -184,7 +192,7 @@ dat <- brm %>%
 summary(b1 <- lm(cycleDur ~ Condition, dat))
 
 c <- tidy(b1) %>%
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -194,9 +202,10 @@ c <- c %>%
 
 (cfd <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=green)+
-    geom_point(shape=21, color=green, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=green, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=green)+
     scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Sitting", "Heavy Biking")),
+    geom_signif(comparisons = list(c("Sitting", "Light B."), c("Sitting", "Heavy B.")),
                 annotations = c("***", "***"),
                 y=c(4.5, 4.9))+
     labs(title="Confederate",
@@ -213,7 +222,7 @@ dat <- brm %>%
 summary(b1 <- lm(inhalAmp ~ Condition, dat))
 
 c <- tidy(b1) %>%
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -223,9 +232,10 @@ c <- c %>%
 
 (cfi <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=green)+
-    geom_point(shape=21, color=green, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=green, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=green)+
     scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
+    geom_signif(comparisons = list(c("Sitting", "Light B."), c("Light B.", "Heavy B.")),
                 annotations = c("***", "***"),
                 y = c(0.53))+
     labs(title="",
@@ -242,7 +252,7 @@ dat <- fsm %>%
 summary(b1 <- lm(f0raw ~ Condition, dat))
 
 c <- tidy(b1) %>%
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -252,9 +262,10 @@ c <- c %>%
 
 (cff <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=green)+
-    geom_point(shape=21, color=green, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=green, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=green)+
     scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
+    geom_signif(comparisons = list(c("Sitting", "Light B."), c("Light B.", "Heavy B.")),
                 annotations = c("***", "***"),
                 y = 218)+
     labs(title="",
@@ -282,7 +293,7 @@ summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Light Biking", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Light B.", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -292,11 +303,13 @@ c <- c %>%
 
 (prd <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
-    labs(title="Participants",
+    labs(title="Participants: Solo",
          y = "",
          x = "")+
+    theme(axis.title = element_text(size=18))+
     ylim(c(2.63, 5.27)))
 
 ##############################
@@ -310,7 +323,7 @@ summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Light Biking", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Light B.", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -320,12 +333,14 @@ c <- c %>%
 
 (pri <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
     labs(title="",
          y = "",
          x = "")+
-    ylim(c(0.27, 0.65)))
+    theme(axis.title = element_text(size=18))+
+    ylim(c(0.27, 0.69)))
 
 
 ##############################
@@ -338,7 +353,7 @@ summary(b1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -348,12 +363,112 @@ c <- c %>%
 
 (prf <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
     labs(title="",
          y = "",
          x = "Condition")+
-    ylim(c(200, 223)))
+    theme(axis.title = element_text(size=18))+
+    ylim(c(200, 227)))
+
+############################################################
+############################################################
+
+# Sync Speech - Cycle Duration - Conditions
+
+dat <- brm %>%
+  filter(Role=="Participant", Task=="ReadJoint")
+
+summary(b1 <- lmer(cycleDur ~ Condition + (1 +Condition| Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(sd <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    scale_x_discrete(limits = order)+
+    labs(title="Participants: Synchronous",
+         y = "",
+         x = "")+
+    theme(axis.title = element_text(size=18))+
+    ylim(c(2.63, 5.27)))
+
+##############################
+
+# Sync Speech - Inhalation Amplitude - Conditions
+
+dat <- brm %>%
+  filter(Role=="Participant", Task=="ReadJoint")
+
+summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition | Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(si <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    scale_x_discrete(limits = order)+
+    geom_signif(comparisons = list(c("Sitting", "Light B."), c("Light B.", "Heavy B.")),
+                annotations = c("*", "*"), textsize=6,
+                y = 0.48)+
+    labs(title="",
+         y = "",
+         x = "")+
+    theme(axis.title = element_text(size=18))+
+    ylim(c(0.27, 0.69)))
+
+##############################
+
+# Sync Speech - F0 - Conditions
+
+dat <- frb %>%
+  filter(Role=="Participant", Task=="ReadJoint")
+
+summary(b1 <- lmer(f0raw ~ Condition + (1+Condition | Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(sf <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    scale_x_discrete(limits = order)+
+    geom_signif(comparisons = list(c("Light B.", "Heavy B."), c("Sitting", "Heavy B.")),
+                annotations = c("*", "***"), textsize=6,
+                y = c(212.5, 215))+
+    labs(title="",
+         y = "",
+         x = "Condition")+
+    theme(axis.title = element_text(size=18))+
+    ylim(c(200, 227)))
+
 
 ############################################################
 ############################################################
@@ -367,7 +482,7 @@ summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Light Biking", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Light B.", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -377,7 +492,8 @@ c <- c %>%
 
 (pfd <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
     labs(title="Participants",
          y = "",
@@ -394,7 +510,7 @@ summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -404,7 +520,8 @@ c <- c %>%
 
 (pfi <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
     labs(title="",
          y = "",
@@ -421,7 +538,7 @@ summary(b1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -431,7 +548,8 @@ c <- c %>%
 
 (pff <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
     labs(title="",
          y = "",
@@ -441,14 +559,14 @@ c <- c %>%
 ############################################################
 ############################################################
 
-(condR <- ggarrange(crd, prd, cri, pri, crf, prf,
-                  ncol=2, nrow=3))
-annotate_figure(condR, top="Solo Read Speech")
-ggsave(paste0(folder2, "SoloReadConditions.png"), width = 2000, height=2750, units="px")
+(condR <- ggarrange(crd, prd, sd, cri, pri, si, crf, prf, sf,
+                  ncol=3, nrow=3))
+annotate_figure(condR, top=text_grob("Read Speech", face="bold", size = 18))
+ggsave(paste0(folder2, "ReadConditions.png"), width = 2750, height=2750, units="px")
 
 (condF <- ggarrange(cfd, pfd, cfi, pfi, cff, pff,
                     ncol=2, nrow=3))
-annotate_figure(condF, top="Solo Spontaneous Speech")
+annotate_figure(condF, top=text_grob("Solo Spontaneous Speech", face="bold", size = 14))
 ggsave(paste0(folder2, "SpontaneousConditions.png"), width = 2000, height=2750, units="px")
 
 ############################################################
@@ -475,7 +593,8 @@ c <- c %>%
 
 (brd <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     labs(title="Solo Read Speech",
          y = "Breath Cycle Duration",
          x = "")+
@@ -502,7 +621,8 @@ c <- c %>%
 
 (bri <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     labs(title="",
          y = "Inhalation Amplitude",
          x = "")+
@@ -529,7 +649,8 @@ c <- c %>%
 
 (brf <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     geom_signif(comparisons = list(c("Baseline", "Sitting")),
                 annotations = c("*"),
                 y = 210)+
@@ -537,6 +658,7 @@ c <- c %>%
          y = "F0",
          x = "Condition")+
     ylim(c(188, 212)))
+
 
 ##############################
 
@@ -559,7 +681,8 @@ c <- c %>%
 
 (bfd <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     labs(title="Free Speech",
          y = "",
          x = "")+
@@ -586,7 +709,8 @@ c <- c %>%
 
 (bfi <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     labs(title="",
          y = "",
          x = "")+
@@ -613,7 +737,8 @@ c <- c %>%
 
 (bff <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     labs(title="",
          y = "",
          x = "Condition")+
@@ -623,7 +748,7 @@ c <- c %>%
 
 b <- ggarrange(brd, bfd, bri, bfi, brf, bff,
           ncol=2, nrow=3)
-annotate_figure(b, top="Baseline vs. Interaction")
+annotate_figure(b, top=text_grob("Baseline vs. Interaction", face="bold", size = 14))
 ggsave(paste0(folder2, "BaselineVsInteraction.png"), width = 2000, height=2750, units="px")
 
 ############################################################
@@ -640,7 +765,7 @@ summary(b1 <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -650,7 +775,8 @@ c <- c %>%
 
 (ld <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
     labs(title="Breathing while Listening",
          y = "Breath Cycle Duration",
@@ -667,7 +793,7 @@ summary(b1 <- lmer(inhalAmp ~ Condition + (1 + Condition |Speaker), dat))
 
 c <- tidy(b1) %>%
   filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -677,7 +803,8 @@ c <- c %>%
 
 (li <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     scale_x_discrete(limits = order)+
     labs(title="",
          y = "Inhalation Amplitude",
@@ -713,7 +840,8 @@ c <- c %>%
 
 (rd <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     labs(title="Solo vs. Synchronous Reading",
          y = "Breath Cycle Duration",
          x = ""))
@@ -739,7 +867,8 @@ c <- c %>%
 
 (ri <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     geom_signif(comparisons = list(c("Read Solo", "Read Synchronous")),
                 annotations = c("*"),
                 y=0.425)+
@@ -769,7 +898,8 @@ c <- c %>%
 
 (rf <- ggplot(c, aes(Condition, Estimate))+
     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
     labs(title="",
          y = "F0",
          x = "Task"))
@@ -779,104 +909,6 @@ c <- c %>%
 (t <- ggarrange(rd, ri, rf,
                ncol=1, nrow=3))
 ggsave(paste0(folder2, "SoloSyncRead.png"), width = 1400, height=2750, units="px")
-
-############################################################
-############################################################
-############################################################
-############################################################
-
-# Sync Speech - Cycle Duration - Conditions
-
-dat <- brm %>%
-  filter(Role=="Participant", Task=="ReadJoint")
-
-summary(b1 <- lmer(cycleDur ~ Condition + (1 +Condition| Speaker), dat))
-
-c <- tidy(b1) %>%
-  filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
-  rename(coefficient = estimate, Condition = term)
-c$Estimate <- c$coefficient + c$coefficient[1]
-c$Estimate[1] <- c$coefficient[1]
-c <- c %>% 
-  mutate(ymin = Estimate - (std.error/2),
-         ymax= Estimate + (std.error/2))
-
-(sd <- ggplot(c, aes(Condition, Estimate))+
-    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
-    scale_x_discrete(limits = order)+
-    labs(title="Synchronous Reading",
-         y = "Breath Cycle Duration",
-         x = ""))
-
-##############################
-
-# Sync Speech - Inhalation Amplitude - Conditions
-
-dat <- brm %>%
-  filter(Role=="Participant", Task=="ReadJoint")
-
-summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition | Speaker), dat))
-
-c <- tidy(b1) %>%
-  filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
-  rename(coefficient = estimate, Condition = term)
-c$Estimate <- c$coefficient + c$coefficient[1]
-c$Estimate[1] <- c$coefficient[1]
-c <- c %>% 
-  mutate(ymin = Estimate - (std.error/2),
-         ymax= Estimate + (std.error/2))
-
-(si <- ggplot(c, aes(Condition, Estimate))+
-    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
-    scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Sitting", "Light Biking"), c("Light Biking", "Heavy Biking")),
-                annotations = c("*", "*"),
-                y = 0.419)+
-    ylim(c(0.35, 0.43))+
-    labs(title="",
-         y = "Inhalation Amplitude",
-         x = ""))
-
-##############################
-
-# Sync Speech - F0 - Conditions
-
-dat <- frb %>%
-  filter(Role=="Participant", Task=="ReadJoint")
-
-summary(b1 <- lmer(f0raw ~ Condition + (1+Condition | Speaker), dat))
-
-c <- tidy(b1) %>%
-  filter(effect == "fixed") %>% 
-  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light Biking", ifelse(grepl("Heavy", term), "Heavy Biking", term)))) %>% 
-  rename(coefficient = estimate, Condition = term)
-c$Estimate <- c$coefficient + c$coefficient[1]
-c$Estimate[1] <- c$coefficient[1]
-c <- c %>% 
-  mutate(ymin = Estimate - (std.error/2),
-         ymax= Estimate + (std.error/2))
-
-(sf <- ggplot(c, aes(Condition, Estimate))+
-    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-    geom_point(shape=21, color=blue, stroke=1, size=2, fill="white")+
-    scale_x_discrete(limits = order)+
-    geom_signif(comparisons = list(c("Light Biking", "Heavy Biking"), c("Sitting", "Heavy Biking")),
-                annotations = c("*", "***"),
-                y = c(211.5, 212.5))+
-    ylim(c(203, 213.5))+
-    labs(title="",
-         y = "F0",
-         x = "Condition"))
-
-##############################
-
-(t <- ggarrange(sd, si, sf,
-                ncol=1, nrow=3))
-ggsave(paste0(folder2, "SyncRead.png"), width = 1400, height=2750, units="px")
 
 ############################################################
 ############################################################
@@ -899,7 +931,6 @@ annotation <- data.frame(speaker = c("A", "B", "C", "D"),
 ggplot(dat, aes(Condition, inhalAmp))+
   geom_boxplot(color=blue)+
   facet_wrap(~Speaker)+
-  theme(axis.title = element_text(size=16))+
   labs(title="Breathing while Listening",
        y = "Inhalation Amplitude",
        x = "Condition")+
@@ -908,7 +939,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
                   y_position=y,
                   annotations=label),
               manual = TRUE)+
-  scale_x_discrete(limits = order2, labels=c("Sitting", "Light Biking", "Heavy Biking"))+
+  scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
   ylim(c(0, 1))
 
 ggsave(paste0(folder2, "IndivDiff-Listening.png"), width = 2000, height=2000, units="px")
@@ -933,7 +964,6 @@ annotation <- data.frame(Speaker = c("A", "B"),
 ggplot(dat, aes(Condition, f0raw))+
   geom_boxplot(color=blue)+
   facet_wrap(~Speaker)+
-  theme(axis.title = element_text(size=16))+
   labs(title="Spontaneous Speech",
        y = "F0",
        x = "Condition")+
@@ -964,7 +994,6 @@ annotation <- data.frame(speaker = c("A", "B", "C", "D"),
 ggplot(dat %>% filter(inhalAmp<0.9), aes(Condition, inhalAmp))+
   geom_boxplot(color=blue)+
   facet_wrap(~Speaker)+
-  theme(axis.title = element_text(size=16))+
   labs(title="Spontaneous Speech",
        y = "Inhalation Amplitude",
        x = "Condition")+
@@ -973,7 +1002,7 @@ ggplot(dat %>% filter(inhalAmp<0.9), aes(Condition, inhalAmp))+
                   y_position=y,
                   annotations=label),
               manual = TRUE)+
-  scale_x_discrete(limits = order2, labels=c("Sitting", "Light Biking", "Heavy Biking"))+
+  scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
   ylim(c(0, 1))
 
 ggsave(paste0(folder2, "IndivDiff-Spontaneous.png"), width = 2000, height=2000, units="px")
