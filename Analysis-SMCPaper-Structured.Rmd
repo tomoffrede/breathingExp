@@ -49,7 +49,7 @@ ggplot(dat, aes(Condition, cycleDur))+
 * Difference only between Light and the other conditions, but no difference between Sitting and Heavy. So there is probably noise in the data and we can consider that there was no effect of condition on breathing cycle duration.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lm(cycleDur ~ Condition, dat))
 
 par(mfrow=c(2, 2))
@@ -73,7 +73,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
 * Inhalation amplitude got higher with physical effort.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(d1 <- lm(inhalAmp ~ Condition, dat))
 
 par(mfrow=c(2, 2))
@@ -97,7 +97,7 @@ ggplot(dat, aes(Condition, f0raw))+
 * F0 got higher with physical effort.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(f1 <- lm(f0raw ~ Condition, dat))
 
 par(mfrow=c(2, 2))
@@ -124,7 +124,7 @@ ggplot(dat, aes(Condition, cycleDur))+
 * Cycles are shorter during biking than during sitting. There's a trend of Heavy being shorter than Light, but it doesn't reach significance.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lm(cycleDur ~ Condition, dat))
 
 par(mfrow=c(2, 2))
@@ -148,7 +148,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
 * Inhalation amplitude gets larger with physical effort.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(d1 <- lm(inhalAmp ~ Condition, dat))
 
 par(mfrow=c(2, 2))
@@ -172,7 +172,7 @@ ggplot(dat, aes(Condition, f0raw))+
 * F0 increased with physical effort.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(m1 <- lm(f0raw ~ Condition, dat))
 
 par(mfrow=c(2, 2))
@@ -182,6 +182,77 @@ plot(fitted(m1), resid(m1))
 ```
 
 # Participants
+
+# 0 - Breathing. Do people adapt their breathing to a confederate who is moving under different levels of physical effort when both of them are silent?
+
+## Cycle Duration
+
+```{r}
+dat <- brm %>% 
+  filter(Role=="Participant", act=="watching")
+```
+
+```{r}
+# Individual effects
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Watching - Cycle Duration")
+ggsave(paste0(folderInd, "Watching-CycleDur.png"), width = 3000, height=3000, units="px")
+```
+
+A few participants behaved in opposite ways.
+
+```{r}
+ggplot(dat, aes(Condition, cycleDur))+
+  geom_boxplot()
+```
+
+No effect of condition on cycle duration while watching.
+
+```{r}
+summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+
+
+## Inhalation Amplitude
+
+```{r}
+dat <- brm %>% 
+  filter(Role=="Participant", act=="watching")
+```
+
+```{r}
+# Individual effects
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Watching - Inhalation Amplitude")
+ggsave(paste0(folderInd, "Watching-InhalAmp.png"), width = 3000, height=3000, units="px")
+```
+
+Again, a few participants behaved in opposite ways.
+
+```{r}
+ggplot(dat, aes(Condition, inhalAmp))+
+  geom_boxplot()
+```
+
+Lower inhalation amplitude during Heavy than Sitting, with Light in between.
+
+```{r}
+summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
 
 # 1 - Breathing. Is there a difference in respiratory behavior when people talk alone or in an interaction?
 
@@ -472,7 +543,7 @@ ggplot(dat, aes(Condition, cycleDur))+
 * There is no effect of condition on cycle duration during solo read speech.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
 
 par(mfrow=c(2, 2))
@@ -506,7 +577,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
 * There is no effect of condition on inhalation amplitude during solo read speech.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
 
 par(mfrow=c(2, 2))
@@ -542,7 +613,7 @@ ggplot(dat, aes(Condition, cycleDur))+
 * There is no effect of condition on cycle duration during solo spontaneous speech.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
 
 par(mfrow=c(2, 2))
@@ -576,7 +647,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
 * There is no effect of condition on inhalation amplitude during solo spontaneous speech.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
 
 par(mfrow=c(2, 2))
@@ -753,7 +824,7 @@ ggplot(dat, aes(Condition, cycleDur))+
 * There is no effect of task (solo vs. synchronous) on cycle duration. And no interaction with condition.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 
 summary(b1 <- lmer(cycleDur ~ Task + (1+Task | Speaker), dat))
 
@@ -791,7 +862,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
 * Inhalation amplitude was lower while reading synchronously than while reading solo. See model below for the interaction with Condition.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 
 summary(b1 <- lmer(inhalAmp ~ Task + (1+Task | Speaker), dat))
 
@@ -830,7 +901,7 @@ ggplot(dat, aes(Condition, cycleDur))+
 * Cycle durations didn't change across conditions during synchronous read speech.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 
 summary(b1 <- lmer(cycleDur ~ Condition + (1 +Condition| Speaker), dat))
 
@@ -865,7 +936,7 @@ ggplot(dat, aes(Condition, inhalAmp))+
 * Inhalation amplitude was larger during Light Biking than during Sitting and Heavy Biking. No difference between Sitting and Heavy Biking.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 
 summary(b1 <- lmer(inhalAmp ~ Condition + (1 | Speaker), dat))
 
@@ -903,7 +974,7 @@ ggplot(dat, aes(Condition, f0raw))+
 * There is no effect of task (solo vs. synchronous) on f0. See model below for the interaction with condition.
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 
 summary(b1 <- lmer(f0raw ~ Task + (1+Task | Speaker), dat))
 
@@ -941,7 +1012,7 @@ ggplot(dat, aes(Condition, f0raw))+
 * There is no significant difference between Light and Sitting, but a tendency for Light to have higher f0 (following the pattern).
 
 ```{r}
-dat$Condition <- relevel(dat$Condition, ref="Light")
+# dat$Condition <- relevel(dat$Condition, ref="Light")
 
 summary(b1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
 
