@@ -821,6 +821,75 @@ ggsave(paste0(folder2, "ListeningBreathing.png"), width = 1400, height=1850, uni
 ############################################################
 ############################################################
 
+# Breathing while watching - Cycle duration - Conditions
+
+dat <- brm %>%
+  filter(Role=="Participant", act == "watching")
+
+summary(b1 <- lmer(cycleDur ~ Condition + (1 + Condition |Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(wd <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    scale_x_discrete(limits = order)+
+    labs(title="Breathing while Watching in Silence",
+         y = "Breath Cycle Duration",
+         x = ""))
+
+##############################
+
+# Breathing while watching - Inhalation Amplitude - Conditions
+
+dat <- brm %>%
+  filter(Role=="Participant", act == "watching")
+
+summary(b1 <- lmer(inhalAmp ~ Condition + (1 + Condition |Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>% 
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(wi <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    scale_x_discrete(limits = order)+
+    geom_signif(comparisons = list(c("Sitting", "Heavy B.")),
+                annotations = c("*"),
+                y=0.508)+
+    labs(title="",
+         y = "Inhalation Amplitude",
+         x = "Condition")+
+    ylim(c(0.365,0.525)))
+
+##############################
+
+(w <- ggarrange(wd, wi,
+                ncol=1, nrow=2))
+ggsave(paste0(folder2, "WatchingBreathing.png"), width = 1400, height=1850, units="px")
+
+############################################################
+############################################################
+############################################################
+############################################################
+
 # Solo vs Sync Speech - Cycle Duration
 
 dat <- brm %>%
@@ -914,6 +983,7 @@ ggsave(paste0(folder2, "SoloSyncRead.png"), width = 1400, height=2750, units="px
 ############################################################
 ############################################################
 ############################################################
+
 
 # Individual differences - Listening breathing - Inhalation amplitude
 
