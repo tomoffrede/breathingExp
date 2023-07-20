@@ -1121,17 +1121,20 @@ for(i in 1:length(dat)){ # since we have one dataset with breathing info and one
 fsm <- dat[[1]] %>% 
   mutate_at(c("Task", "Condition", "Speaker"), as.factor) %>% 
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
-         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction")) %>% 
+  distinct()
 brm <- dat[[2]] %>% 
   mutate_at(c("Task", "act", "Condition", "Speaker"), as.factor) %>% 
   mutate_at(c("inhalDur", "inhalAmp"), as.numeric) %>% 
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
          across(act, factor, levels=c("watching","listening", "speaking")),
-         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction")) %>% 
+  distinct()
 frb <- dat[[3]] %>% 
   mutate_at(c("Task", "Condition", "Speaker"), as.factor) %>% 
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
-         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction"))
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction")) %>%
+  distinct()
 
 fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate, inhalDur, inhalAmp)) %>% filter(!duplicated(file)) %>% filter(substr(file, 2, 2) != "B"), by="file")
 
@@ -1142,61 +1145,3 @@ fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate, inhalDu
 save(fsm, file=paste0(folder, "DataSpeech.RData"))
 save(brm, file=paste0(folder, "DataBreathing.RData"))
 save(frb, file=paste0(folder, "DataReadSpeech.RData"))
-
-# # for Susanne
-# brm <- brm %>% filter(Speaker=="Confederate")
-# write.csv(brm, file=paste0(folder, "ConfederateBreathingData.csv"))
-###
-
-# #####
-
-### Calculate difference between participants' and confederate's speech features (I'm sure there would be a more elegant solution)
-
-# transform the dataset so it contains the confederate information for each row of interest of each participant
-
-# here, it doesn't make sense anymore to have information per IPU (we don't want to subtract the value of each IPU, just of the entire stretch of speech)
-
-# load(paste0(folder, "DataSpeech.RData"))
-
-dat <- fsm %>%
-  filter(!duplicated(file)) %>%
-  select(-c(IPU, f0raw, label))
-
-conf <- dat %>%
-  filter(Speaker == "Confederate") %>%
-  select(c("Condition", "Task", "Topic", "breathCycleDurMean", "breathRate"))
-colnames(conf) <- sub("^","C", colnames(conf))
-dat2 <-dat[dat$Speaker!="Confederate",]
-dat3 <- dat2[rep(seq_len(nrow(dat2)), each = nrow(conf)),]
-rownames(dat3) <- 1:nrow(dat3)
-conf2 <- do.call("rbind", replicate((nrow(dat3)/nrow(conf)), conf, simplify=FALSE)) # this doesn't take long for datasets that aren't so long, but here it's taking a while. I wonder if there's a simpler solution.
-
-dat4 <- cbind(dat3, conf2)
-
-dat4 <- dat4[(dat4$Condition == dat4$CCondition & dat4$Topic == dat4$CTopic) | (dat4$Condition == "Baseline"),]
-dat4[dat4$Condition=="Baseline", colnames(conf)] <- NA
-dat4 <- dat4[!duplicated(dat4),] # no duplicates of the same row
-
-dat4$CTask <- as.factor(dat4$CTask)
-dat4$CTopic <- as.factor(dat4$CTopic)
-
-# calculate differences
-
-dat4$breathCycleDurDiff <- dat4$breathCycleDurMean - dat4$CbreathCycleDurMean
-dat4$breathRateDiff <- dat4$breathRate - dat4$CbreathRate
-
-# dat4[dat4$Condition=="Baseline", colnames(grepl("Diff", colnames(dat4)))] <- NA # turn the "Diff" values into NA for the baseline, because they don't make sense there
-
-# gender differences
-
-dat4$GenderDiff.TMFF <- dat4$ConfGenderF - dat4$TMF.F # difference between participants' gender identity and their perception of conf's gender expression
-dat4$GenderDiff.TMFM <- dat4$ConfGenderM - dat4$TMF.M
-
-# Still missing from dataset:
-# How well the participants synchronized their read speech
-
-# 4
-dat <- dat4
-
-save(dat, file=paste0(folder, "DataWithDifferences.RData"))
-

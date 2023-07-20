@@ -16,6 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, include=FALSE}
 library(lme4)
 library(tidyverse)
+library(broom)
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 
@@ -70,6 +71,13 @@ par(mfrow=c(2, 2))
 hist(resid(b1))
 qqnorm(resid(b1));qqline(resid(b1))
 plot(fitted(b1), resid(b1))
+```
+```{r}
+# Plot with estimates
+
+# c <- tidy(b1) %>% 
+#   mutate(term = ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy Biking", "Light Biking")))
+# c$est <- c$estimate + c$estimate[1]
 ```
 
 ### Inhalation Amplitude
@@ -341,7 +349,7 @@ plot(fitted(b1a), resid(b1a))
 
 ```{r, include=FALSE}
 dat <- brm %>%
-  filter(Role=="Participant", Task%in%c("ReadJoint", "ReadBaseline"))
+  filter(Role=="Participant", Task%in%c("ReadJoint", "ReadBaseline"), Condition %in% c("Baseline", "Sitting"))
 ```
 
 ```{r}
@@ -430,6 +438,8 @@ dat$Condition <- relevel(dat$Condition, ref="Light")
 
 summary(b1 <- lmer(cycleDur ~ Condition + (1| Speaker), dat))
 
+summary(b2 <- lmer(cycleDur ~ Cond2 + (1+Cond2| Speaker), dat))
+
 par(mfrow=c(2, 2))
 hist(resid(b1))
 qqnorm(resid(b1));qqline(resid(b1))
@@ -449,10 +459,9 @@ ggplot(dat, aes(Condition, inhalAmp))+
 
 ggplot(dat, aes(Cond2, inhalAmp))+
   geom_boxplot()
-
 ```
 
-* No effect of conditon (nor baseline vs interaction) on inhalation amplitude during free speech.
+* No effect of condition (nor baseline vs interaction) on inhalation amplitude during free speech.
 
 ```{r}
 dat$Condition <- relevel(dat$Condition, ref="Light")
