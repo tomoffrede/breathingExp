@@ -1,0 +1,114 @@
+---
+title: "Analysis - f0 median (to compare with previous results)"
+author: "Tom Offrede"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(lme4)
+library(tidyverse)
+library(broom.mixed)
+
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folderInd <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/IndividualEffects/" # to save plots with individual effects
+
+orderCond <- c("Sitting", "Light", "Heavy")
+orderCondBase <- c("Baseline", orderCond)
+orderAct <- c("watching", "listening")
+
+load(paste0(folder, "DataReadSpeech-Median.RData"))
+```
+
+# Confederate
+
+## Read Speech
+
+### F0
+
+```{r}
+dat <- frbMed %>%
+  filter(grepl("Read", Task), Speaker == "Confederate")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+# Participants
+
+# Do speakers adapt their speech (f0) to an interlocutor who moves with different physical effort?
+
+## Solo read speech
+
+```{r}
+dat <- frbMed %>%
+  filter(Role=="Participant", Task=="ReadAlone")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Solo Read - F0")
+# ggsave(paste0(folderInd, "SoloRead-F0-Conditions.png"), width = 3000, height=3000, units="px")
+```
+
+For a couple of participants, increase with condition. In general, no difference.
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+* F0 didn't change across conditions during solo read speech.
+
+```{r}
+summary(f1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(f1))
+qqnorm(resid(f1));qqline(resid(f1))
+plot(fitted(f1), resid(f1))
+```
+
+## Synchronous read speech
+
+```{r}
+dat <- frbMed %>%
+  filter(Role=="Participant", Task=="ReadJoint")
+```
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Speaker, scales="free_y")+
+  ggtitle("Sync Read - F0")
+ggsave(paste0(folderInd, "SyncRead-F0-Conditions.png"), width = 3000, height=3000, units="px")
+```
+
+For most, increase with condition.
+
+```{r}
+ggplot(dat, aes(Condition, f0raw))+
+  geom_boxplot()
+```
+
+* F0 is higher during Heavy Biking than Sitting or Light Biking.
+* There is no significant difference between Light and Sitting, but a tendency for Light to have higher f0 (following the pattern).
+
+```{r}
+# dat$Condition <- relevel(dat$Condition, ref="Light")
+
+summary(b1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
+
+par(mfrow=c(2, 2))
+hist(resid(b1))
+qqnorm(resid(b1));qqline(resid(b1))
+plot(fitted(b1), resid(b1))
+```
+

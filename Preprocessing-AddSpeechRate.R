@@ -96,5 +96,15 @@ for(i in 1:nrow(listR)){
   srr <- rbind(srr, ipu)
 }
 
+srr <- srr %>% 
+  mutate(speaker = ifelse(substr(file, 2, 2) == "-", "Confederate", substr(file, 4, 6)),
+         condition = case_when(
+           substr(file, 1, 1) == "B" ~ "Baseline",
+           substr(file, 1, 1) == "S" ~ "Sitting",
+           substr(file, 1, 1) == "L" ~ "Light",
+           substr(file, 1, 1) == "H" ~ "Heavy"
+         )
+         )
+
 save(srr, file=paste0(folder, "DataSpeechRate_Reading.RData"))
 

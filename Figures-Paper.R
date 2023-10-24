@@ -48,7 +48,7 @@ green <- "#4FC46AFF"
 
 # Figure of breath waves
 
-# commenting out to save a few seconds when I want to run the entire scriptz
+# commenting out to save a few seconds when I want to run the entire script
 b <- readWave(paste0(folder3, "BF-ATN003_SUM_200_breath_100.wav"))
 bw <- data.frame(w = b@left[(37.75*b@samp.rate):(46.65*b@samp.rate)],
                  time = seq(0, 8.91, length.out=891)) # 891 is the number of rows of b@left[...]
@@ -115,7 +115,7 @@ c <- c %>%
                 annotations = c("**", "**"), textsize=6,
                 y = 3.5)+
     labs(title="Confederate (Solo)",
-         y = "Breath Cycle Duration (s)",
+         y = "Breath Cycle Dur. (s)",
          x = "")+
     theme(axis.title = element_text(size=17),
           title = element_text(size=13),
@@ -880,7 +880,7 @@ dat <- bc
 summary(b1 <- lm(inhalAmp ~ condition, dat))
 
 c <- tidy(b1) %>%
-  mutate(term = ifelse(grepl("Intercept", term), "Light B.", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
+  mutate(term = ifelse(grepl("Intercept", term), "Heavy B.", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Light", term), "Light B.", term)))) %>% 
   rename(coefficient = estimate, Condition = term)
 c$Estimate <- c$coefficient + c$coefficient[1]
 c$Estimate[1] <- c$coefficient[1]
@@ -896,7 +896,7 @@ c <- c %>%
     labs(title="",
          y = "Inhalation Amplitude (V)",
          x = "")+
-    ylim(c(0.351,0.52)))
+    ylim(c(0.352,0.52)))
 
 ## Participants
 
@@ -958,7 +958,7 @@ c <- c %>%
     labs(title="",
          y = "",
          x = "")+
-    ylim(c(0.351,0.52)))
+    ylim(c(0.352,0.52)))
 
 ##############################
 
@@ -973,105 +973,105 @@ ggsave(paste0(folder2, "WatchingBreathing.png"), width = 2000, height=2000, unit
 ############################################################
 ############################################################
 
-# # Solo vs Sync Speech - Cycle Duration
-# 
-# dat <- brm %>%
-#   filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
-# 
-# summary(b1 <- lmer(cycleDur ~ Task + (1+Task | Speaker), dat))
-# 
-# c <- tidy(b1) %>%
-#   filter(effect == "fixed") %>% 
-#   mutate(term = ifelse(grepl("Intercept", term), "Read Solo", "Read Synchronous")) %>% 
-#   rename(coefficient = estimate, Condition = term)
-# c$Estimate <- c$coefficient + c$coefficient[1]
-# c$Estimate[1] <- c$coefficient[1]
-# c <- c %>% 
-#   mutate(ymin = Estimate - (std.error/2),
-#          ymax= Estimate + (std.error/2))
-# 
-# (rd <- ggplot(c, aes(Condition, Estimate))+
-#     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-#     geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
-#     geom_line(aes(group=1), color=blue)+
-#     labs(title="Solo vs. Synchronous Reading",
-#          y = "Breath Cycle Duration (s)",
-#          x = ""))
-# 
-# ##############################
-# 
-# # Solo vs Sync Speech - Inhalation Amplitude
-# 
-# dat <- brm %>%
-#   filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
-# 
-# summary(b1 <- lmer(inhalAmp ~ Task + (1+Task | Speaker), dat))
-# 
-# c <- tidy(b1) %>%
-#   filter(effect == "fixed") %>% 
-#   mutate(term = ifelse(grepl("Intercept", term), "Read Solo", "Read Synchronous")) %>% 
-#   rename(coefficient = estimate, Condition = term)
-# c$Estimate <- c$coefficient + c$coefficient[1]
-# c$Estimate[1] <- c$coefficient[1]
-# c <- c %>% 
-#   mutate(ymin = Estimate - (std.error/2),
-#          ymax= Estimate + (std.error/2))
-# 
-# (ri <- ggplot(c, aes(Condition, Estimate))+
-#     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-#     geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
-#     geom_line(aes(group=1), color=blue)+
-#     geom_signif(comparisons = list(c("Read Solo", "Read Synchronous")),
-#                 annotations = c("*"),
-#                 y=0.425)+
-#     labs(title="",
-#          y = "Inhalation Amplitude (V)",
-#          x = "")+
-#     ylim(c(0.374, 0.43)))
-# 
-# ##############################
-# 
-# # Solo vs Sync Speech - F0
-# 
-# dat <- frb %>%
-#   filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
-# 
-# summary(b1 <- lmer(f0raw ~ Task + (1+Task | Speaker), dat))
-# 
-# c <- tidy(b1) %>%
-#   filter(effect == "fixed") %>% 
-#   mutate(term = ifelse(grepl("Intercept", term), "Read Solo", "Read Synchronous")) %>% 
-#   rename(coefficient = estimate, Condition = term)
-# c$Estimate <- c$coefficient + c$coefficient[1]
-# c$Estimate[1] <- c$coefficient[1]
-# c <- c %>% 
-#   mutate(ymin = Estimate - (std.error/2),
-#          ymax= Estimate + (std.error/2))
-# 
-# (rf <- ggplot(c, aes(Condition, Estimate))+
-#     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-#     geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
-#     geom_line(aes(group=1), color=blue)+
-#     labs(title="",
-#          y = "Fundamental Frequency (Hz)",
-#          x = "Task"))
-# 
-# ##############################
-# 
-# (t <- ggarrange(rd, ri, rf,
-#                ncol=1, nrow=3))
-# ggsave(paste0(folder2, "SoloSyncRead.png"), width = 1400, height=2750, units="px")
-# 
-# ############################################################
-# ############################################################
-# ############################################################
-# ############################################################
-# 
-# 
+# Solo vs Sync Speech - Cycle Duration
+
+dat <- brm %>%
+  filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
+
+summary(b1 <- lmer(cycleDur ~ Task + (1+Task | Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Read Solo", "Read Synchronous")) %>%
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>%
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(rd <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    labs(title="Solo vs. Synchronous Reading",
+         y = "Breath Cycle Duration (s)",
+         x = ""))
+
+##############################
+
+# Solo vs Sync Speech - Inhalation Amplitude
+
+dat <- brm %>%
+  filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
+
+summary(b1 <- lmer(inhalAmp ~ Task + (1+Task | Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Read Solo", "Read Synchronous")) %>%
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>%
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(ri <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    geom_signif(comparisons = list(c("Read Solo", "Read Synchronous")),
+                annotations = c("*"),
+                y=0.425)+
+    labs(title="",
+         y = "Inhalation Amplitude (V)",
+         x = "")+
+    ylim(c(0.374, 0.43)))
+
+##############################
+
+# Solo vs Sync Speech - F0
+
+dat <- frb %>%
+  filter(Role=="Participant", Task %in% c("ReadJoint", "ReadAlone"))
+
+summary(b1 <- lmer(f0raw ~ Task + (1+Task | Speaker), dat))
+
+c <- tidy(b1) %>%
+  filter(effect == "fixed") %>%
+  mutate(term = ifelse(grepl("Intercept", term), "Read Solo", "Read Synchronous")) %>%
+  rename(coefficient = estimate, Condition = term)
+c$Estimate <- c$coefficient + c$coefficient[1]
+c$Estimate[1] <- c$coefficient[1]
+c <- c %>%
+  mutate(ymin = Estimate - (std.error/2),
+         ymax= Estimate + (std.error/2))
+
+(rf <- ggplot(c, aes(Condition, Estimate))+
+    geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
+    geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
+    geom_line(aes(group=1), color=blue)+
+    labs(title="",
+         y = "Fundamental Frequency (Hz)",
+         x = "Task"))
+
+##############################
+
+(t <- ggarrange(rd, ri, rf,
+               ncol=1, nrow=3))
+ggsave(paste0(folder2, "SoloSyncRead.png"), width = 1400, height=2750, units="px")
+
+############################################################
+############################################################
+############################################################
+############################################################
+
+
 # # Individual differences - Listening breathing - Inhalation amplitude
 # 
 # dat <- brm %>%
-#   filter(Speaker%in% c("PER", "CBE", "JPW", "BND"), act == "listening") %>% 
+#   filter(Speaker%in% c("PER", "CBE", "JPW", "BND"), act == "listening") %>%
 #   mutate(across(Speaker, factor, levels=c("PER", "CBE", "JPW", "BND")),
 #          Speaker = ifelse(Speaker=="PER", "A", ifelse(Speaker=="CBE", "B", ifelse(Speaker=="JPW", "C", "D"))))
 # 
@@ -1096,13 +1096,13 @@ ggsave(paste0(folder2, "WatchingBreathing.png"), width = 2000, height=2000, unit
 #   ylim(c(0, 1))
 # 
 # ggsave(paste0(folder2, "IndivDiff-Listening.png"), width = 2000, height=2000, units="px")
-# 
-# ############################################################
-# 
+
+############################################################
+
 # # Individual differences - Baseline vs. Interaction - F0
 # 
 # dat <- fsm %>%
-#   filter(Speaker%in% c("TKJ", "QRC"), Task == "Free", Condition %in% c("Baseline", "Sitting")) %>% 
+#   filter(Speaker%in% c("TKJ", "QRC"), Task == "Free", Condition %in% c("Baseline", "Sitting")) %>%
 #   mutate(across(Speaker, factor, levels=c("TKJ", "QRC")),
 #          Speaker = ifelse(Speaker=="TKJ", "A", "B"))
 # 
@@ -1128,13 +1128,13 @@ ggsave(paste0(folder2, "WatchingBreathing.png"), width = 2000, height=2000, unit
 #     ylim(c(95, 300))
 # 
 # ggsave(paste0(folder2, "IndivDiff-BaselineInteraction.png"), width = 2000, height=1500, units="px")
-# 
-# ############################################################
-# 
+
+############################################################
+
 # # Individual differences - Conditions - Inhalation Amplitude
 # 
 # dat <- brm %>%
-#   filter(Speaker%in% c("QRC", "RZU", "WJH", "YRI"), act == "speaking", Task=="Free", Condition!="Baseline") %>% 
+#   filter(Speaker%in% c("QRC", "RZU", "WJH", "YRI"), act == "speaking", Task=="Free", Condition!="Baseline") %>%
 #   mutate(across(Speaker, factor, levels=c("QRC", "RZU", "WJH", "YRI")),
 #          Speaker = ifelse(Speaker=="QRC", "A", ifelse(Speaker=="RZU", "B", ifelse(Speaker=="WJH", "C", "D"))))
 # 
@@ -1169,12 +1169,12 @@ ggsave(paste0(folder2, "WatchingBreathing.png"), width = 2000, height=2000, unit
 # Individual differences - Watching - Cycle Duration
 
 dat <- brm %>%
-  filter(Speaker%in% c("RZU", "JPW", "YED"), act == "watching") %>% 
-  mutate(across(Speaker, factor, levels=c("RZU", "JPW", "YED")),
-         Speaker = ifelse(Speaker=="RZU", "A", ifelse(Speaker=="JPW", "B", "C")))
+  filter(Speaker%in% c("RZU", "YED"), act == "watching") %>% 
+  mutate(across(Speaker, factor, levels=c("RZU", "YED")),
+         Speaker = ifelse(Speaker=="RZU", "A", "B"))
 
 dat$Condition <- relevel(dat$Condition, ref="Light")
-summary(lm(cycleDur ~ Condition, dat %>% filter(Speaker=="C")))
+summary(lm(cycleDur ~ Condition, dat %>% filter(Speaker=="A")))
 
 (a <- ggplot(dat %>% filter(Speaker=="A"), aes(Condition, cycleDur))+
     geom_boxplot(color=blue)+
@@ -1183,38 +1183,70 @@ summary(lm(cycleDur ~ Condition, dat %>% filter(Speaker=="C")))
          x = "")+
     geom_signif(comparisons = list(c("Sitting", "Light"), c("Sitting", "Heavy")),
                 annotations = c("*", "**"),
-                y=c(5.25, 5.55))+
+                y=c(5.2, 5.75))+
     scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
     theme(axis.text.x = element_text(size=10))+
-    ylim(c(2.8, 5.8)))
+    ylim(c(2.8, 8.5)))
 
 (b <- ggplot(dat %>% filter(Speaker=="B"), aes(Condition, cycleDur))+
     geom_boxplot(color=blue)+
     labs(title="B",
          y = "",
          x = "")+
-    scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
-    theme(axis.text.x = element_text(size=10)))
-
-(c <- ggplot(dat %>% filter(Speaker=="C"), aes(Condition, cycleDur))+
-    geom_boxplot(color=blue)+
-    labs(title="C",
-         y = "",
-         x = "")+
     geom_signif(comparisons = list(c("Sitting", "Light"), c("Light", "Heavy")),
                 annotations = c("**", "***"),
-                y=8)+
+                y=7.75)+
     scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
     theme(axis.text.x = element_text(size=10))+
     ylim(c(2.8,8.5)))
 
-w <- ggarrange(a,b,c, ncol=3, nrow=1)
-annotate_figure(w, bottom=text_grob("Confederate Condition", size = 14))
+w <- ggarrange(a,b, ncol=2, nrow=1)
+(w <- annotate_figure(w, top=text_grob("Participant Watching (Confederate Silent)", face="bold", size = 12)))
 
-ggsave(paste0(folder2, "IndivDiff-Watching.png"), width = 2000, height=1200, units="px", dpi="retina")
-
+# ggsave(paste0(folder2, "IndivDiff-Watching.png"), width = 2000, height=1200, units="px", dpi="retina")
 
 ############################################################
+
+# Individual differences - Conditions - Inhalation Amplitude - Synch read
+
+dat <- brm %>%
+  filter(Speaker%in% c("TKJ", "WJH"), Task=="ReadJoint") %>% 
+  mutate(across(Speaker, factor, levels=c("TKJ", "WJH")),
+         Speaker = ifelse(Speaker=="TKJ", "A", "B"))
+
+dat$Condition <- relevel(dat$Condition, ref="Sitting")
+summary(lm(inhalAmp ~ Condition, dat %>% filter(Speaker=="B")))
+
+(a <- ggplot(dat %>% filter(Speaker=="A"), aes(Condition, inhalAmp))+
+    geom_boxplot(color=blue)+
+    labs(title="C",
+         y = "Inhalation Amplitude (V)",
+         x = "")+
+    geom_signif(comparisons = list(c("Sitting", "Light"), c("Sitting", "Heavy")),
+                annotations = c("*", "*"),
+                y = c(1, 1.1))+
+    scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
+    ylim(c(0.05,1.2)))
+
+(b <- ggplot(dat %>% filter(Speaker=="B"), aes(Condition, inhalAmp))+
+    geom_boxplot(color=blue)+
+    labs(title="D",
+         y = "",
+         x = "")+
+    geom_signif(comparisons = list(c("Sitting", "Light")),
+                annotations = c("*"),
+                y = 0.81)+
+    scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
+    ylim(c(0.05,1.2)))
+
+
+sy <- ggarrange(a,b, ncol=2, nrow=1)
+(sy <- annotate_figure(sy, top=text_grob("Synchronous Read Speech", face="bold", size = 12)))
+
+# ggsave(paste0(folder2, "IndivDiff-SyncInhalAmp.png"), width = 2000, height=2000, units="px", dpi="retina")
+
+############################################################
+
 
 # Individual differences - Conditions - F0 - Solo
 
@@ -1228,95 +1260,43 @@ summary(lm(f0raw ~ Condition, dat %>% filter(Speaker=="A")))
 
 (a <- ggplot(dat %>% filter(Speaker=="A"), aes(Condition, f0raw))+
     geom_boxplot(color=blue)+
-    labs(title="A",
+    labs(title="E",
          y = "Fundamental Frequency (Hz)",
          x = "")+
     geom_signif(comparisons = list(c("Light", "Heavy"), c("Sitting", "Heavy")),
                 annotations = c("**", "***"),
-                y = c(227.5, 231.5))+
+                y = c(229, 236))+
     scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
-    ylim(c(185, 235)))
+    ylim(c(185, 252)))
 
 (b <- ggplot(dat %>% filter(Speaker=="B"), aes(Condition, f0raw))+
     geom_boxplot(color=blue)+
-    labs(title="B",
+    labs(title="F",
          y = "",
          x = "")+
     geom_signif(comparisons = list(c("Light", "Heavy"), c("Sitting", "Heavy")),
                 annotations = c("***", "**"),
-                y = c(242.5, 246))+
+                y = c(243.3, 246))+
     scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
-  ylim(c(200,250)))
+  ylim(c(185,252)))
 
 so <- ggarrange(a,b, ncol=2, nrow=1)
-annotate_figure(so, bottom=text_grob("Confederate Condition", size = 14))
+(so <- annotate_figure(so, top=text_grob("Solo Read Speech", face="bold", size = 12),
+                bottom=text_grob("Confederate Condition", size = 12)))
 
-ggsave(paste0(folder2, "IndivDiff-SoloF0.png"), width = 2000, height=1300, units="px", dpi="retina")
+(ind <- ggarrange(w, sy, so, nrow=3, ncol=1))
+
+ggsave(paste0(folder2, "IndiviualEffects.png"), width = 2000, height=2750, units="px", dpi="retina")
 
 ############################################################
 
-# Individual differences - Conditions - F0 - Solo
-
-dat <- brm %>%
-  filter(Speaker%in% c("TKJ", "TSE", "WJH", "WQG"), Task=="ReadJoint") %>% 
-  mutate(across(Speaker, factor, levels=c("TKJ", "TSE", "WJH", "WQG")),
-         Speaker = ifelse(Speaker=="TKJ", "A", ifelse(Speaker=="TSE", "B", ifelse(Speaker=="WJH", "C", "D"))))
-
-dat$Condition <- relevel(dat$Condition, ref="Light")
-summary(lm(inhalAmp ~ Condition, dat %>% filter(Speaker=="D")))
-
-(a <- ggplot(dat %>% filter(Speaker=="A"), aes(Condition, inhalAmp))+
-    geom_boxplot(color=blue)+
-    labs(title="A",
-         y = "Inhalation Amplitude (V)",
-         x = "")+
-    geom_signif(comparisons = list(c("Sitting", "Light"), c("Sitting", "Heavy")),
-                annotations = c("*", "*"),
-                y = c(1, 1.1))+
-    scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
-    ylim(c(0.05,1.2)))
-
-(b <- ggplot(dat %>% filter(Speaker=="B"), aes(Condition, inhalAmp))+
-    geom_boxplot(color=blue)+
-    labs(title="B",
-         y = "",
-         x = "")+
-    scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B.")))
-
-(c <- ggplot(dat %>% filter(Speaker=="C"), aes(Condition, inhalAmp))+
-    geom_boxplot(color=blue)+
-    labs(title="C",
-         y = "Inhalation Amplitude (V)",
-         x = "")+
-    geom_signif(comparisons = list(c("Sitting", "Light"), c("Light", "Heavy")),
-                annotations = c("*", "."),
-                y = 0.85)+
-    scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
-    ylim(c(0.185,0.9)))
-
-(d <- ggplot(dat %>% filter(Speaker=="D"), aes(Condition, inhalAmp))+
-    geom_boxplot(color=blue)+
-    labs(title="D",
-         y = "",
-         x = "")+
-    geom_signif(comparisons = list(c("Light", "Heavy")),
-                annotations = "*",
-                y = 0.9)+
-    scale_x_discrete(limits = order2, labels=c("Sitting", "Light B.", "Heavy B."))+
-    ylim(c(0, 1)))
-
-sy <- ggarrange(a,b,c,d, ncol=2, nrow=2)
-annotate_figure(sy, bottom=text_grob("Confederate Condition", size = 14))
-
-ggsave(paste0(folder2, "IndivDiff-SyncInhalAmp.png"), width = 2000, height=2000, units="px", dpi="retina")
-
-#####################
 
 # check confederate's movement cadence (for review rebuttal)
 
 m <- read.csv("C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/confederateCadence.csv", sep=";", na.strings = "") %>% 
-  mutate(cadence = footCycles/duration) %>% 
-  group_by(condition, act) %>% 
+  mutate(duration = duration/60,
+         cadence = footCycles/duration) %>% 
+  group_by(condition) %>% 
   mutate(meanC = mean(cadence)) %>% 
   ungroup() %>% 
   mutate(file = paste0(substr(condition, 1, 1), "-", substr(text, 1, 4)))
