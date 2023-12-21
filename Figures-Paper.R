@@ -479,7 +479,7 @@ c <- c %>%
     scale_x_discrete(limits = order)+
     geom_signif(comparisons = list(c("Light B.", "Heavy B."), c("Sitting", "Heavy B.")),
                 annotations = c("*", "***"), textsize=6,
-                y = c(212.5, 215))+
+                y = c(212.5, 218))+
     labs(title="",
          y = "",
          x = "")+
@@ -492,96 +492,10 @@ c <- c %>%
 ############################################################
 ############################################################
 
-# ## Free speech - Cycle duration - Across Conditions
-# dat <- brm %>% 
-#   filter(Role=="Participant", Task=="Free", act=="speaking", Condition!="Baseline")
-# 
-# dat$Condition <- relevel(dat$Condition, ref="Light")
-# summary(b1 <- lmer(cycleDur ~ Condition + (1+Condition| Speaker), dat))
-# 
-# c <- tidy(b1) %>%
-#   filter(effect == "fixed") %>% 
-#   mutate(term = ifelse(grepl("Intercept", term), "Light B.", ifelse(grepl("Sitting", term), "Sitting", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
-#   rename(coefficient = estimate, Condition = term)
-# c$Estimate <- c$coefficient + c$coefficient[1]
-# c$Estimate[1] <- c$coefficient[1]
-# c <- c %>% 
-#   mutate(ymin = Estimate - (std.error/2),
-#          ymax= Estimate + (std.error/2))
-# 
-# (pfd <- ggplot(c, aes(Condition, Estimate))+
-#     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-#     geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
-#     geom_line(aes(group=1), color=blue)+
-#     scale_x_discrete(limits = order)+
-#     labs(title="Participants",
-#          y = "",
-#          x = "")+
-#     ylim(c(2.25, 6.85)))
-# 
-# ##############################
-# 
-# ## Free speech - Inhalation amplitude - Across Conditions
-# dat <- brm %>% 
-#   filter(Role=="Participant", Task=="Free", act=="speaking", Condition!="Baseline")
-# 
-# summary(b1 <- lmer(inhalAmp ~ Condition + (1+Condition| Speaker), dat))
-# 
-# c <- tidy(b1) %>%
-#   filter(effect == "fixed") %>% 
-#   mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
-#   rename(coefficient = estimate, Condition = term)
-# c$Estimate <- c$coefficient + c$coefficient[1]
-# c$Estimate[1] <- c$coefficient[1]
-# c <- c %>% 
-#   mutate(ymin = Estimate - (std.error/2),
-#          ymax= Estimate + (std.error/2))
-# 
-# (pfi <- ggplot(c, aes(Condition, Estimate))+
-#     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-#     geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
-#     geom_line(aes(group=1), color=blue)+
-#     scale_x_discrete(limits = order)+
-#     labs(title="",
-#          y = "",
-#          x = "")+
-#     ylim(c(0.26, 0.56)))
-# 
-# ##############################
-# 
-# ## Free speech - F0 - Across Conditions
-# dat <- fsm %>% 
-#   filter(Role=="Participant", Task=="Free", Condition!="Baseline")
-# 
-# summary(b1 <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), dat))
-# 
-# c <- tidy(b1) %>%
-#   filter(effect == "fixed") %>% 
-#   mutate(term = ifelse(grepl("Intercept", term), "Sitting", ifelse(grepl("Light", term), "Light B.", ifelse(grepl("Heavy", term), "Heavy B.", term)))) %>% 
-#   rename(coefficient = estimate, Condition = term)
-# c$Estimate <- c$coefficient + c$coefficient[1]
-# c$Estimate[1] <- c$coefficient[1]
-# c <- c %>% 
-#   mutate(ymin = Estimate - (std.error/2),
-#          ymax= Estimate + (std.error/2))
-# 
-# (pff <- ggplot(c, aes(Condition, Estimate))+
-#     geom_errorbar(mapping=aes(ymin=ymin, ymax=ymax), width=0.3, color=blue)+
-#     geom_point(shape=shape, color=blue, stroke=1, size=2, fill="white")+
-#     geom_line(aes(group=1), color=blue)+
-#     scale_x_discrete(limits = order)+
-#     labs(title="",
-#          y = "",
-#          x = "Confederate Condition")+
-#     ylim(c(189.7, 222)))
-
-############################################################
-############################################################
-
 (condR <- ggarrange(crd, prd, sd, cri, pri, si, crf, prf, sf,
                   ncol=3, nrow=3))
 annotate_figure(condR, bottom=text_grob("Confederate Condition", size = 18))
-ggsave(paste0(folder2, "ReadConditions.png"), width = 2750, height=2750, units="px", dpi="retina")
+ggsave(paste0(folder2, "ReadConditions.png"), width = 4500, height=4500, units="px", dpi=500)
 
 # (condF <- ggarrange(cfd, pfd, cfi, pfi, cff, pff,
 #                     ncol=2, nrow=3))

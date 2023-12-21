@@ -28,7 +28,264 @@ orderAct <- c("watching", "listening")
 load(paste0(folder, "DataBreathing.RData"))
 load(paste0(folder, "DataReadSpeech.RData"))
 load(paste0(folder, "DataSpeech.RData"))
+load(paste0(folder, "DataConfBaselineBreathing.RData"))
 ```
+
+# Raw values for appendix
+
+## Cycle Duration
+
+### Confederate
+
+```{r}
+# Read Speech Solo
+## Sitting
+mean(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Sitting"], na.rm=TRUE) # 2.72
+median(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Sitting"], na.rm=TRUE) # 2.48
+sd(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Sitting"], na.rm=TRUE) # 1.11
+
+## Light
+mean(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Light"], na.rm=TRUE) # 3.06
+median(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Light"], na.rm=TRUE) # 3.03
+sd(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Light"], na.rm=TRUE) # 0.85
+
+## Heavy
+mean(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Heavy"], na.rm=TRUE) # 2.7
+median(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Heavy"], na.rm=TRUE) # 2.78
+sd(brm$cycleDur[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Heavy"], na.rm=TRUE) # 0.68
+
+# Watching (silent)
+## Sitting
+mean(bc$cycleDur[bc$condition=="Sitting"], na.rm=TRUE) # 2.98
+median(bc$cycleDur[bc$condition=="Sitting"], na.rm=TRUE) # 2.88
+sd(bc$cycleDur[bc$condition=="Sitting"], na.rm=TRUE) # 0.75
+
+## Light
+mean(bc$cycleDur[bc$condition=="Light"], na.rm=TRUE) # 2.57
+median(bc$cycleDur[bc$condition=="Light"], na.rm=TRUE) # 2.43
+sd(bc$cycleDur[bc$condition=="Light"], na.rm=TRUE) # 0.77
+
+## Heavy
+mean(bc$cycleDur[bc$condition=="Heavy"], na.rm=TRUE) # 2.25
+median(bc$cycleDur[bc$condition=="Heavy"], na.rm=TRUE) # 2.23
+sd(bc$cycleDur[bc$condition=="Heavy"], na.rm=TRUE) # 0.61
+```
+
+### Participants
+
+```{r}
+# Read Speech Solo
+## Baseline
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadBaseline" & brm$Condition=="Baseline"], na.rm=TRUE) # 4.77
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadBaseline" & brm$Condition=="Baseline"], na.rm=TRUE) # 4.32
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadBaseline" & brm$Condition=="Baseline"], na.rm=TRUE) # 2.46
+
+## Sitting
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Sitting"], na.rm=TRUE) # 4.59
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Sitting"], na.rm=TRUE) # 4.2
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Sitting"], na.rm=TRUE) # 2.23
+
+## Light
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Light"], na.rm=TRUE) # 4.66
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Light"], na.rm=TRUE) # 4.24
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Light"], na.rm=TRUE) # 2.35
+
+## Heavy
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Heavy"], na.rm=TRUE) # 4.59
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Heavy"], na.rm=TRUE) # 4.27
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Heavy"], na.rm=TRUE) # 2.1
+
+# Read Speech Sync
+## Sitting
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Sitting"], na.rm=TRUE) # 4.58
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Sitting"], na.rm=TRUE) # 4.08
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Sitting"], na.rm=TRUE) # 2.19
+
+## Light
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Light"], na.rm=TRUE) # 4.54
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Light"], na.rm=TRUE) # 3.89
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Light"], na.rm=TRUE) # 2.51
+
+## Heavy
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Heavy"], na.rm=TRUE) # 4.45
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Heavy"], na.rm=TRUE) # 3.86
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Heavy"], na.rm=TRUE) # 2.27
+
+# Watching (silent)
+## Sitting
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Sitting"], na.rm=TRUE) # 3.85
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Sitting"], na.rm=TRUE) # 3.43
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Sitting"], na.rm=TRUE) # 1.7
+
+## Light
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Light"], na.rm=TRUE) # 4.03
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Light"], na.rm=TRUE) # 3.42
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Light"], na.rm=TRUE) # 2.4
+
+## Heavy
+mean(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Heavy"], na.rm=TRUE) # 3.89
+median(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Heavy"], na.rm=TRUE) # 3.31
+sd(brm$cycleDur[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Heavy"], na.rm=TRUE) # 1.96
+```
+
+## Inahlation Amplitude
+
+### Confederate
+
+```{r}
+# Read Speech Solo
+## Sitting
+mean(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Sitting"], na.rm=TRUE) # 0.28
+median(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Sitting"], na.rm=TRUE) # 0.27
+sd(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Sitting"], na.rm=TRUE) # 0.12
+
+## Light
+mean(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Light"], na.rm=TRUE) # 0.51
+median(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Light"], na.rm=TRUE) # 0.49
+sd(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Light"], na.rm=TRUE) # 0.18
+
+## Heavy
+mean(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Heavy"], na.rm=TRUE) # 0.6
+median(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Heavy"], na.rm=TRUE) # 0.63
+sd(brm$inhalAmp[brm$Speaker=="Confederate" & grepl("Read", brm$Task) & brm$Condition=="Heavy"], na.rm=TRUE) # 0.16
+
+# Watching (silent)
+## Sitting
+mean(bc$inhalAmp[bc$condition=="Sitting"], na.rm=TRUE) # 0.38
+median(bc$inhalAmp[bc$condition=="Sitting"], na.rm=TRUE) # 0.34
+sd(bc$inhalAmp[bc$condition=="Sitting"], na.rm=TRUE) # 0.16
+
+## Light
+mean(bc$inhalAmp[bc$condition=="Light"], na.rm=TRUE) # 0.37
+median(bc$inhalAmp[bc$condition=="Light"], na.rm=TRUE) # 0.32
+sd(bc$inhalAmp[bc$condition=="Light"], na.rm=TRUE) # 0.17
+
+## Heavy
+mean(bc$inhalAmp[bc$condition=="Heavy"], na.rm=TRUE) # 0.37
+median(bc$inhalAmp[bc$condition=="Heavy"], na.rm=TRUE) # 0.37
+sd(bc$inhalAmp[bc$condition=="Heavy"], na.rm=TRUE) # 0.15
+```
+
+### Participants
+
+```{r}
+# Read Speech Solo
+## Baseline
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadBaseline" & brm$Condition=="Baseline"], na.rm=TRUE) # 0.42
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadBaseline" & brm$Condition=="Baseline"], na.rm=TRUE) # 0.39
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadBaseline" & brm$Condition=="Baseline"], na.rm=TRUE) # 0.19
+
+## Sitting
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.38
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.36
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.21
+
+## Light
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Light"], na.rm=TRUE) # 0.4
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Light"], na.rm=TRUE) # 0.36
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Light"], na.rm=TRUE) # 0.19
+
+## Heavy
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.41
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.38
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadAlone" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.2
+
+# Read Speech Sync
+## Sitting
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.36
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.35
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.18
+
+## Light
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Light"], na.rm=TRUE) # 0.39
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Light"], na.rm=TRUE) # 0.36
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Light"], na.rm=TRUE) # 0.2
+
+## Heavy
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.36
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.32
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$Task=="ReadJoint" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.2
+
+# Watching (silent)
+## Sitting
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.47
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.45
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Sitting"], na.rm=TRUE) # 0.22
+
+## Light
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Light"], na.rm=TRUE) # 0.4
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Light"], na.rm=TRUE) # 0.39
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Light"], na.rm=TRUE) # 0.21
+
+## Heavy
+mean(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.39
+median(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.36
+sd(brm$inhalAmp[brm$Speaker!="Confederate" & brm$act=="watching" & brm$Condition=="Heavy"], na.rm=TRUE) # 0.21
+```
+
+## f0
+
+### Confederate
+
+```{r}
+# Read Speech Solo
+## Sitting
+mean(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Sitting"], na.rm=TRUE) # 200.96
+median(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Sitting"], na.rm=TRUE) # 199.6
+sd(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Sitting"], na.rm=TRUE) # 16.1
+
+## Light
+mean(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Light"], na.rm=TRUE) # 209.3
+median(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Light"], na.rm=TRUE) # 210.1
+sd(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Light"], na.rm=TRUE) # 14.72
+
+## Heavy
+mean(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Heavy"], na.rm=TRUE) # 220.41
+median(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Heavy"], na.rm=TRUE) # 221.75
+sd(frb$f0raw[frb$Speaker=="Confederate" & grepl("Read", frb$Task) & frb$Condition=="Heavy"], na.rm=TRUE) # 13.08
+```
+
+### Participants
+
+```{r}
+# Read Speech Solo
+## Baseline
+mean(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadBaseline" & frb$Condition=="Baseline"], na.rm=TRUE) # 200.56
+median(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadBaseline" & frb$Condition=="Baseline"], na.rm=TRUE) # 204.87
+sd(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadBaseline" & frb$Condition=="Baseline"], na.rm=TRUE) # 30.1
+
+## Sitting
+mean(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Sitting"], na.rm=TRUE) # 208.2
+median(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Sitting"], na.rm=TRUE) # 210.2
+sd(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Sitting"], na.rm=TRUE) # 23.86
+
+## Light
+mean(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Light"], na.rm=TRUE) # 208.63
+median(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Light"], na.rm=TRUE) # 211.08
+sd(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Light"], na.rm=TRUE) # 27.26
+
+## Heavy
+mean(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Heavy"], na.rm=TRUE) # 209.49
+median(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Heavy"], na.rm=TRUE) # 210.7
+sd(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadAlone" & frb$Condition=="Heavy"], na.rm=TRUE) # 24.56
+
+# Read Speech Sync
+## Sitting
+mean(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Sitting"], na.rm=TRUE) # 206.21
+median(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Sitting"], na.rm=TRUE) # 209.74
+sd(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Sitting"], na.rm=TRUE) # 28.24
+
+## Light
+mean(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Light"], na.rm=TRUE) # 208.13
+median(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Light"], na.rm=TRUE) # 211.58
+sd(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Light"], na.rm=TRUE) # 27.42
+
+## Heavy
+mean(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Heavy"], na.rm=TRUE) # 211.57
+median(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Heavy"], na.rm=TRUE) # 214.12
+sd(frb$f0raw[frb$Speaker!="Confederate" & frb$Task=="ReadJoint" & frb$Condition=="Heavy"], na.rm=TRUE) # 27.02
+```
+
 
 # Confederate
 
