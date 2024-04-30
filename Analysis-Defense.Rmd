@@ -1,0 +1,210 @@
+---
+title: "Analysis-Defense"
+author: "Tom Offrede"
+date: "2024-04-29"
+output:
+  html_document:
+    toc: true
+    toc_float: 
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(lmerTest)
+library(tidyverse)
+library(broom.mixed)
+
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folderInd <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Defense/" # to save plots with individual effects
+
+orderCond <- c("Sitting", "Light", "Heavy")
+orderCondBase <- c("Baseline", orderCond)
+orderAct <- c("watching", "listening")
+
+load(paste0(folder, "DataBreathing2.RData"))
+load(paste0(folder, "DataConfBaselineBreathing.RData"))
+
+brm <- brm2 |> rename(speaker = Speaker, condition = Condition) |> 
+  mutate(Ifraction = inhalDur / cycleDur) |> # I-fraction is defined by Wilder & Baker 1974 as "the ratio of the length of inspiration to the total duration of the respiratory cycle"
+  filter(Role=="Participant")
+brm <- droplevels(brm)
+brc0 <- brm2 |> 
+  rename(speaker = Speaker, condition = Condition) |> 
+  filter(Role=="Confederate") |> 
+  select(names(bc))
+brc <- rbind(brc0, bc) |> 
+  mutate(Ifraction = inhalDur / cycleDur)
+brc <- droplevels(brc)
+remove(brm2)
+```
+
+# Watching vs Listening
+
+## Cycle duration
+
+Breath cycles are shorter during listening, i.e. faster respiration rate. This is in line with previous literature (listening breathing is somewhere between quiet and speech breathing).
+
+```{r}
+ggplot(brm |> filter(act%in%c("watching", "listening"), cycleDur<7.5), aes(act, cycleDur))+
+  geom_boxplot()+
+  scale_x_discrete(limits=orderAct)
+
+summary(lmer(cycleDur ~ act + (1+act|speaker), brm |> filter(act%in%c("watching", "listening"))))
+```
+
+**No condition effect during listening**
+
+```{r}
+ggplot(brm |> filter(act%in%c("listening"), cycleDur<7.5), aes(condition, cycleDur))+
+  geom_boxplot()
+
+summary(lmer(cycleDur ~ condition + (1|speaker), brm |> filter(act%in%c("listening"))))
+```
+
+## Inhalation amplitude
+
+Inhalation amplitude is much lower while listening than watching
+
+```{r}
+ggplot(brm |> filter(#!is.na(act)
+  act%in%c("watching", "listening")
+  ), aes(act, inhalAmp))+
+  geom_boxplot()+
+  scale_x_discrete(limits=orderAct)
+
+summary(lmer(inhalAmp ~ act + (1+act|speaker), brm |> filter(#!is.na(act)
+  act%in%c("watching", "listening")
+             )))
+```
+
+**No condition effect during listening**
+
+```{r}
+ggplot(brm |> filter(act%in%c("listening")), aes(condition, inhalAmp))+
+  geom_boxplot()
+
+summary(lmer(inhalAmp ~ condition + (1+condition|speaker), brm |> filter(#!is.na(act)
+  act%in%c("listening")
+             )))
+```
+
+## I-fraction
+
+```{r}
+ggplot(brm |> filter(#!is.na(act)
+  act%in%c("watching", "listening")
+  ), aes(act, Ifraction))+
+  geom_boxplot()
+
+summary(lmer(Ifraction ~ act + (1+act|speaker), brm |> filter(#!is.na(act)
+  act%in%c("watching", "listening")
+             )))
+```
+
+
+```{r}
+ggplot(brm |> filter(#!is.na(act)
+  act%in%c("watching", "listening")
+  ), aes(condition, Ifraction))+
+  geom_boxplot()+
+  facet_wrap(~act)
+
+summary(lmer(Ifraction ~ condition + (1|speaker), brm |> filter(#!is.na(act)
+  act%in%c("listening")
+             )))
+```
+
+# Confederate?
+
+## Cycle duration
+
+In read speech, we had found a weird pattern for cycle duration (reported in paper).
+
+In spontaneous speech, the expected pattern is found: faster breathing with higher effort (although, no difference between Light and Heavy).
+
+Overall, breathing also tends to be faster during spontaneous than read speech, but only slightly so (p = 0.042).
+
+```{r}
+brc$condition <- relevel(brc$condition, ref="Light")
+
+ggplot(brc|> filter(act!="watching"), aes(condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits=orderCond)
+
+ggplot(brc|> filter(act!="watching"), aes(act, cycleDur))+
+  geom_boxplot()
+
+summary(lm(cycleDur ~ condition, brc |> filter(act=="ReadAlone")))
+summary(lm(cycleDur ~ condition, brc |> filter(act=="speaking")))
+
+summary(lm(cycleDur ~ act, brc |> filter(act!="watching")))
+```
+
+## Inhalation amplitude
+
+Inhalation amplitude increased more with condition during read speech than with spontaneous speech (during sitting, there was no difference between read and spontaneous). In other words: overall, amplitude is larger in read than spontaneous speech; and this is accounted for by the larger effect of condition on amplitude in read speech.
+ 
+```{r}
+ggplot(brc|> filter(act!="watching"), aes(condition, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits=orderCond)
+
+ggplot(brc|> filter(act!="watching"), aes(act, inhalAmp))+
+  geom_boxplot()
+
+summary(lm(inhalAmp ~ condition, brc |> filter(act=="ReadAlone")))
+summary(lm(inhalAmp ~ condition, brc |> filter(act=="speaking")))
+
+summary(lm(inhalAmp ~ act, brc |> filter(act!="watching")))
+```
+
+
+## I-fraction
+
+I-fraction is higher overall in spontaneous speech than read speech. But in both, I-fraction generally increases with increase in effort (although no difference between Light and Heavy during spontaneous speech, as was the case for cycle duration; and no difference between Sitting and Light during read speech).
+
+Remember: higher I-fraction = more balanced inhalation / exhalation durations.
+ 
+```{r}
+ggplot(brc|> filter(act!="watching"), aes(condition, Ifraction))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits=orderCond)
+
+ggplot(brc|> filter(act!="watching"), aes(act, Ifraction))+
+  geom_boxplot()
+
+summary(lm(Ifraction ~ condition, brc |> filter(act=="ReadAlone")))
+summary(lm(Ifraction ~ condition, brc |> filter(act=="speaking")))
+
+summary(lm(Ifraction ~ act, brc |> filter(act!="watching")))
+```
+
+# Participants: exploring read vs spontaneous speech
+
+## First, read baseline vs read alone vs read joint
+
+```{r}
+brm$condition <- relevel(brm$condition, ref="Light")
+
+ggplot(brm|> filter(act!="watching"), aes(condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits=orderCond)
+
+ggplot(brm|> filter(act!="watching"), aes(act, cycleDur))+
+  geom_boxplot()
+
+summary(lm(cycleDur ~ condition, brm |> filter(act=="ReadAlone")))
+summary(lm(cycleDur ~ condition, brm |> filter(act=="speaking")))
+
+summary(lm(cycleDur ~ act, brm |> filter(act!="watching")))
+```
+
+

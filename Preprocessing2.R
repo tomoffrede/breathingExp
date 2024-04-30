@@ -922,6 +922,7 @@ frb <- merge(frs, br %>% select(file, breathRate), by="file") %>%
 conffiles <- c("irs", "obb", "oli", "ome", "fer", "chw")
 
 d <- list(fs, br, frb)
+# d <- list(br)
 
 for(i in 1:length(d)){
   d[[i]]$Speaker <- substr(d[[i]]$file, 4, 6)
@@ -949,6 +950,7 @@ for(i in 1:length(d)){
 
 }
 
+# br <- d[[1]]
 fs <- d[[1]]
 br <- d[[2]]
 frb <- d[[3]]
@@ -961,6 +963,7 @@ brm <- merge(br, meta, by="Speaker", all=TRUE)
 frm <- merge(frb, meta, by="Speaker", all=TRUE)
 
 dat <- list(fsm, brm, frm)
+# dat <- list(brm)
 
 for(i in 1:length(dat)){ # since we have one dataset with breathing info and one with speech info, do all the same naming of conditions etc for each
   dat[[i]]$Order[dat[[i]]$Condition=="Baseline"] <- 0
@@ -1127,10 +1130,11 @@ fsm <- dat[[1]] %>%
          Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction")) %>% 
   distinct()
 brm <- dat[[2]] %>% 
+# brm <- dat[[1]] %>%
   mutate_at(c("Task", "act", "Condition", "Speaker"), as.factor) %>% 
   mutate_at(c("inhalDur", "inhalAmp"), as.numeric) %>% 
   mutate(across(Condition, factor, levels=c("Baseline", "Sitting","Light","Heavy")),
-         across(act, factor, levels=c("watching","listening", "speaking")),
+         # across(act, factor, levels=c("watching","listening", "speaking")),
          Cond2 = ifelse(Condition == "Baseline", "Baseline", "Interaction")) %>% 
   distinct()
 frb <- dat[[3]] %>% 
