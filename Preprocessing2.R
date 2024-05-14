@@ -1149,7 +1149,11 @@ fsm <- merge(fsm, brm %>% select(c(file, breathCycleDurMean, breathRate, inhalDu
 # unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
 # fsm$f0IPUmean[fsm$file=="SF-WJH"] <- unique(fsm$f0IPUmean[fsm$file=="SF-WJH"])[!is.na(unique(fsm$f0IPUmean[fsm$file=="SF-WJH"]))==TRUE]
 fsm2 <- fsm
-brm2 <- brm
+brm2 <- brm |> 
+  mutate_at(c("Speaker", "act"), as.character) |> 
+  mutate(Speaker = ifelse(substr(file, 2, 6) == "-Base", "Confederate", Speaker),
+         act = ifelse(substr(file, 1, 3) == "BF-", "speakingBaseline", ifelse(substr(file, 2,3) == "F-" & substr(file, 1,3) != "BF-" & act == "speaking", "speakingConditions", act))) |> 
+  mutate_at(c("Speaker", "act"), as.factor)
 frb2 <- frb
 
 save(fsm2, file=paste0(folder, "DataSpeech2.RData"))

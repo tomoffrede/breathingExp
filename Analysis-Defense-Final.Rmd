@@ -1,0 +1,263 @@
+---
+title: "Analysis - Read vs. Spontaneous Speech Breathing"
+author: "Tom Offrede"
+date: "2024-05-14"
+output:
+  html_document:
+    toc: true
+    toc_float: 
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(lmerTest)
+library(tidyverse)
+library(broom.mixed)
+`%!in%` <- Negate(`%in%`)
+
+folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
+folderInd <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Defense/" # to save plots with individual effects
+
+orderCond <- c("Sitting", "Light", "Heavy")
+orderCondBase <- c("Baseline", orderCond)
+orderAct <- c("watching", "listening")
+
+load(paste0(folder, "DataBreathing2.RData"))
+load(paste0(folder, "DataConfBaselineBreathing.RData"))
+
+brm <- brm2 |> rename(speaker = Speaker, condition = Condition) |> 
+  mutate(Ifraction = inhalDur / cycleDur, # I-fraction is defined by Wilder & Baker 1974 as "the ratio of the length of inspiration to the total duration of the respiratory cycle"
+         exhalDur = cycleDur - inhalDur,
+         act2 = ifelse(grepl("Read", act), "read", ifelse(grepl("speak", act), "speak", act)),
+         cyclePosition = ifelse(breathCycle == "cycle1", "turnStart", "midTurn")) |>
+  filter(speaker!="Confederate")
+brm <- droplevels(brm)
+brc0 <- brm2 |> 
+  rename(speaker = Speaker, condition = Condition) |> 
+  filter(speaker=="Confederate") |> 
+  select(names(bc))
+brc <- rbind(brc0, bc) |> 
+  mutate(Ifraction = inhalDur / cycleDur,
+         exhalDur = cycleDur - inhalDur,
+         cyclePosition = ifelse(breathCycle == "cycle1", "turnStart", "midTurn"))
+brc <- droplevels(brc)
+remove(brm2)
+```
+
+
+# Participants
+
+**Conflating baseline and "alone" conditions**
+
+```{r}
+dat <- brm |> 
+  mutate_at(c("act"), as.character) |> 
+  mutate(act = ifelse(act %in% c("speakingBaseline", "speakingConditions"), "free", ifelse(act %in% c("ReadBaseline", "ReadAlone"), "read", NA))) |> 
+  filter(!is.na(act)) |> 
+  mutate_at(c("act"), as.factor)
+```
+
+### Cycle duration
+
+* Longer cycles (slower breathing rate) during free speech
+
+Longer cycles most likely correspond to longer breath groups: people produce more speech per breath. My interpretation: when reading, people are constantly cued when to stop and inhale, and the texts we gave them to read (as most texts) have fairly frequent syntactic breaks, particularly periods. So people stop to breathe even though they don't need to in terms of oxygen. During free speech, people do still pause at syntactic breaks, but those breaks are more freely determined. One interpretation would be that they use their air reserve more, and only when it reaches a certain point do they find an appropriate place to inhale. But this explanation assumes that speech isn't (fully) planned. Assuming that the utterance in each breath group is fully planned, this result would just mean that the sentences in the stimulus texts are shorter than their breath would permit. (This latter sentence is probably the ultimate explanation: regardless of the role of speech planning, cycle durations during spontaneous speech probably correspond to the upper limit of comfortable cycle durations. If the text sentences were longer, there might be some flexibility to allow for longer cycles, but only up to a certain margin.)
+
+```{r}
+ggplot(dat, aes(act, cycleDur))+
+  geom_boxplot()
+
+ggplot(dat, aes(act, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~speaker)
+
+summary(lmer(cycleDur ~ act + (1+act|speaker), dat))
+```
+
+Indeed, the longer cycle durations are due to longer exhalation durations (i.e., breath groups):
+
+```{r}
+ggplot(dat, aes(act, exhalDur))+
+  geom_boxplot()
+
+ggplot(dat, aes(act, exhalDur))+
+  geom_boxplot()+
+  facet_wrap(~speaker)
+
+summary(lmer(exhalDur ~ act + (1+act|speaker), dat))
+```
+
+### Inhalation amplitude (and duration)
+
+* Lower inhalation amplitudes in free speech
+
+Since cycles are longer in free speech, you'd expect that inhalations are deeper! But this is not the case, so this pattern is probably meaningful.
+
+My interpretation: during a conversation, people have shallower (rather than larger) inhalations as a turn-holding device. Here, they didn't have to hold their turn, but since free speech is closer to this type of speech than read speech, their inhalation amplitudes mimic that. Inhalation amplitude at read speech corresponds more to what would be more comfortable in terms of oxygen intake during speech.
+
+(Experiment idea: this could be tested, for example, by having people speak in a normal conversation vs in a conversation where they have to press a button when they're done speaking and are yielding their turn, meaning that they dont have to use any turn-holding devices. would their inhalations be deeper here? of course, controlling these two conditions experimentally would be a bit of work.)
+
+```{r}
+ggplot(dat, aes(act, inhalAmp))+
+  geom_boxplot()
+
+ggplot(dat, aes(act, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~speaker)
+
+summary(lmer(inhalAmp ~ act + (1+act|speaker), dat))
+```
+
+The first inhalation of the speech is larger than the rest. This might also be another way that inhalation amplitudes in free speech are mimicking those in conversational speech. However, an even larger effect of deeper inhalations at the start than during the rest of the turn emerges during read speech. So here, it looks like participants just produce a deeper inhale at the start of the speech, regardless of the type of speech. This is thus not related to "larger inhales at the start of the turn in conversational speech."
+
+This doesn't necessarily invalidate my previous argument, but it does add more complexity to it. Even the first inhalation of speech (the "turn") is shallower in free than read speech.
+
+Could this be related to cognitive effort? For example, Shea et al. found that participants ventilated more when they were more cognitively stimulated. Could it be that in this case, reading out lout was more cognitively challenging than speaking spontaneously? This could be the case, for example, if the participants were not used to reading this type of text (fables with somewhat outdated language) -- and the fact that they were being recorded and had two experimenters next to them makes the task even harder (see social psychology studies about how being observed do a difficult task makes the task even more difficult). Or perhaps, overall, reading aloud gives a sense that you're being evaluated or judged, which adds stress/cognitive load to the task, whereas speaking spontaneously may feel less stressful because it doesn't matter what they're saying.
+
+```{r}
+ggplot(dat, aes(cyclePosition, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~act)
+
+ggplot(dat, aes(cyclePosition, inhalAmp))+
+  geom_boxplot()+
+  facet_grid(act~speaker)
+
+m <- lmer(inhalAmp ~ cyclePosition * act + (1+act*cyclePosition|speaker), dat)
+summary(emmeans::emmeans(m, pairwise ~ cyclePosition|act))
+summary(emmeans::emmeans(m, pairwise ~ act|cyclePosition))
+```
+
+```{r}
+ggplot(dat, aes(breathCycle, inhalAmp))+
+  geom_boxplot()
+
+summary(lmer(inhalAmp ~ breathCycle + (1|speaker), dat |> mutate(breathCycle = gsub("cycle", "", breathCycle)) |> mutate_at(c("breathCycle"), as.numeric) |> filter(act=="free")))
+
+```
+
+Interestingly, even though inhalations are deeper in read speech, they're also significantly shorter. So the explanation about using inhalation features as a turn-holding device (or trace of it in free speech) doesn't hold up: it's duration, not amplitude, that helps turns be held. Instead, this would be in line with Shea et al.'s observation of shorter inhalations at higher cognitive stimulation. This would also impact overall breathing cycle duration (see above).
+
+
+```{r}
+ggplot(dat, aes(act, inhalDur))+
+  geom_boxplot()
+
+summary(lmer(inhalDur ~ act + (1+act|speaker), dat))
+```
+
+
+### I-fraction
+
+* No difference in I-fraction
+
+Makes sense, given that both inhalation AND exhalation durations were longer in free speech. So participants divide their breath cycles equally regardless of the type of speech.
+
+```{r}
+ggplot(dat, aes(act, Ifraction))+
+  geom_boxplot()
+
+ggplot(dat, aes(act, Ifraction))+
+  geom_boxplot()+
+  facet_wrap(~speaker)
+
+summary(lmer(Ifraction ~ act + (1+act|speaker), dat))
+```
+
+
+# Confederate
+
+**The differences at *sitting* are comparable to the participants. The contribution of the confederate's data is the difference across conditions in each speech mode.**
+
+## Cycle duration
+
+In read speech, we had found a weird pattern for cycle duration (reported in paper).
+
+In spontaneous speech, the expected pattern is found: faster breathing with higher effort (although no difference between Light and Heavy).
+
+Maybe read speech poses weird constraints on speech when interacting with physiological oxygen demands, creating the weird pattern. During spontaneous speech, the body is freer to adapt to both demands since inhales can be everywhere. Still, (during spontaneous speech) you can see that they're still more restricted: not only do cycle durations get shorter when biking, but they also get less variable. In read speech, durations do also get less variable when biking, but they were already less variable at sitting. 
+
+(Overall, breathing also tends to be slower during spontaneous than read speech, but only slightly so (p = 0.042). This is accounted for by the fact that during **sitting**, cycles are longer (slower) in spontaneous speech. In **light**, spontaneous is slightly shorter (faster). In heavy, no difference.)
+
+
+
+```{r}
+brc$condition <- relevel(brc$condition, ref="Light")
+
+ggplot(brc|> filter(act!="watching"), aes(condition, cycleDur))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits=orderCond)
+
+summary(lm(cycleDur ~ condition, brc |> filter(act=="ReadAlone")))
+summary(lm(cycleDur ~ condition, brc |> filter(act=="speaking")))
+
+m <- lm(cycleDur ~ condition * act, brc |> filter(act%in%c("speaking", "ReadAlone")))
+summary(emmeans::emmeans(m, pairwise ~ act|condition))
+
+ggplot(brc|> filter(act!="watching"), aes(act, cycleDur))+
+  geom_boxplot()
+
+summary(lm(cycleDur ~ act, brc |> filter(act!="watching")))
+```
+
+## Inhalation amplitude
+
+Inhalation amplitude increased more with condition during read speech than with spontaneous speech (during sitting there was no difference between read and spontaneous). In other words: overall, amplitude is larger in read than spontaneous speech (as for participants), but this is accounted for by the larger effect of condition on amplitude in read speech.
+
+
+
+(During sitting, there was no difference in inhalation amplitude between read and free.)
+
+ 
+```{r}
+ggplot(brc|> filter(act!="watching"), aes(condition, inhalAmp))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits=orderCond)
+
+summary(lm(inhalAmp ~ condition, brc |> filter(act=="ReadAlone")))
+summary(lm(inhalAmp ~ condition, brc |> filter(act=="speaking")))
+
+m <- lm(inhalAmp ~ condition * act, brc |> filter(act%in%c("speaking", "ReadAlone")))
+summary(emmeans::emmeans(m, pairwise ~ act|condition))
+
+ggplot(brc|> filter(act!="watching"), aes(act, inhalAmp))+
+  geom_boxplot()
+
+summary(lm(inhalAmp ~ act, brc |> filter(act!="watching")))
+```
+
+
+## I-fraction
+
+In both read and free speech, I-fraction generally increases with increase in effort (although no difference between Light and Heavy during spontaneous speech, as was the case for cycle duration; and no difference between Sitting and Light during read speech).
+
+While biking, I-fraction is higher in spontaneous speech.
+
+(During sitting, I-fraction was slightly higher during read speech.)
+
+Remember: higher I-fraction = more balanced inhalation / exhalation durations.
+ 
+```{r}
+ggplot(brc|> filter(act!="watching"), aes(condition, Ifraction))+
+  geom_boxplot()+
+  facet_wrap(~act)+
+  scale_x_discrete(limits=orderCond)
+
+summary(lm(Ifraction ~ condition, brc |> filter(act=="ReadAlone")))
+summary(lm(Ifraction ~ condition, brc |> filter(act=="speaking")))
+
+m <- lm(Ifraction ~ condition * act, brc |> filter(act%in%c("speaking", "ReadAlone")))
+summary(emmeans::emmeans(m, pairwise ~ act|condition))
+
+ggplot(brc|> filter(act!="watching"), aes(act, Ifraction))+
+  geom_boxplot()
+
+summary(lm(Ifraction ~ act, brc |> filter(act!="watching")))
+```
+
