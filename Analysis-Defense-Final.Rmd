@@ -11,12 +11,15 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+Sys.setenv(LANG="en")
 ```
 
 ```{r, include=FALSE}
 library(lmerTest)
 library(tidyverse)
 library(broom.mixed)
+library(ggsignif)
+library(ggpubr)
 `%!in%` <- Negate(`%in%`)
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
@@ -41,11 +44,30 @@ brc0 <- brm2 |>
   filter(speaker=="Confederate") |> 
   select(names(bc))
 brc <- rbind(brc0, bc) |> 
+  mutate_at(c("act"), as.character) |> 
   mutate(Ifraction = inhalDur / cycleDur,
          exhalDur = cycleDur - inhalDur,
-         cyclePosition = ifelse(breathCycle == "cycle1", "turnStart", "midTurn"))
+         cyclePosition = ifelse(breathCycle == "cycle1", "turnStart", "midTurn"),
+         act=ifelse(act=="ReadAlone", "Read", ifelse(act=="speaking", "Free", act))) |> 
+  mutate_at(c("act"), as.factor)
 brc <- droplevels(brc)
+brc$act <- factor(brc$act, levels=c("Read", "Free", "watching"))
 remove(brm2)
+```
+
+```{r}
+theme_set(theme_minimal()+
+            theme(axis.ticks.y=element_blank(),
+                  axis.ticks.x=element_blank(),
+                  axis.title = element_text(size=24),
+                  axis.text.x = element_text(color="black", size=24),
+                  plot.background = element_blank(),
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(),
+                  plot.title = element_text(hjust = 0.5, size=24),
+                  strip.background = element_blank(),
+                  strip.text = element_text(size=24)
+            ))
 ```
 
 
@@ -78,6 +100,17 @@ ggplot(dat, aes(act, cycleDur))+
 summary(lmer(cycleDur ~ act + (1+act|speaker), dat))
 ```
 
+```{r}
+# ggplot(dat, aes(act, cycleDur))+
+#   geom_boxplot(size=1)+
+#   geom_signif(comparisons=list(c("read", "free")), size=0.75,
+#               annotations=c("< .001"), textsize = 5)+
+#   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
+#   labs(x=NULL, y="Cycle Duration (s)")
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-cycle.png", width=3000, height=3000, units="px", dpi=500)
+```
+
+
 Indeed, the longer cycle durations are due to longer exhalation durations (i.e., breath groups):
 
 ```{r}
@@ -90,6 +123,17 @@ ggplot(dat, aes(act, exhalDur))+
 
 summary(lmer(exhalDur ~ act + (1+act|speaker), dat))
 ```
+
+```{r}
+# ggplot(dat, aes(act, exhalDur))+
+#   geom_boxplot(size=1)+
+#   geom_signif(comparisons=list(c("read", "free")), size=0.75,
+#               annotations=c("< .001"), textsize = 5)+
+#   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
+#   labs(x=NULL, y="Exhalation Duration (s)")
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-exhale.png", width=3000, height=3000, units="px", dpi=500)
+```
+
 
 ### Inhalation amplitude (and duration)
 
@@ -112,6 +156,17 @@ ggplot(dat, aes(act, inhalAmp))+
 summary(lmer(inhalAmp ~ act + (1+act|speaker), dat))
 ```
 
+```{r}
+# ggplot(dat, aes(act, inhalAmp))+
+#   geom_boxplot(size=1)+
+#   geom_signif(comparisons=list(c("read", "free")), size=0.75,
+#               annotations=c("< .01"), textsize = 5)+
+#   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
+#   labs(x=NULL, y="Inhalation Amplitude (V)")
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalAmp.png", width=3000, height=3000, units="px", dpi=500)
+```
+
+
 The first inhalation of the speech is larger than the rest. This might also be another way that inhalation amplitudes in free speech are mimicking those in conversational speech. However, an even larger effect of deeper inhalations at the start than during the rest of the turn emerges during read speech. So here, it looks like participants just produce a deeper inhale at the start of the speech, regardless of the type of speech. This is thus not related to "larger inhales at the start of the turn in conversational speech."
 
 This doesn't necessarily invalidate my previous argument, but it does add more complexity to it. Even the first inhalation of speech (the "turn") is shallower in free than read speech.
@@ -133,15 +188,37 @@ summary(emmeans::emmeans(m, pairwise ~ act|cyclePosition))
 ```
 
 ```{r}
+# # Read
+# ggplot(dat |> filter(act=="read"), aes(cyclePosition, inhalAmp))+
+#   geom_boxplot(size=1)+
+#   geom_signif(comparisons=list(c("midTurn", "turnStart")), size=0.75,
+#               annotations=c("< .001"), textsize = 5)+
+#   scale_x_discrete(limits=c("turnStart", "midTurn"), labels=c("Start", "Mid-Turn"))+
+#   labs(x=NULL, y="Inhalation Amplitude (V)", title="Read Speech")
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalAmpPositionRead.png", width=3000, height=3000, units="px", dpi=500)
+# 
+# # Free
+# ggplot(dat |> filter(act=="free"), aes(cyclePosition, inhalAmp))+
+#   geom_boxplot(size=1)+
+#   geom_signif(comparisons=list(c("midTurn", "turnStart")), size=0.75,
+#               annotations=c("< .001"), textsize = 5)+
+#   scale_x_discrete(limits=c("turnStart", "midTurn"), labels=c("Start", "Mid-Turn"))+
+#   labs(x=NULL, y=NULL, title="Free Speech")
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalAmpPositionFree.png", width=3000, height=3000, units="px", dpi=500)
+```
+
+
+```{r}
 ggplot(dat, aes(breathCycle, inhalAmp))+
-  geom_boxplot()
+  geom_boxplot()+
+  facet_wrap(~act)
 
 summary(lmer(inhalAmp ~ breathCycle + (1|speaker), dat |> mutate(breathCycle = gsub("cycle", "", breathCycle)) |> mutate_at(c("breathCycle"), as.numeric) |> filter(act=="free")))
 
+summary(lmer(inhalAmp ~ breathCycle + (1|speaker), dat |> mutate(breathCycle = gsub("cycle", "", breathCycle)) |> mutate_at(c("breathCycle"), as.numeric) |> filter(act=="read")))
 ```
 
 Interestingly, even though inhalations are deeper in read speech, they're also significantly shorter. So the explanation about using inhalation features as a turn-holding device (or trace of it in free speech) doesn't hold up: it's duration, not amplitude, that helps turns be held. Instead, this would be in line with Shea et al.'s observation of shorter inhalations at higher cognitive stimulation. This would also impact overall breathing cycle duration (see above).
-
 
 ```{r}
 ggplot(dat, aes(act, inhalDur))+
@@ -150,28 +227,20 @@ ggplot(dat, aes(act, inhalDur))+
 summary(lmer(inhalDur ~ act + (1+act|speaker), dat))
 ```
 
-
-### I-fraction
-
-* No difference in I-fraction
-
-Makes sense, given that both inhalation AND exhalation durations were longer in free speech. So participants divide their breath cycles equally regardless of the type of speech.
-
 ```{r}
-ggplot(dat, aes(act, Ifraction))+
-  geom_boxplot()
-
-ggplot(dat, aes(act, Ifraction))+
-  geom_boxplot()+
-  facet_wrap(~speaker)
-
-summary(lmer(Ifraction ~ act + (1+act|speaker), dat))
+# ggplot(dat, aes(act, inhalDur))+
+#   geom_boxplot(size=1)+
+#   geom_signif(comparisons=list(c("read", "free")), size=0.75,
+#               annotations=c("< .001"), textsize = 5)+
+#   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
+#   labs(x=NULL, y="Inhalation Duration (s)")
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalDur.png", width=3000, height=3000, units="px", dpi=500)
 ```
 
 
 # Confederate
 
-**The differences at *sitting* are comparable to the participants. The contribution of the confederate's data is the difference across conditions in each speech mode.**
+**The data at *sitting* are in a comparable context to that of the participants. The contribution of the confederate's data is the difference across conditions in each speech mode.**
 
 ## Cycle duration
 
@@ -188,76 +257,178 @@ Maybe read speech poses weird constraints on speech when interacting with physio
 ```{r}
 brc$condition <- relevel(brc$condition, ref="Light")
 
-ggplot(brc|> filter(act!="watching"), aes(condition, cycleDur))+
+ggplot(brc|> filter(act%in%c("Read", "Free")), aes(condition, cycleDur))+
   geom_boxplot()+
   facet_wrap(~act)+
   scale_x_discrete(limits=orderCond)
 
-summary(lm(cycleDur ~ condition, brc |> filter(act=="ReadAlone")))
-summary(lm(cycleDur ~ condition, brc |> filter(act=="speaking")))
+summary(lm(cycleDur ~ condition, brc |> filter(act=="Read")))
+summary(lm(cycleDur ~ condition, brc |> filter(act=="Free")))
 
-m <- lm(cycleDur ~ condition * act, brc |> filter(act%in%c("speaking", "ReadAlone")))
-summary(emmeans::emmeans(m, pairwise ~ act|condition))
+m <- lm(cycleDur ~ condition * act, brc |> filter(act%in%c("Free", "Read")))
+summary(emmeans::emmeans(m, pairwise ~ condition|act))
 
-ggplot(brc|> filter(act!="watching"), aes(act, cycleDur))+
+ggplot(brc|> filter(act%in%c("Read", "Free")), aes(act, cycleDur))+
   geom_boxplot()
 
-summary(lm(cycleDur ~ act, brc |> filter(act!="watching")))
+summary(lm(cycleDur ~ act, brc |> filter(act%in%c("Read", "Free"))))
 ```
 
-## Inhalation amplitude
+```{r}
+# (r <- ggplot(brc|> filter(act%in%c("Read")), aes(condition, cycleDur))+
+#    geom_boxplot(size=1)+
+#    geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), size=0.75,
+#                annotations=c("< .04", "< .02"), textsize = 5,
+#                y=7)+
+#    scale_x_discrete(limits=orderCond)+
+#    labs(x=NULL, y="Cycle Duration (s)", title="Read")+
+#    ylim(1, 11.5))
+# 
+# (f <- ggplot(brc|> filter(act%in%c("Free")), aes(condition, cycleDur))+
+#     geom_boxplot(size=1)+
+#     geom_signif(comparisons=list(c("Sitting", "Light"), c("Sitting", "Heavy")), size=0.75,
+#                 annotations=c("< .001", "< .001"), textsize = 5,
+#                 y=c(8.5, 10.2))+
+#     scale_x_discrete(limits=orderCond)+
+#     labs(x=NULL, y=NULL, title="Free")+
+#     ylim(1, 11.5))
+# 
+# ggarrange(r, f)
+# 
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-cycleDur.png", width=5750, height=3000, units="px", dpi=500)
+# 
+# ggplot(brc|> filter(act%in%c("Free")), aes(condition, cycleDur))+
+#     geom_boxplot(size=1)+
+#     geom_signif(comparisons=list(c("Sitting", "Light"), c("Sitting", "Heavy")), size=0.75,
+#                 annotations=c("< .001", "< .001"), textsize = 5,
+#                 y=c(8.5, 10.2))+
+#     scale_x_discrete(limits=orderCond)+
+#     labs(x=NULL, y="Cycle Duration (s)")+
+#     ylim(1, 11.5)
+# 
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-cycleDurFree.png", width=3000, height=3000, units="px", dpi=500)
+```
 
-Inhalation amplitude increased more with condition during read speech than with spontaneous speech (during sitting there was no difference between read and spontaneous). In other words: overall, amplitude is larger in read than spontaneous speech (as for participants), but this is accounted for by the larger effect of condition on amplitude in read speech.
 
+## Inhalation amplitude and duration
+
+Inhalation amplitude increased more with condition during read speech than spontaneous speech. Inhalation duration, however, only increased during Read, but not Free.
+
+So the larger effect of effort on amplitude in Read is explained by the effect of effort on duration: people spend more time inhaling in Read, so they can inhale deeper.
+
+The question is, why the lack of effect on duration in Free? My interpretation: during Free she was taking her time to plan the following utterances in all conditions, and the time needed for planning already allowed her to inhale all the oxygen she needed, and she could modulate her oxygen intake only by inhaling deeper, without having to inhale longer. Here, then, inhalation duration is indicative of speech planning (which is the same in all conditions), and inhalation amplitude is indicative of (increased) oxygen demand. This would also explain why inhalations are longer, overall, in Free than in Read: inhalation in Read is only needed for oxygen intake. In Free, it's also needed for planning.
 
 
 (During sitting, there was no difference in inhalation amplitude between read and free.)
 
- 
 ```{r}
-ggplot(brc|> filter(act!="watching"), aes(condition, inhalAmp))+
+ggplot(brc|> filter(act%in%c("Read", "Free")), aes(condition, inhalAmp))+
   geom_boxplot()+
   facet_wrap(~act)+
   scale_x_discrete(limits=orderCond)
 
-summary(lm(inhalAmp ~ condition, brc |> filter(act=="ReadAlone")))
-summary(lm(inhalAmp ~ condition, brc |> filter(act=="speaking")))
+summary(lm(inhalAmp ~ condition, brc |> filter(act=="Read")))
+summary(lm(inhalAmp ~ condition, brc |> filter(act=="Free")))
 
-m <- lm(inhalAmp ~ condition * act, brc |> filter(act%in%c("speaking", "ReadAlone")))
+m <- lm(inhalAmp ~ condition * act, brc |> filter(act%in%c("Free", "Read")))
+summary(emmeans::emmeans(m, pairwise ~ condition|act))
 summary(emmeans::emmeans(m, pairwise ~ act|condition))
 
-ggplot(brc|> filter(act!="watching"), aes(act, inhalAmp))+
+ggplot(brc|> filter(act%in%c("Read", "Free")), aes(act, inhalAmp))+
   geom_boxplot()
 
-summary(lm(inhalAmp ~ act, brc |> filter(act!="watching")))
+summary(lm(inhalAmp ~ act, brc |> filter(act%in%c("Read", "Free"))))
+```
+
+```{r}
+# (r <- ggplot(brc|> filter(act%in%c("Read")), aes(condition, inhalAmp))+
+#    geom_boxplot(size=1)+
+#    geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), size=0.75,
+#                annotations=c("< .001", "< .001"), textsize = 5,
+#                y=0.98)+
+#    scale_x_discrete(limits=orderCond)+
+#    labs(x=NULL, y="Inhalation Amplitude (V)", title="Read")+
+#    ylim(0.1, 1.05)
+#  )
+# 
+# (f <- ggplot(brc|> filter(act%in%c("Free")), aes(condition, inhalAmp))+
+#     geom_boxplot(size=1)+
+#     geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), size=0.75,
+#                 annotations=c("< .001", "< .001"), textsize = 5,
+#                 y=0.95)+
+#     scale_x_discrete(limits=orderCond)+
+#     labs(x=NULL, y=NULL, title="Free")+
+#     ylim(0.1, 1.05)
+#   )
+# 
+# ggarrange(r, f)
+# 
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-inhalAmp.png", width=5750, height=3000, units="px", dpi=500)
+```
+
+```{r}
+# (s <- ggplot(brc|> filter(condition=="Sitting", act%in%c("Read", "Free")), aes(act, inhalAmp))+
+#    geom_boxplot(size=1)+
+#    labs(x=NULL, y="Inhalation Amplitude (V)", title="Sitting")+
+#    ylim(0.1, 1.05)
+#  )
+# 
+# (l <- ggplot(brc|> filter(condition=="Light", act%in%c("Read", "Free")), aes(act, inhalAmp))+
+#    geom_boxplot(size=1)+
+#    geom_signif(comparisons=list(c("Read", "Free")), size=0.75,
+#                annotations=c("< .001"), textsize = 5,
+#                y=0.98)+
+#    labs(x=NULL, y=NULL, title="Light")+
+#    ylim(0.1, 1.05)
+#  )
+# 
+# (h <- ggplot(brc|> filter(condition=="Heavy", act%in%c("Read", "Free")), aes(act, inhalAmp))+
+#    geom_boxplot(size=1)+
+#    geom_signif(comparisons=list(c("Read", "Free")), size=0.75,
+#                annotations=c("< .001"), textsize = 5,
+#                y=0.98)+
+#    labs(x=NULL, y=NULL, title="Heavy")+
+#    ylim(0.1, 1.05)
+#  )
+# 
+# ggarrange(s,l,h, nrow=1)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-inhalAmpActComparison.png", width=5750, height=3000, units="px", dpi=500)
 ```
 
 
-## I-fraction
-
-In both read and free speech, I-fraction generally increases with increase in effort (although no difference between Light and Heavy during spontaneous speech, as was the case for cycle duration; and no difference between Sitting and Light during read speech).
-
-While biking, I-fraction is higher in spontaneous speech.
-
-(During sitting, I-fraction was slightly higher during read speech.)
-
-Remember: higher I-fraction = more balanced inhalation / exhalation durations.
- 
 ```{r}
-ggplot(brc|> filter(act!="watching"), aes(condition, Ifraction))+
+ggplot(brc|> filter(act%in%c("Read", "Free")), aes(condition, inhalDur))+
   geom_boxplot()+
   facet_wrap(~act)+
   scale_x_discrete(limits=orderCond)
 
-summary(lm(Ifraction ~ condition, brc |> filter(act=="ReadAlone")))
-summary(lm(Ifraction ~ condition, brc |> filter(act=="speaking")))
+m <- lm(inhalDur ~ condition * act, brc |> filter(act%in%c("Read", "Free")))
 
-m <- lm(Ifraction ~ condition * act, brc |> filter(act%in%c("speaking", "ReadAlone")))
+summary(emmeans::emmeans(m, pairwise ~ condition|act))
 summary(emmeans::emmeans(m, pairwise ~ act|condition))
-
-ggplot(brc|> filter(act!="watching"), aes(act, Ifraction))+
-  geom_boxplot()
-
-summary(lm(Ifraction ~ act, brc |> filter(act!="watching")))
 ```
+
+
+```{r}
+# (r <- ggplot(brc|> filter(act%in%c("Read", "Free")), aes(condition, inhalDur))+
+#    geom_boxplot(size=1)+
+#    geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), size=0.75,
+#                annotations=c("< .001", "< .02"), textsize = 5,
+#                y=1.28)+
+#    scale_x_discrete(limits=orderCond)+
+#    labs(x=NULL, y="Inhalation Duration (s)", title="Read")+
+#    ylim(0.1, 1.35)
+# )
+# 
+# (f <- ggplot(brc|> filter(act%in%c("Free")), aes(condition, inhalDur))+
+#     geom_boxplot(size=1)+
+#     scale_x_discrete(limits=orderCond)+
+#     labs(x=NULL, y=NULL, title="Free")+
+#     ylim(0.1, 1.35)
+# )
+# 
+# ggarrange(r,f)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-inhalDur.png", width=5750, height=3000, units="px", dpi=500)
+```
+
 

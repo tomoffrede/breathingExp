@@ -11,6 +11,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+Sys.setenv(LANG="en")
 ```
 
 ```{r, include=FALSE}
@@ -167,7 +168,13 @@ summary(lm(inhalAmp ~ act, brc |> filter(act!="watching")))
 
 ## I-fraction
 
-I-fraction is higher overall in spontaneous speech than read speech. But in both, I-fraction generally increases with increase in effort (although no difference between Light and Heavy during spontaneous speech, as was the case for cycle duration; and no difference between Sitting and Light during read speech).
+**New thoughts about I-fraction: in this context, I'm not so interested in this variable, because what we could learn from it we could probably learn with more accuracy from inhalation duration**
+
+In both read and free speech, I-fraction generally increases with increase in effort (although no difference between Light and Heavy during spontaneous speech, as was the case for cycle duration; and no difference between Sitting and Light during read speech).
+
+While biking, I-fraction is higher in spontaneous speech.
+
+(During sitting, I-fraction was slightly higher during read speech.)
 
 Remember: higher I-fraction = more balanced inhalation / exhalation durations.
  
@@ -177,14 +184,17 @@ ggplot(brc|> filter(act!="watching"), aes(condition, Ifraction))+
   facet_wrap(~act)+
   scale_x_discrete(limits=orderCond)
 
-summary(lm(Ifraction ~ condition, brc |> filter(act=="ReadAlone")))
-summary(lm(Ifraction ~ condition, brc |> filter(act=="speaking")))
+m <- lm(Ifraction ~ condition * act, brc |> filter(act!="watching"))
+summary(emmeans::emmeans(m, pairwise ~ condition|act))
+summary(emmeans::emmeans(m, pairwise ~ act|condition))
+
 
 ggplot(brc|> filter(act!="watching"), aes(act, Ifraction))+
   geom_boxplot()
 
 summary(lm(Ifraction ~ act, brc |> filter(act!="watching")))
 ```
+
 
 # Participants: exploring read vs spontaneous speech
 
@@ -439,9 +449,11 @@ summary(lmer(inhalAmp ~ act + (1+act|speaker), dat))
 
 ### I-fraction
 
+### I-fraction
+
 * No difference in I-fraction
 
-Interesting, given the robust differences in cycle duration and inhalation amplitude!
+Makes sense, given that both inhalation AND exhalation durations were longer in free speech. So participants divide their breath cycles equally regardless of the type of speech.
 
 ```{r}
 ggplot(dat, aes(act, Ifraction))+
