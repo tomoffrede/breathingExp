@@ -18,10 +18,13 @@ Sys.setenv(LANG="en")
 library(lmerTest)
 library(tidyverse)
 library(broom.mixed)
+library(ggpubr)
+library(rPraat)
 `%!in%` <- Negate(`%in%`)
 
 folder <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/AllData/"
 folderInd <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Defense/" # to save plots with individual effects
+folderBreath <- "C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/"
 
 orderCond <- c("Sitting", "Light", "Heavy")
 orderCondBase <- c("Baseline", orderCond)
@@ -32,20 +35,195 @@ load(paste0(folder, "DataConfBaselineBreathing.RData"))
 
 brm <- brm2 |> rename(speaker = Speaker, condition = Condition) |> 
   mutate(Ifraction = inhalDur / cycleDur,
-         act2 = ifelse(grepl("Read", act), "read", ifelse(grepl("speak", act), "speak", act))) |> # I-fraction is defined by Wilder & Baker 1974 as "the ratio of the length of inspiration to the total duration of the respiratory cycle"
-  filter(speaker!="Confederate")
+         act2 = ifelse(grepl("Read", act), "read", ifelse(grepl("speak", act), "speak", as.character(act)))) |> # I-fraction is defined by Wilder & Baker 1974 as "the ratio of the length of inspiration to the total duration of the respiratory cycle"
+  filter(speaker!="Confederate") |> 
+  mutate(text = case_when(
+    List == "1" & substr(file, 1, 2) == "SR" ~ "Hirsch",
+    List == "1" & substr(file, 1, 2) == "LR" ~ "Schwalbe",
+    List == "1" & substr(file, 1, 2) == "HR" ~ "Pferd",
+    List == "2" & substr(file, 1, 2) == "SR" ~ "Pferd",
+    List == "2" & substr(file, 1, 2) == "LR" ~ "Hirsch",
+    List == "2" & substr(file, 1, 2) == "HR" ~ "Schwalbe",
+    List == "3" & substr(file, 1, 2) == "SR" ~ "Schwalbe",
+    List == "3" & substr(file, 1, 2) == "LR" ~ "Pferd",
+    List == "3" & substr(file, 1, 2) == "HR" ~ "Hirsch",
+    List == "4" & substr(file, 1, 2) == "SR" ~ "Hirsch",
+    List == "4" & substr(file, 1, 2) == "LR" ~ "Pferd",
+    List == "4" & substr(file, 1, 2) == "HR" ~ "Schwalbe",
+    List == "5" & substr(file, 1, 2) == "SR" ~ "Hirsch",
+    List == "5" & substr(file, 1, 2) == "LR" ~ "Schwalbe",
+    List == "5" & substr(file, 1, 2) == "HR" ~ "Pferd",
+    List == "6" & substr(file, 1, 2) == "SR" ~ "Schwalbe",
+    List == "6" & substr(file, 1, 2) == "LR" ~ "Hirsch",
+    List == "6" & substr(file, 1, 2) == "HR" ~ "Pferd"
+  )) |> 
+  mutate_at(c("text"), as.factor)
 brm <- droplevels(brm)
 brc0 <- brm2 |> 
   rename(speaker = Speaker, condition = Condition) |> 
   filter(speaker=="Confederate") |> 
   select(names(bc))
 brc <- rbind(brc0, bc) |> 
-  mutate(Ifraction = inhalDur / cycleDur)
+  mutate(Ifraction = inhalDur / cycleDur,
+         text = case_when(
+           grepl("Hirs", file) ~ "Hirsch",
+           grepl("Pfer", file) ~ "Pferd",
+           grepl("Schw", file) ~ "Schwalbe"
+         ))
 brc <- droplevels(brc)
 remove(brm2)
+remove(brc0)
+remove(bc)
+
+# speech data
+load(paste0(folder, "DataSpeech.RData"))
+load(paste0(folder, "DataReadSpeech.RData"))
+
+ds <- rbind(frb |> 
+              select(Speaker, file, f0raw, Task, IPU, Condition, Role) |> 
+              relocate(Speaker, file, IPU, f0raw, Condition, Task, Role),
+            fsm |> 
+              select(Speaker, file, IPU, f0raw, Condition, Task) |> 
+              mutate(Role = ifelse(Speaker=="Confederate", "Confederate", "Participant")) |> 
+              relocate(Speaker, file, IPU, f0raw, Condition, Task, Role) # make sure they're both in the same order
+) |> 
+  mutate(Task = ifelse(as.character(Task) == "ReadBaseline", "ReadAlone", as.character(Task)),
+         Cond2 = ifelse(Condition == "Baseline", "Baseline", "WithConf")) |> 
+  mutate_at(c("Cond2"), as.factor)
 ```
 
-# Watching vs Listening
+# Participants vs. Confederate
+
+```{r}
+# create dataset for cross correlation of confederate's and participants' breathing
+
+files0 <- list.files(folderBreath, ".TextGrid")
+filesT <- files0[substr(files0, 2,2) == "-" & grepl("joint", files0)]
+
+# files0 <- list.files(folderBreath, ".wav")
+# filesW <- files0[substr(files0, 2,2) == "-" & grepl("joint", files0)]
+# files <- data.frame(wav = filesW,
+#                     tg = filesT)
+
+dc <- data.frame(matrix(nrow=0, ncol=9))
+names(dc) <- c("speaker", "file", "text", "condition", "breathCycle", "onset", "peak", "offset", "cycleDur")
+
+for(f in filesT){
+  tg <- tg.read(paste0(folderBreath, f), encoding = detectEncoding(paste0(folderBreath, f)))
+  for(t in 1:(tg.getNumberOfPoints(tg, 2)-1)){
+    dc[nrow(dc)+1,] <- c("Confederate",
+                         f,
+                         strsplit(strsplit(f, "_")[[1]][1], "-")[[1]][2],
+                         case_when(
+                           substr(f, 1, 1) == "S" ~ "Sitting",
+                           substr(f, 1, 1) == "L" ~ "Light",
+                           substr(f, 1, 1) == "H" ~ "Heavy"),
+                         paste0("cycle", t),
+                         as.numeric(tg.getPointTime(tg, 2, t)),
+                         as.numeric(tg.getPointTime(tg, 1, t)),
+                         as.numeric(tg.getPointTime(tg, 2, t+1)), # next valley
+                         (as.numeric(tg.getPointTime(tg, 2, t+1))) - (as.numeric(tg.getPointTime(tg, 2, t)))
+    )
+  }
+}
+dc <- dc |> 
+  mutate_at(c("speaker", "file", "text", "condition", "breathCycle"), as.factor) |> 
+  mutate_at(c("onset", "peak", "offset", "cycleDur"), as.numeric)
+
+ccb <- rbind(brm |> 
+               filter(act=="ReadJoint") |> 
+               select(speaker, file, text, breathCycle, onset, peak, offset, cycleDur, condition) |> 
+               relocate(speaker, file, text, condition, breathCycle, onset, peak, offset, cycleDur),
+             dc)
+```
+
+```{r}
+files0 <- list.files(folderBreath, "wav$")
+filesP <- files0[grepl("joint", files0) & substr(files0, 2, 2) =="R"]
+filesC <- files0[grepl("joint", files0) & substr(files0, 2, 2) =="-"]
+
+for(s in unique(ccb$speaker[ccb$speaker!="Confederate"])){
+  for(c in c("Sitting", "Light", "Heavy")){
+    filenameP <- filesP[grepl(paste0(substr(c, 1, 1), "R-", s), filesP)]
+    filenameC <- filesC[grepl(paste0(substr(c, 1, 1), "-", unique(ccb$text[ccb$speaker==s & ccb$condition==c])), filesC)]
+    
+    bp <- tuneR::readWave(paste0(folderBreath, filenameP))
+    bw <- data.frame(w = bp@left,
+                     time = seq(0, (nrow(data.frame(bp@left))/2), length.out=nrow(data.frame(bp@left))))
+    pb <- ggplot(bw, aes(time, w))+
+      geom_line(linewidth=1)+
+      labs(y=paste("Participant:", s))
+    
+    bc <- tuneR::readWave(paste0(folderBreath, filenameC))
+    cw <- data.frame(w = bc@left,
+                     time = seq(0, (nrow(data.frame(bc@left))/2), length.out=nrow(data.frame(bc@left))))
+    cb <- ggplot(cw, aes(time, w))+
+      geom_line(linewidth=1)+
+      labs(y="Confederate")
+    
+    results0 <- print(ccf(ccb$peak[ccb$speaker==s & ccb$condition==c],
+                          ccb$peak[ccb$speaker=="Confederate" & ccb$text==ccb$text[ccb$speaker==s & ccb$condition==c] & ccb$condition==c],
+                          plot=FALSE))
+    results <- data.frame(lag=results0$lag, acf=results0$acf)
+    sig_limit <- 2 / sqrt(results0$n.used)
+    
+    (ccf_plot <- ggplot(results, aes(lag, acf)) +
+        geom_bar(stat = "identity", width=0.1) +
+        geom_hline(yintercept = c(sig_limit, -sig_limit), linetype = "dashed", color = "blue") +
+        labs(title = "PEAK Cross-Correlation", x = "Lag", y = "ACF"))
+    
+    ggarrange(cb, pb, ccf_plot, ncol=1,
+              bottom=text_grob(paste("-4:", results$acf[results$lag==-4], " -3:", results$acf[results$lag==-3], " -2:", results$acf[results$lag==-2], " -1:", results$acf[results$lag==-1], " 0:", results$acf[results$lag==0], " 1:", results$acf[results$lag==1], " 2:", results$acf[results$lag==2], " 3:", results$acf[results$lag==3], " 4:", results$acf[results$lag==4])))
+    
+    ggsave(paste0(folderInd, s, "-", c, "-Peak.png"), width=3500, height=5000, units="px", dpi=500)
+    
+        results0 <- print(ccf(ccb$onset[ccb$speaker==s & ccb$condition==c],
+                          ccb$onset[ccb$speaker=="Confederate" & ccb$text==ccb$text[ccb$speaker==s & ccb$condition==c] & ccb$condition==c],
+                          plot=FALSE))
+    results <- data.frame(lag=results0$lag, acf=results0$acf)
+    sig_limit <- 2 / sqrt(results0$n.used)
+    
+    (ccf_plot <- ggplot(results, aes(lag, acf)) +
+        geom_bar(stat = "identity", width=0.1) +
+        geom_hline(yintercept = c(sig_limit, -sig_limit), linetype = "dashed", color = "blue") +
+        labs(title = "ONSET Cross-Correlation", x = "Lag", y = "ACF"))
+    
+    ggarrange(cb, pb, ccf_plot, ncol=1,
+              bottom=text_grob(paste("-4:", results$acf[results$lag==-4], " -3:", results$acf[results$lag==-3], " -2:", results$acf[results$lag==-2], " -1:", results$acf[results$lag==-1], " 0:", results$acf[results$lag==0], " 1:", results$acf[results$lag==1], " 2:", results$acf[results$lag==2], " 3:", results$acf[results$lag==3], " 4:", results$acf[results$lag==4])))
+    
+    ggsave(paste0(folderInd, s, "-", c, "-Onset.png"), width=3500, height=5000, units="px", dpi=500)
+    
+    
+  }
+}
+
+
+
+```
+
+
+```{r}
+b <- tuneR::readWave(paste0(folderBreath, "SR-ATN010_SUM_200_joint_breath.wav"))
+bw <- data.frame(w = b@left,
+                 time = seq(0, (nrow(data.frame(b@left))/2), length.out=nrow(data.frame(b@left))))
+pb <- ggplot(bw, aes(time, w))+
+  geom_line(linewidth=1)+
+  labs(y="Participant")
+
+c <- tuneR::readWave(paste0(folderBreath, "S-Pferd_THORAX_joint_200.wav"))
+cw <- data.frame(w = c@left,
+                 time = seq(0, (nrow(data.frame(c@left))/2), length.out=nrow(data.frame(c@left))))
+cb <- ggplot(cw, aes(time, w))+
+  geom_line(linewidth=1)+
+  labs(y="Confederate")
+
+ggarrange(cb, pb, nrow=2)
+
+
+
+```
+
+# Watching vs. Listening
 
 ## Cycle duration
 
@@ -75,7 +253,7 @@ Inhalation amplitude is much lower while listening than watching
 ```{r}
 ggplot(brm |> filter(#!is.na(act)
   act%in%c("watching", "listening")
-  ), aes(act, inhalAmp))+
+), aes(act, inhalAmp))+
   geom_boxplot()+
   scale_x_discrete(limits=orderAct)
 
@@ -96,7 +274,7 @@ summary(lmer(inhalAmp ~ condition + (1+condition|speaker), brm |> filter(act%in%
 ```{r}
 ggplot(brm |> filter(#!is.na(act)
   act%in%c("watching", "listening")
-  ), aes(act, Ifraction))+
+), aes(act, Ifraction))+
   geom_boxplot()
 
 summary(lmer(Ifraction ~ act + (1+act|speaker), brm |> filter(act%in%c("watching", "listening"))))
@@ -107,7 +285,7 @@ summary(lmer(Ifraction ~ act + (1+act|speaker), brm |> filter(act%in%c("watching
 ```{r}
 ggplot(brm |> filter(#!is.na(act)
   act%in%c("watching", "listening")
-  ), aes(condition, Ifraction))+
+), aes(condition, Ifraction))+
   geom_boxplot()+
   facet_wrap(~act)
 
@@ -117,6 +295,30 @@ summary(lmer(Ifraction ~ condition + (1|speaker), brm |> filter(act%in%c("watchi
 ```
 
 # Confederate
+
+### f0
+
+* Similar condition effect in Read and Free
+
+* Read has higher f0, but this is accounted for only by the Heavy condition. Sitting and Light had similar f0 in both Read and Free
+
+```{r}
+ggplot(ds |> filter(Role=="Confederate"), aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+summary(m <- lm(f0raw ~ Condition, ds |> filter(Task=="ReadAlone", Role=="Confederate")))
+
+summary(m <- lm(f0raw ~ Condition, ds |> filter(Task=="Free", Role=="Confederate")))
+
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone")), aes(Task, f0raw))+
+  geom_boxplot()
+
+summary(m <- lm(f0raw ~ Task * Condition, ds |> filter(Task%in%c("Free", "ReadAlone"), Role=="Confederate")))
+
+summary(emmeans::emmeans(m, pairwise ~ Task|Condition))
+
+```
 
 ## Cycle duration
 
@@ -146,7 +348,7 @@ summary(lm(cycleDur ~ act, brc |> filter(act!="watching")))
 ## Inhalation amplitude
 
 Inhalation amplitude increased more with condition during read speech than with spontaneous speech (during sitting there was no difference between read and spontaneous). In other words: overall, amplitude is larger in read than spontaneous speech; and this is accounted for by the larger effect of condition on amplitude in read speech.
- 
+
 ```{r}
 ggplot(brc|> filter(act!="watching"), aes(condition, inhalAmp))+
   geom_boxplot()+
@@ -177,7 +379,7 @@ While biking, I-fraction is higher in spontaneous speech.
 (During sitting, I-fraction was slightly higher during read speech.)
 
 Remember: higher I-fraction = more balanced inhalation / exhalation durations.
- 
+
 ```{r}
 ggplot(brc|> filter(act!="watching"), aes(condition, Ifraction))+
   geom_boxplot()+
@@ -199,6 +401,32 @@ summary(lm(Ifraction ~ act, brc |> filter(act!="watching")))
 # Participants: exploring read vs spontaneous speech
 
 ## General comparisons
+
+### f0
+
+* Read alone: no condition difference (in paper); but f0 higher during experiment than at baseline
+
+* Free: no differences between conditions or between baseline vs during experiment
+
+* Free vs Read: higher f0 in read speech
+
+```{r}
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone")), aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+summary(m <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), ds |> filter(Task=="ReadAlone", Role=="Participant", Condition != "Baseline")))
+summary(m <- lmer(f0raw ~ Cond2 + (1 + Cond2 | Speaker), ds |> filter(Task=="ReadAlone", Role=="Participant")))
+
+summary(m <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), ds |> filter(Task=="Free", Role=="Participant", Condition != "Baseline")))
+summary(m <- lmer(f0raw ~ Cond2 + (1 + Cond2 | Speaker), ds |> filter(Task=="Free", Role=="Participant")))
+
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone")), aes(Task, f0raw))+
+  geom_boxplot()
+
+summary(m <- lmer(f0raw ~ Task + (1 + Task | Speaker), ds |> filter(Task%in%c("Free", "ReadAlone"), Role=="Participant", Condition!="Baseline")))
+```
+
 
 ### Cycle duration
 
@@ -292,6 +520,17 @@ summary(lmer(Ifraction ~ act2 + (1+act2|speaker), brm |> filter(grepl("read|spea
 
 ## Comparison: speakBaseline vs ReadBaseline
 
+### f0
+
+* Higher f0 in read speech (as for all the conditions)
+
+```{r}
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone"), Condition =="Baseline"), aes(Task, f0raw))+
+  geom_boxplot()
+
+summary(m <- lmer(f0raw ~ Task + (1 + Task | Speaker), ds |> filter(Task%in%c("Free", "ReadAlone"), Role=="Participant", Condition=="Baseline")))
+```
+
 ### Cycle duration
 
 * Longer cycles (slower breathing rate) during free speech
@@ -329,6 +568,17 @@ summary(lmer(Ifraction ~ act + (1+act|speaker), brm |> filter(act%in%c("speaking
 
 ## Comparison: speakConditions vs ReadAlone
 
+### f0
+
+* Higher f0 in read speech (as for baseline)
+
+```{r}
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone"), Condition!="Baseline"), aes(Task, f0raw))+
+  geom_boxplot()
+
+summary(m <- lmer(f0raw ~ Task + (1 + Task | Speaker), ds |> filter(Task%in%c("Free", "ReadAlone"), Role=="Participant", Condition!="Baseline")))
+```
+
 ### Cycle duration
 
 * Longer cycles (slower breathing rate) during free speech (same as baseline)
@@ -336,133 +586,132 @@ summary(lmer(Ifraction ~ act + (1+act|speaker), brm |> filter(act%in%c("speaking
 ```{r}
 ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(#act, cycleDur))+
   geom_boxplot()
-
-summary(lmer(cycleDur ~ act + (1+act|speaker), brm |> filter(act%in%c("speakingConditions", "ReadAlone"))))
-```
-
-* Read: no condition difference
-
-* Free: sitting -- shorter cycle duration (faster rate) than biking conditions
-
-```{r}
-ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(condition, cycleDur))+
-  geom_boxplot()+
-  facet_wrap(~act)
-
-summary(lmer(cycleDur ~ condition + (1|speaker), brm |> filter(act%in%c("ReadAlone"))))
-
-brm$condition <- relevel(brm$condition, ref="Light")
-summary(lmer(cycleDur ~ condition + (1|speaker), brm |> filter(act%in%c("speakingConditions"))))
-```
-
-### Inhalation amplitude
-
-* Tendency to lower inhalation amplitudes in free speech (like baseline), but difference not significant
-
-```{r}
-ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(act, inhalAmp))+
-  geom_boxplot()
-
-summary(lmer(inhalAmp ~ act + (1+act|speaker), brm |> filter(act%in%c("speakingConditions", "ReadAlone"))))
-```
-
-* Read: no condition difference
-
-* Free: no condition difference
-
-```{r}
-ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(condition, inhalAmp))+
-  geom_boxplot()+
-  facet_wrap(~act)
-
-summary(lmer(inhalAmp ~ condition + (1|speaker), brm |> filter(act%in%c("ReadAlone"))))
-
-brm$condition <- relevel(brm$condition, ref="Light")
-summary(lmer(inhalAmp ~ condition + (1|speaker), brm |> filter(act%in%c("speakingConditions"))))
-```
-
-### I-fraction
-
-* No difference in I-fraction (same as baseline)
-
-```{r}
-ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(act, Ifraction))+
-  geom_boxplot()
-
-summary(lmer(Ifraction ~ act + (1+act|speaker), brm |> filter(act%in%c("speakingConditions", "ReadAlone"))))
-```
-
-* Read: no condition difference
-
-* Free: no condition difference
-
-```{r}
-ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(condition, Ifraction))+
-  geom_boxplot()+
-  facet_wrap(~act)
-
-summary(lmer(Ifraction ~ condition + (1|speaker), brm |> filter(act%in%c("ReadAlone"))))
-
-brm$condition <- relevel(brm$condition, ref="Light")
-summary(lmer(Ifraction ~ condition + (1|speaker), brm |> filter(act%in%c("speakingConditions"))))
-```
-
-## Since (almost) no difference between conditions, conflate Baseline and Alone
-
-```{r}
-dat <- brm |> 
-  mutate_at(c("act"), as.character) |> 
-  mutate(act = ifelse(act %in% c("speakingBaseline", "speakingConditions"), "free", ifelse(act %in% c("ReadBaseline", "ReadAlone"), "read", NA))) |> 
-  filter(!is.na(act)) |> 
-  mutate_at(c("act"), as.factor)
-```
-
-### Cycle duration
-
-* Longer cycles (slower breathing rate) during free speech
-
-```{r}
-ggplot(dat, aes(act, cycleDur))+
-  geom_boxplot()
-
-ggplot(dat, aes(act, cycleDur))+
-  geom_boxplot()+
-  facet_wrap(~speaker)
-
-summary(lmer(cycleDur ~ act + (1+act|speaker), dat))
-```
-
-### Inhalation amplitude
-
-* Lower inhalation amplitudes in free speech
-
-```{r}
-ggplot(dat, aes(act, inhalAmp))+
-  geom_boxplot()
-
-ggplot(dat, aes(act, inhalAmp))+
-  geom_boxplot()+
-  facet_wrap(~speaker)
-
-summary(lmer(inhalAmp ~ act + (1+act|speaker), dat))
-```
-
-### I-fraction
-
-### I-fraction
-
-* No difference in I-fraction
-
-Makes sense, given that both inhalation AND exhalation durations were longer in free speech. So participants divide their breath cycles equally regardless of the type of speech.
-
-```{r}
-ggplot(dat, aes(act, Ifraction))+
-  geom_boxplot()
-
-ggplot(dat, aes(act, Ifraction))+
-  geom_boxplot()+
-  facet_wrap(~speaker)
-
-summary(lmer(Ifraction ~ act + (1+act|speaker), dat))
-```
-
+  
+  summary(lmer(cycleDur ~ act + (1+act|speaker), brm |> filter(act%in%c("speakingConditions", "ReadAlone"))))
+  ```
+  
+  * Read: no condition difference
+  
+  * Free: sitting -- shorter cycle duration (faster rate) than biking conditions
+  
+  ```{r}
+  ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(condition, cycleDur))+
+    geom_boxplot()+
+    facet_wrap(~act)
+  
+  summary(lmer(cycleDur ~ condition + (1|speaker), brm |> filter(act%in%c("ReadAlone"))))
+  
+  brm$condition <- relevel(brm$condition, ref="Light")
+  summary(lmer(cycleDur ~ condition + (1|speaker), brm |> filter(act%in%c("speakingConditions"))))
+  ```
+  
+  ### Inhalation amplitude
+  
+  * Tendency to lower inhalation amplitudes in free speech (like baseline), but difference not significant
+  
+  ```{r}
+  ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(act, inhalAmp))+
+    geom_boxplot()
+  
+  summary(lmer(inhalAmp ~ act + (1+act|speaker), brm |> filter(act%in%c("speakingConditions", "ReadAlone"))))
+  ```
+  
+  * Read: no condition difference
+  
+  * Free: no condition difference
+  
+  ```{r}
+  ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(condition, inhalAmp))+
+    geom_boxplot()+
+    facet_wrap(~act)
+  
+  summary(lmer(inhalAmp ~ condition + (1|speaker), brm |> filter(act%in%c("ReadAlone"))))
+  
+  brm$condition <- relevel(brm$condition, ref="Light")
+  summary(lmer(inhalAmp ~ condition + (1|speaker), brm |> filter(act%in%c("speakingConditions"))))
+  ```
+  
+  ### I-fraction
+  
+  * No difference in I-fraction (same as baseline)
+  
+  ```{r}
+  ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(act, Ifraction))+
+    geom_boxplot()
+  
+  summary(lmer(Ifraction ~ act + (1+act|speaker), brm |> filter(act%in%c("speakingConditions", "ReadAlone"))))
+  ```
+  
+  * Read: no condition difference
+  
+  * Free: no condition difference
+  
+  ```{r}
+  ggplot(brm |> filter(act%in%c("speakingConditions", "ReadAlone")), aes(condition, Ifraction))+
+    geom_boxplot()+
+    facet_wrap(~act)
+  
+  summary(lmer(Ifraction ~ condition + (1|speaker), brm |> filter(act%in%c("ReadAlone"))))
+  
+  brm$condition <- relevel(brm$condition, ref="Light")
+  summary(lmer(Ifraction ~ condition + (1|speaker), brm |> filter(act%in%c("speakingConditions"))))
+  ```
+  
+  ## Since (almost) no difference between conditions, conflate Baseline and Alone
+  
+  ```{r}
+  dat <- brm |> 
+    mutate_at(c("act"), as.character) |> 
+    mutate(act = ifelse(act %in% c("speakingBaseline", "speakingConditions"), "free", ifelse(act %in% c("ReadBaseline", "ReadAlone"), "read", NA))) |> 
+    filter(!is.na(act)) |> 
+    mutate_at(c("act"), as.factor)
+  ```
+  
+  ### Cycle duration
+  
+  * Longer cycles (slower breathing rate) during free speech
+  
+  ```{r}
+  ggplot(dat, aes(act, cycleDur))+
+    geom_boxplot()
+  
+  ggplot(dat, aes(act, cycleDur))+
+    geom_boxplot()+
+    facet_wrap(~speaker)
+  
+  summary(lmer(cycleDur ~ act + (1+act|speaker), dat))
+  ```
+  
+  ### Inhalation amplitude
+  
+  * Lower inhalation amplitudes in free speech
+  
+  ```{r}
+  ggplot(dat, aes(act, inhalAmp))+
+    geom_boxplot()
+  
+  ggplot(dat, aes(act, inhalAmp))+
+    geom_boxplot()+
+    facet_wrap(~speaker)
+  
+  summary(lmer(inhalAmp ~ act + (1+act|speaker), dat))
+  ```
+  
+  ### I-fraction
+  
+  * No difference in I-fraction
+  
+  Makes sense, given that both inhalation AND exhalation durations were longer in free speech. So participants divide their breath cycles equally regardless of the type of speech.
+  
+  ```{r}
+  ggplot(dat, aes(act, Ifraction))+
+    geom_boxplot()
+  
+  ggplot(dat, aes(act, Ifraction))+
+    geom_boxplot()+
+    facet_wrap(~speaker)
+  
+  summary(lmer(Ifraction ~ act + (1+act|speaker), dat))
+  ```
+  
+  

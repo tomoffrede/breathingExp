@@ -29,6 +29,7 @@ orderCond <- c("Sitting", "Light", "Heavy")
 orderCondBase <- c("Baseline", orderCond)
 orderAct <- c("watching", "listening")
 
+# breathing data
 load(paste0(folder, "DataBreathing2.RData"))
 load(paste0(folder, "DataConfBaselineBreathing.RData"))
 
@@ -53,6 +54,19 @@ brc <- rbind(brc0, bc) |>
 brc <- droplevels(brc)
 brc$act <- factor(brc$act, levels=c("Read", "Free", "watching"))
 remove(brm2)
+
+# speech data
+load(paste0(folder, "DataSpeech.RData"))
+load(paste0(folder, "DataReadSpeech.RData"))
+
+ds <- rbind(frb |> 
+              select(Speaker, file, f0raw, Task, IPU, Condition, Role) |> 
+              relocate(Speaker, file, IPU, f0raw, Condition, Task, Role),
+            fsm |> 
+              select(Speaker, file, IPU, f0raw, Condition, Task) |> 
+              mutate(Role = ifelse(Speaker=="Confederate", "Confederate", "Participant")) |> 
+              relocate(Speaker, file, IPU, f0raw, Condition, Task, Role) # make sure they're both in the same order
+)
 ```
 
 ```{r}
@@ -83,7 +97,7 @@ dat <- brm |>
   mutate_at(c("act"), as.factor)
 ```
 
-### Cycle duration
+## Cycle duration
 
 * Longer cycles (slower breathing rate) during free speech
 
@@ -107,7 +121,7 @@ summary(lmer(cycleDur ~ act + (1+act|speaker), dat))
 #               annotations=c("< .001"), textsize = 5)+
 #   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
 #   labs(x=NULL, y="Cycle Duration (s)")
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-cycle.png", width=3000, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-cycle.png", width=3000, height=3000, units="px", dpi=500)
 ```
 
 
@@ -131,11 +145,11 @@ summary(lmer(exhalDur ~ act + (1+act|speaker), dat))
 #               annotations=c("< .001"), textsize = 5)+
 #   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
 #   labs(x=NULL, y="Exhalation Duration (s)")
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-exhale.png", width=3000, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-exhale.png", width=3000, height=3000, units="px", dpi=500)
 ```
 
 
-### Inhalation amplitude (and duration)
+## Inhalation amplitude (and duration)
 
 * Lower inhalation amplitudes in free speech
 
@@ -163,7 +177,7 @@ summary(lmer(inhalAmp ~ act + (1+act|speaker), dat))
 #               annotations=c("< .01"), textsize = 5)+
 #   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
 #   labs(x=NULL, y="Inhalation Amplitude (V)")
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalAmp.png", width=3000, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-inhalAmp.png", width=3000, height=3000, units="px", dpi=500)
 ```
 
 
@@ -195,7 +209,7 @@ summary(emmeans::emmeans(m, pairwise ~ act|cyclePosition))
 #               annotations=c("< .001"), textsize = 5)+
 #   scale_x_discrete(limits=c("turnStart", "midTurn"), labels=c("Start", "Mid-Turn"))+
 #   labs(x=NULL, y="Inhalation Amplitude (V)", title="Read Speech")
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalAmpPositionRead.png", width=3000, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-inhalAmpPositionRead.png", width=3000, height=3000, units="px", dpi=500)
 # 
 # # Free
 # ggplot(dat |> filter(act=="free"), aes(cyclePosition, inhalAmp))+
@@ -204,7 +218,7 @@ summary(emmeans::emmeans(m, pairwise ~ act|cyclePosition))
 #               annotations=c("< .001"), textsize = 5)+
 #   scale_x_discrete(limits=c("turnStart", "midTurn"), labels=c("Start", "Mid-Turn"))+
 #   labs(x=NULL, y=NULL, title="Free Speech")
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalAmpPositionFree.png", width=3000, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-inhalAmpPositionFree.png", width=3000, height=3000, units="px", dpi=500)
 ```
 
 
@@ -234,9 +248,62 @@ summary(lmer(inhalDur ~ act + (1+act|speaker), dat))
 #               annotations=c("< .001"), textsize = 5)+
 #   scale_x_discrete(limits=c("read", "free"), labels=c("Read", "Free"))+
 #   labs(x=NULL, y="Inhalation Duration (s)")
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/p-inhalDur.png", width=3000, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-inhalDur.png", width=3000, height=3000, units="px", dpi=500)
 ```
 
+
+## f0
+
+There is no f0 difference across conditions -- in Read, as was reported in the paper, or Free. However, Read is higher than Free. An explanation for this is that breath cycles were shorter in read speech. F0 has the tendency to decline throughout an utterance. Since our f0 measure is the average of entire IPUs, if we assume that f0 generally starts at a similar point in all types of utterances, shorter utterances will have a higher f0 mean, since it will have had less time to decline. 
+
+```{r}
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone"), Condition!="Baseline"), aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+summary(m <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), ds |> filter(Task=="ReadAlone", Role=="Participant", Condition != "Baseline")))
+
+summary(m <- lmer(f0raw ~ Condition + (1 + Condition | Speaker), ds |> filter(Task=="Free", Role=="Participant", Condition != "Baseline")))
+
+
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone")), aes(Task, f0raw))+
+  geom_boxplot()
+
+summary(m <- lmer(f0raw ~ Task + (1 + Task | Speaker), ds |> filter(Task%in%c("Free", "ReadAlone"), Role=="Participant", Condition!="Baseline")))
+```
+
+```{r}
+# (r <- ggplot(ds |> filter(Role=="Participant", Task=="ReadAlone", Condition!="Baseline"), aes(Condition, f0raw))+
+#    geom_boxplot(size=1)+
+#    scale_x_discrete(limits=orderCond)+
+#    labs(x=NULL, y="f0 mean (HZ)", title="Read")+
+#    ylim(c(100,300))
+#  )
+# 
+# (f <- ggplot(ds |> filter(Role=="Participant", Task=="Free", Condition!="Baseline"), aes(Condition, f0raw))+
+#    geom_boxplot(size=1)+
+#    scale_x_discrete(limits=orderCond)+
+#    labs(x=NULL, y=NULL, title="Free")+
+#    ylim(c(100,300))
+#   )
+# 
+# ggarrange(r, f)
+# 
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-f0Conditions.png", width=5750, height=3000, units="px", dpi=500)
+```
+
+```{r}
+# ggplot(ds |> filter(Role=="Participant", Task%in%c("ReadAlone", "Free"), Condition!="Baseline"), aes(Task, f0raw))+
+#   geom_boxplot(size=1)+
+#   geom_signif(comparisons=list(c("ReadAlone", "Free")), size=0.75,
+#               annotations=c("< .001"), textsize = 5,
+#               y=315)+
+#   labs(x=NULL, y="f0 mean (HZ)", title=NULL)+
+#   scale_x_discrete(limits=c("ReadAlone", "Free"), labels=c("Read", "Free"))+
+#   ylim(c(100,335))
+# 
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/p-f0Tasks.png", width=3000, height=3000, units="px", dpi=500)
+```
 
 # Confederate
 
@@ -295,7 +362,7 @@ summary(lm(cycleDur ~ act, brc |> filter(act%in%c("Read", "Free"))))
 # 
 # ggarrange(r, f)
 # 
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-cycleDur.png", width=5750, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/c-cycleDur.png", width=5750, height=3000, units="px", dpi=500)
 # 
 # ggplot(brc|> filter(act%in%c("Free")), aes(condition, cycleDur))+
 #     geom_boxplot(size=1)+
@@ -306,7 +373,7 @@ summary(lm(cycleDur ~ act, brc |> filter(act%in%c("Read", "Free"))))
 #     labs(x=NULL, y="Cycle Duration (s)")+
 #     ylim(1, 11.5)
 # 
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-cycleDurFree.png", width=3000, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/c-cycleDurFree.png", width=3000, height=3000, units="px", dpi=500)
 ```
 
 
@@ -363,7 +430,7 @@ summary(lm(inhalAmp ~ act, brc |> filter(act%in%c("Read", "Free"))))
 # 
 # ggarrange(r, f)
 # 
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-inhalAmp.png", width=5750, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/c-inhalAmp.png", width=5750, height=3000, units="px", dpi=500)
 ```
 
 ```{r}
@@ -392,7 +459,7 @@ summary(lm(inhalAmp ~ act, brc |> filter(act%in%c("Read", "Free"))))
 #  )
 # 
 # ggarrange(s,l,h, nrow=1)
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-inhalAmpActComparison.png", width=5750, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/c-inhalAmpActComparison.png", width=5750, height=3000, units="px", dpi=500)
 ```
 
 
@@ -428,7 +495,71 @@ summary(emmeans::emmeans(m, pairwise ~ act|condition))
 # )
 # 
 # ggarrange(r,f)
-# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures/c-inhalDur.png", width=5750, height=3000, units="px", dpi=500)
+# ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/c-inhalDur.png", width=5750, height=3000, units="px", dpi=500)
+```
+
+## f0
+
+Increasing physical effort increased f0 equally in both conditions.
+
+F0 was higher in Read, as for the participants
+
+```{r}
+ds$Condition <- relevel(ds$Condition, ref="Light")
+
+ggplot(ds |> filter(Role=="Confederate"), aes(Condition, f0raw))+
+  geom_boxplot()+
+  facet_wrap(~Task)
+
+summary(m <- lm(f0raw ~ Condition, ds |> filter(Task=="ReadAlone", Role=="Confederate")))
+
+summary(m <- lm(f0raw ~ Condition, ds |> filter(Task=="Free", Role=="Confederate")))
+
+ggplot(ds |> filter(Role=="Participant", Task%in%c("Free", "ReadAlone")), aes(Task, f0raw))+
+  geom_boxplot()
+
+summary(m <- lm(f0raw ~ Task * Condition, ds |> filter(Task%in%c("Free", "ReadAlone"), Role=="Confederate")))
+
+summary(emmeans::emmeans(m, pairwise ~ Task|Condition))
+
 ```
 
 
+```{r}
+(r <- ggplot(ds |> filter(Role=="Confederate", Task=="ReadAlone"), aes(Condition, f0raw))+
+   geom_boxplot(size=1)+
+   scale_x_discrete(limits=orderCond)+
+   geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), size=0.75,
+              annotations=c("< .001", "< .001"), textsize = 5,
+              y=260)+
+   labs(x=NULL, y="f0 mean (HZ)", title="Read")+
+   ylim(c(150, 300))
+ )
+
+(f <- ggplot(ds |> filter(Role=="Confederate", Task=="Free"), aes(Condition, f0raw))+
+   geom_boxplot(size=1)+
+   scale_x_discrete(limits=orderCond)+
+    geom_signif(comparisons=list(c("Sitting", "Light"), c("Light", "Heavy")), size=0.75,
+              annotations=c("< .001", "< .001"), textsize = 5,
+              y=287)+
+   labs(x=NULL, y=NULL, title="Free")+
+    ylim(c(150, 300))
+  )
+
+ggarrange(r, f)
+
+ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/c-f0Conditions.png", width=5750, height=3000, units="px", dpi=500)
+```
+
+```{r}
+ggplot(ds |> filter(Role=="Confederate", Task%in%c("ReadAlone", "Free")), aes(Task, f0raw))+
+  geom_boxplot(size=1)+
+  geom_signif(comparisons=list(c("ReadAlone", "Free")), size=0.75,
+              annotations=c("< .01"), textsize = 5,
+              y=315)+
+  labs(x=NULL, y="f0 mean (HZ)", title=NULL)+
+  scale_x_discrete(limits=c("ReadAlone", "Free"), labels=c("Read", "Free"))+
+  ylim(c(100,335))
+
+ggsave("C:/Users/offredet/Documents/1HU/Defense/figures-Project/c-f0Tasks.png", width=3000, height=3000, units="px", dpi=500)
+```
