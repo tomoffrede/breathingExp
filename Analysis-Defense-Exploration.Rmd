@@ -128,77 +128,83 @@ for(f in filesT){
 }
 dc <- dc |> 
   mutate_at(c("speaker", "file", "text", "condition", "breathCycle"), as.factor) |> 
-  mutate_at(c("onset", "peak", "offset", "cycleDur"), as.numeric)
+  mutate_at(c("onset", "peak", "offset", "cycleDur"), as.numeric) |> 
+  group_by(file) |> 
+               mutate(offset = offset - min(onset),
+                      onset = onset - min(onset)) |> 
+               ungroup()
 
 ccb <- rbind(brm |> 
                filter(act=="ReadJoint") |> 
                select(speaker, file, text, breathCycle, onset, peak, offset, cycleDur, condition) |> 
-               relocate(speaker, file, text, condition, breathCycle, onset, peak, offset, cycleDur),
+               relocate(speaker, file, text, condition, breathCycle, onset, peak, offset, cycleDur) |> 
+               group_by(file) |> 
+               mutate(offset = offset - min(onset),
+                      onset = onset - min(onset)) |> 
+               ungroup(),
              dc)
 ```
+
+Check out `C:/Users/offredet/Documents/1HU/ExperimentBreathing/Data/DataForAnalysis/PeaksValleys/` for the plots created below.
+I had originally also created these plots for cycle onset, but they're almost exactly like the ones for peak, so I deleted those.
 
 ```{r}
 files0 <- list.files(folderBreath, "wav$")
 filesP <- files0[grepl("joint", files0) & substr(files0, 2, 2) =="R"]
 filesC <- files0[grepl("joint", files0) & substr(files0, 2, 2) =="-"]
 
+cross <- data.frame(matrix(nrow=0, ncol=4))
+names(cross) <- c("speaker", "condition", "text", "lag0ccf")
+
 for(s in unique(ccb$speaker[ccb$speaker!="Confederate"])){
   for(c in c("Sitting", "Light", "Heavy")){
     filenameP <- filesP[grepl(paste0(substr(c, 1, 1), "R-", s), filesP)]
     filenameC <- filesC[grepl(paste0(substr(c, 1, 1), "-", unique(ccb$text[ccb$speaker==s & ccb$condition==c])), filesC)]
-    
+
     bp <- tuneR::readWave(paste0(folderBreath, filenameP))
     bw <- data.frame(w = bp@left,
                      time = seq(0, (nrow(data.frame(bp@left))/2), length.out=nrow(data.frame(bp@left))))
     pb <- ggplot(bw, aes(time, w))+
       geom_line(linewidth=1)+
       labs(y=paste("Participant:", s))
-    
+
     bc <- tuneR::readWave(paste0(folderBreath, filenameC))
     cw <- data.frame(w = bc@left,
                      time = seq(0, (nrow(data.frame(bc@left))/2), length.out=nrow(data.frame(bc@left))))
     cb <- ggplot(cw, aes(time, w))+
       geom_line(linewidth=1)+
       labs(y="Confederate")
-    
+
     results0 <- print(ccf(ccb$peak[ccb$speaker==s & ccb$condition==c],
                           ccb$peak[ccb$speaker=="Confederate" & ccb$text==ccb$text[ccb$speaker==s & ccb$condition==c] & ccb$condition==c],
                           plot=FALSE))
     results <- data.frame(lag=results0$lag, acf=results0$acf)
     sig_limit <- 2 / sqrt(results0$n.used)
-    
+
     (ccf_plot <- ggplot(results, aes(lag, acf)) +
         geom_bar(stat = "identity", width=0.1) +
         geom_hline(yintercept = c(sig_limit, -sig_limit), linetype = "dashed", color = "blue") +
         labs(title = "PEAK Cross-Correlation", x = "Lag", y = "ACF"))
-    
+
     ggarrange(cb, pb, ccf_plot, ncol=1,
               bottom=text_grob(paste("-4:", results$acf[results$lag==-4], " -3:", results$acf[results$lag==-3], " -2:", results$acf[results$lag==-2], " -1:", results$acf[results$lag==-1], " 0:", results$acf[results$lag==0], " 1:", results$acf[results$lag==1], " 2:", results$acf[results$lag==2], " 3:", results$acf[results$lag==3], " 4:", results$acf[results$lag==4])))
-    
+
     ggsave(paste0(folderInd, s, "-", c, "-Peak.png"), width=3500, height=5000, units="px", dpi=500)
     
-        results0 <- print(ccf(ccb$onset[ccb$speaker==s & ccb$condition==c],
-                          ccb$onset[ccb$speaker=="Confederate" & ccb$text==ccb$text[ccb$speaker==s & ccb$condition==c] & ccb$condition==c],
-                          plot=FALSE))
-    results <- data.frame(lag=results0$lag, acf=results0$acf)
-    sig_limit <- 2 / sqrt(results0$n.used)
-    
-    (ccf_plot <- ggplot(results, aes(lag, acf)) +
-        geom_bar(stat = "identity", width=0.1) +
-        geom_hline(yintercept = c(sig_limit, -sig_limit), linetype = "dashed", color = "blue") +
-        labs(title = "ONSET Cross-Correlation", x = "Lag", y = "ACF"))
-    
-    ggarrange(cb, pb, ccf_plot, ncol=1,
-              bottom=text_grob(paste("-4:", results$acf[results$lag==-4], " -3:", results$acf[results$lag==-3], " -2:", results$acf[results$lag==-2], " -1:", results$acf[results$lag==-1], " 0:", results$acf[results$lag==0], " 1:", results$acf[results$lag==1], " 2:", results$acf[results$lag==2], " 3:", results$acf[results$lag==3], " 4:", results$acf[results$lag==4])))
-    
-    ggsave(paste0(folderInd, s, "-", c, "-Onset.png"), width=3500, height=5000, units="px", dpi=500)
-    
-    
+    cross[nrow(cross)+1,] <- c(s, c, ccb$text[ccb$speaker==s & ccb$condition==c], results$acf[results$lag==0])
+
   }
 }
+cross <- cross |> 
+  mutate_at(c("speaker", "condition", "text"), as.factor) |> 
+  mutate_at(c("lag0ccf"), as.numeric)
+```
 
+```{r}
+ggplot(cross, aes(condition, lag0ccf))+
+  geom_boxplot()
 
-
+summary(lm(lag0ccf ~ condition, cross)) # adding random effects isn't working
 ```
 
 
